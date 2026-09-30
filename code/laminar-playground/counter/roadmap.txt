@@ -1,0 +1,26 @@
+Stage 1 — Basic counter
+
+- Display a count, starting at 0.
+- Three buttons: +1, −1, Reset (to 0).
+- Clicking updates the displayed count.
+
+Stage 2 — Self-running tick counter
+
+- A number that increases by 1 every second, on its own (driven by a stream, not clicks).
+- Starts at 1.
+- Displayed live.
+
+Stage 3 — Event-sourced counter
+
+- Define an event type with cases: increment, decrement, reset (add init if you need it).
+- Each button emits an event into a stream — it does not mutate the count directly.
+- Derive the current count by folding the event stream, starting at 0.
+- Buttons emit events; the displayed count comes from the folded stream.
+- Reset is handled as an event.
+- Shows 0 on load.
+
+Stage 4 — Event log
+
+- Accumulate every emitted event into a growing list.
+- Display the list, each entry prefixed with its index (e.g. 0: increment).
+
