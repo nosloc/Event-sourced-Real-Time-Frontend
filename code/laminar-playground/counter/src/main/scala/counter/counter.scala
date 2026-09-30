@@ -16,10 +16,17 @@ def counter: Unit =
 
 object Main:
   def counterElement(): Element =
+    div(
+      h1("Counter Playground"),
+      renderManualCounter(),
+      renderAutomaticCounter()
+    )
+
+  def renderManualCounter(): Element =
     val counter: Var[Int] = Var(0)
     val counterSignal = counter.signal
     div(
-      h1("Counter Playground"),
+      h2("Manual Counter"),
       p("The counter is at: ", child.text <-- counterSignal),
       table(
         tbody(
@@ -30,6 +37,19 @@ object Main:
           )
         )
       )
+    )
+
+  def renderAutomaticCounter(): Element =
+    val timer: EventStream[Unit] =
+      EventStream.periodic(1000).mapTo(dom.console.log("Tick!"))
+    val automaticCounter: Var[Int] = Var(0)
+    div(
+      h2("Automatic Counter"),
+      p("The automatic counter is at: ", child.text <-- automaticCounter),
+      button("Reset", onClick --> (_ => automaticCounter.set(0))),
+      timer --> (_ => {
+        automaticCounter.update(_ + 1)
+      })
     )
 
   def renderButton(
