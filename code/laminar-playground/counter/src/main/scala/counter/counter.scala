@@ -28,33 +28,34 @@ object Main:
     div(
       h2("Manual Counter"),
       p("The counter is at: ", child.text <-- counterSignal),
-      table(
-        tbody(
-          tr(
-            renderButton("Add", counter, x => x + 1),
-            renderButton("Minus", counter, x => x - 1),
-            renderButton("Reset", counter, _ => 0)
-          )
-        )
+      div(
+        cls := "button-row",
+        renderButton("Add", counter, x => x + 1),
+        renderButton("Minus", counter, x => x - 1),
+        renderButton("Reset", counter, _ => 0)
       )
     )
 
   def renderAutomaticCounter(): Element =
-    val timer: EventStream[Unit] =
-      EventStream.periodic(1000).mapTo(dom.console.log("Tick!"))
+    val timer: EventStream[Int] =
+      EventStream.periodic(1000)
     val automaticCounter: Var[Int] = Var(0)
     div(
       h2("Automatic Counter"),
-      p("The automatic counter is at: ", child.text <-- automaticCounter),
-      button("Reset", onClick --> (_ => automaticCounter.set(0))),
+      p(
+        "The automatic counter is at: ",
+        child.text <-- automaticCounter.signal
+      ),
+      renderButton("Reset", automaticCounter, _ => 0),
       timer --> (_ => {
         automaticCounter.update(_ + 1)
-      })
+      }),
+      timer --> (_ => dom.console.log("Tick!"))
     )
 
   def renderButton(
       text: String,
       counter: Var[Int],
-      f: (Int) => (Int)
+      f: Int => Int
   ): Element =
     button(text, onClick --> (_ => counter.update(f)))
