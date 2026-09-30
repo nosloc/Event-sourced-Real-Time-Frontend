@@ -19,7 +19,8 @@ object Main:
     div(
       h1("Counter Playground"),
       renderManualCounter(),
-      renderAutomaticCounter()
+      renderAutomaticCounter(),
+      renderEventSourcedCounter()
     )
 
   def renderManualCounter(): Element =
@@ -53,9 +54,77 @@ object Main:
       timer --> (_ => dom.console.log("Tick!"))
     )
 
-  def renderButton(
+  sealed trait Event
+  case class Increment(by: Int) extends Event
+  case class Decrement(by: Int) extends Event
+  case class Reset() extends Event
+
+  class EventLog:
+    private val eventBus = new EventBus[Event]
+    val eventStream = eventBus.events
+    val logSignal = eventStream.scanLeft(Nil)((prev, e) => prev :+ e)
+
+    def addEvent(event: Event) =
+      eventBus.emit(event)
+
+  def renderEventSourcedCounter(): Element =
+    val eventLog = new EventLog
+    val eventSourcedCounter: Var[Int] = Var(0)
+    div(
+      h2("Event sourced counter"),
+      p(
+        "The event sourced button is at: ",
+        child.text <-- eventSourcedCounter.signal
+      ),
+      eventLog.eventStream --> (handleEvent(eventSourcedCounter, _)),
+      div(
+        cls := "button-row",
+        renderEventButton("Add", Increment(1), eventLog),
+        renderEventButton("Minus", Decrement(1), eventLog),
+        renderEventButton("Reset", Reset(), eventLog)
+      ),
+      table(
+        thead(
+          tr(
+            th("Number"),
+            th("Event")
+          )
+        ),
+        tbody(
+          children <-- eventLog.logSignal.map(renderTable)
+        )
+      )
+    )
+
+  def handleEvent(counter: Var[Int], event: Event): Unit =
+    event match
+      case Increment(by) => counter.update(_ + by)
+      case Decrement(by) => counter.update(_ - by)
+      case _             => counter.update(_ => 0)
+
+  def renderTable(events: List[Event]): List[Element] =
+    events.zipWithIndex.map {
+      case (Increment(by), index) =>
+        tr(td(index), td(s"Increment($by)"))
+      case (Decrement(by), index) =>
+        tr(td(index), td(s"Decrement($by)"))
+      case (Reset(), index) =>
+        tr(td(index), td(s"Reset"))
+    }
+
+  def renderEventButton(
       text: String,
-      counter: Var[Int],
-      f: Int => Int
+      eventEmited: Event,
+      eventLog: EventLog
   ): Element =
-    button(text, onClick --> (_ => counter.update(f)))
+    button(
+      text,
+      onClick --> (_ => eventLog.addEvent(eventEmited))
+    )
+
+  def renderButton[A](
+      text: String,
+      variable: Var[A],
+      f: A => A
+  ): Element =
+    button(text, onClick --> (_ => variable.update(f)))
