@@ -57,12 +57,17 @@ object Main:
   sealed trait Event
   case class Increment(by: Int) extends Event
   case class Decrement(by: Int) extends Event
-  case class Reset() extends Event
+  case object Reset extends Event
+
+  case class LoggedEvent(id: Int, event: Event)
 
   class EventLog:
     private val eventBus = new EventBus[Event]
     val eventStream = eventBus.events
-    val logSignal = eventStream.scanLeft(Nil)((prev, e) => prev :+ e)
+    val logSignal =
+      eventStream.scanLeft(List.empty[LoggedEvent])((prev, e) =>
+        prev :+ LoggedEvent(prev.length, e)
+      )
 
     def addEvent(event: Event) =
       eventBus.emit(event)
@@ -81,7 +86,7 @@ object Main:
         cls := "button-row",
         renderEventButton("Add", Increment(1), eventLog),
         renderEventButton("Minus", Decrement(1), eventLog),
-        renderEventButton("Reset", Reset(), eventLog)
+        renderEventButton("Reset", Reset, eventLog)
       ),
       table(
         thead(
@@ -91,7 +96,9 @@ object Main:
           )
         ),
         tbody(
-          children <-- eventLog.logSignal.map(renderTable)
+          children <-- eventLog.logSignal.split(_.id) { (_, initial, _) =>
+            renderRow(initial)
+          }
         )
       )
     )
@@ -100,17 +107,16 @@ object Main:
     event match
       case Increment(by) => counter.update(_ + by)
       case Decrement(by) => counter.update(_ - by)
-      case _             => counter.update(_ => 0)
+      case Reset         => counter.set(0)
 
-  def renderTable(events: List[Event]): List[Element] =
-    events.zipWithIndex.map {
-      case (Increment(by), index) =>
+  def renderRow(event: LoggedEvent): Element =
+    event match
+      case LoggedEvent(index, Increment(by)) =>
         tr(td(index), td(s"Increment($by)"))
-      case (Decrement(by), index) =>
+      case LoggedEvent(index, Decrement(by)) =>
         tr(td(index), td(s"Decrement($by)"))
-      case (Reset(), index) =>
+      case LoggedEvent(index, Reset) =>
         tr(td(index), td(s"Reset"))
-    }
 
   def renderEventButton(
       text: String,
