@@ -75,6 +75,9 @@ object Main:
   def renderEventSourcedCounter(): Element =
     val eventLog = new EventLog
     val eventSourcedCounter: Var[Int] = Var(0)
+    val removedAmount: Var[Int] = Var(1)
+    val addedAmount: Var[Int] = Var(1)
+
     div(
       h2("Event sourced counter"),
       p(
@@ -84,10 +87,19 @@ object Main:
       eventLog.eventStream --> (handleEvent(eventSourcedCounter, _)),
       div(
         cls := "button-row",
-        renderEventButton("Add", Increment(1), eventLog),
-        renderEventButton("Minus", Decrement(1), eventLog),
-        renderEventButton("Reset", Reset, eventLog)
+        renderEventButton("Add", () => Increment(addedAmount.now()), eventLog),
+        intInput(addedAmount)
       ),
+      div(
+        cls := "button-row",
+        renderEventButton(
+          "Minus",
+          () => Decrement(removedAmount.now()),
+          eventLog
+        ),
+        intInput(removedAmount)
+      ),
+      renderEventButton("Reset", () => Reset, eventLog),
       table(
         thead(
           tr(
@@ -100,6 +112,19 @@ object Main:
             renderRow(initial)
           }
         )
+      )
+    )
+
+  def intInput(variable: Var[Int]): Element =
+    input(
+      typ := "text",
+      controlled(
+        value <-- variable.signal.map(_.toString),
+        onInput.mapToValue
+          .map(x => if x.isEmpty then Some(0) else x.toIntOption)
+          .collect { case Some(newValue) =>
+            newValue
+          } --> variable.writer
       )
     )
 
@@ -120,12 +145,12 @@ object Main:
 
   def renderEventButton(
       text: String,
-      eventEmited: Event,
+      eventEmited: () => Event,
       eventLog: EventLog
   ): Element =
     button(
       text,
-      onClick --> (_ => eventLog.addEvent(eventEmited))
+      onClick --> (_ => eventLog.addEvent(eventEmited()))
     )
 
   def renderButton[A](
