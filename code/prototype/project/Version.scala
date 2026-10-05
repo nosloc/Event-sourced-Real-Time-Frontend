@@ -6,6 +6,8 @@ object Versions {
   // Your laminar-playground uses 17.0.0; 17.2.1 is the same API with fixes.
   val Laminar = "17.2.1"
 
+  val Http4sDom = "0.2.11"
+
   // -- Backend --
 
   val Http4s = "0.23.38"

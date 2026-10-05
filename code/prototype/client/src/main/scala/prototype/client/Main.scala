@@ -7,7 +7,11 @@ import prototype.Greeting
 
 @main
 def start(): Unit =
+
   renderOnDomContentLoaded(
     dom.document.getElementById("app"),
-    div(h1(Greeting.greet("Laminar")))
+    div(
+      h1(Greeting.greet("Devs !")),
+      TherapistView.render
+    )
   )
