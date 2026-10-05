@@ -10,13 +10,13 @@ class TherapistServiceImpl(therapists: List[Therapist])
     IO.pure(GetTherapistsOutput(therapists))
 
 object TherapistServiceImpl:
-  val lestoises = Company("Les Toises", "Av. des Mousquines 4, 1005 Lausanne")
-  val chuv = Company("CHUV", "Rue du Bugnon 46, 1005 Lausanne")
+  val clinicA = Company("Example Clinic", "1 Example Street, 1000 Exampleville")
+  val clinicB = Company("Demo Health Center", "2 Sample Avenue, 2000 Sampletown")
   val therapists = List(
-    Therapist("Alexandre", "Robert", "ARB", lestoises),
-    Therapist("Marie", "Dupont", "MDP", chuv),
-    Therapist("Jean", "Martin", "JMA", lestoises),
-    Therapist("Sophie", "Durand", "SDA", chuv)
+    Therapist("Alexandre", "Robert", "ARB", clinicA),
+    Therapist("Marie", "Dupont", "MDP", clinicB),
+    Therapist("Jean", "Martin", "JMA", clinicA),
+    Therapist("Sophie", "Durand", "SDA", clinicB)
   )
   def routes() =
     SimpleRestJsonBuilder

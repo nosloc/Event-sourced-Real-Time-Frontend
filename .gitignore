@@ -1,0 +1,23 @@
+# ---- Scala / sbt ----
+target/
+project/target/
+project/project/
+*.class
+*.log
+
+# ---- Editors / Metals / build servers ----
+.bsp/
+.bloop/
+.metals/
+.vscode/
+.idea/
+.history/
+metals.sbt
+
+# ---- Node.js / Vite ----
+node_modules/
+dist/
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
