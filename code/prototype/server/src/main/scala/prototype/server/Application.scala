@@ -19,7 +19,8 @@ object Server extends IOApp.Simple:
   private val companyServiceImpl = new CompanyServiceImpl(Seed.companies)
   private val therapistServiceImpl = new TherapistServiceImpl(Seed.therapists)
   private val appointmentServiceImpl = new AppointmentServiceImpl(
-    Seed.appointments
+    Seed.appointments,
+    therapistServiceImpl
   )
 
   private val routes = Routes.all(
