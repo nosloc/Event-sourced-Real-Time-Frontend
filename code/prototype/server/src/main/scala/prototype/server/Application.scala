@@ -16,7 +16,18 @@ object Server extends IOApp.Simple:
       Ok(Greeting.greet("World !"))
     }
 
-  private val routes = TherapistServiceImpl.routes().map(_ <+> greetingRoute)
+  private val companyServiceImpl = new CompanyServiceImpl(Seed.companies)
+  private val therapistServiceImpl = new TherapistServiceImpl(Seed.therapists)
+  private val appointmentServiceImpl = new AppointmentServiceImpl(
+    Seed.appointments
+  )
+
+  private val routes = Routes.all(
+    greetingRoute,
+    companyServiceImpl,
+    therapistServiceImpl,
+    appointmentServiceImpl
+  )
 
   def run: IO[Unit] =
     routes

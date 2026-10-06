@@ -1,5 +1,11 @@
 GET http://127.0.0.1:9000/api/hello
-
 ###
-
 GET http://127.0.0.1:9000/api/therapists
+###
+GET http://127.0.0.1:9000/api/therapists/mdp
+###
+GET http://127.0.0.1:9000/api/companies
+###
+GET http://127.0.0.1:9000/api/companies/070874c8-5296-452e-8c91-cfaf54385932
+###
+GET http://127.0.0.1:9000/api/therapists/mdp/appointments
