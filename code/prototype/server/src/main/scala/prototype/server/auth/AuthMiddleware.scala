@@ -4,8 +4,6 @@ import cats.effect.*
 import prototype.api.*
 import smithy4s.http4s.ServerEndpointMiddleware
 import smithy4s.Hints
-import org.http4s.Request
-import org.http4s.Response
 import org.http4s.HttpApp
 import org.http4s.headers.Authorization
 import org.http4s.Credentials

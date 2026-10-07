@@ -3,7 +3,6 @@ package prototype.server
 import cats.effect.*
 import cats.implicits.*
 import prototype.api.*
-import smithy4s.http4s.SimpleRestJsonBuilder
 
 class TherapistServiceImpl(therapists: List[Therapist])
     extends TherapistService[IO]:

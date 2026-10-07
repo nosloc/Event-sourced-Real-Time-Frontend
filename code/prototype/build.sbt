@@ -74,7 +74,9 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq(
     "-deprecation",
     // "-feature",
-    "-language:implicitConversions"
+    "-language:implicitConversions",
+    // Report unused code (imports first), and make every warning an error
+    "-Wunused:all"
   )
 )
 

@@ -8,12 +8,9 @@ import cats.effect.*
 import org.http4s.dom.FetchClientBuilder
 import cats.effect.unsafe.implicits.global
 import org.scalajs.macrotaskexecutor.MacrotaskExecutor.Implicits.global
-import org.http4s.client.Client
-import org.http4s.headers.Authorization
-import org.http4s.{Credentials, AuthScheme}
 import prototype.client.auth.AuthMiddleware
 
-import com.raquo.laminar.api.L.{*, given}
+import com.raquo.laminar.api.L.*
 
 object Api:
 

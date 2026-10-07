@@ -1,7 +1,6 @@
 package prototype.server.auth
 
 import cats.effect.*
-import cats.implicits.*
 import prototype.api.*
 
 trait AuthChecker:

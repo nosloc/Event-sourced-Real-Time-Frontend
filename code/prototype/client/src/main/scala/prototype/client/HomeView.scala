@@ -1,6 +1,6 @@
 package prototype.client
 
-import com.raquo.laminar.api.L.{*, given}
+import com.raquo.laminar.api.L.*
 
 object HomeView:
   def apply(): HtmlElement =
@@ -9,11 +9,7 @@ object HomeView:
       p("Welcome to the home page!"),
       p(
         "You are logged in as: ",
-        child <-- Session.currentUserS.map {
-          case Some(username) => span(username)
-          case _              =>
-            span("Unknown user") // Should not happen, but just in case
-        }
+        child.text <-- Session.currentUserS.map(_.getOrElse(""))
       ),
       button(
         "Logout",

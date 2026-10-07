@@ -1,6 +1,6 @@
 package prototype.client
 
-import com.raquo.laminar.api.L.{*, given}
+import com.raquo.laminar.api.L.*
 import prototype.api.InvalidCredentials
 
 object LoginView:

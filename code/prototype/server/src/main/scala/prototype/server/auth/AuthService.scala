@@ -1,10 +1,7 @@
 package prototype.server.auth
 
 import cats.effect.*
-import cats.implicits.*
-import java.util.UUID
 import prototype.api.*
-import scala.concurrent.duration.*
 
 class AuthServiceImpl(
     loggedInUsers: Ref[IO, Map[Token, TherapistId]],
@@ -14,7 +11,6 @@ class AuthServiceImpl(
   override def login(username: String): IO[LoginOutput] =
     val token =
       for
-        _ <- IO.sleep(1.second) // Simulate a delay for the login process
         therapist <- therapistService
           .getTherapist(TherapistId(username))
           .map(_.therapist)

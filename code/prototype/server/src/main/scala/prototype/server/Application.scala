@@ -4,7 +4,6 @@ import cats.effect.*
 import org.http4s.*
 import org.http4s.dsl.io.*
 import com.comcast.ip4s.*
-import cats.implicits.*
 import prototype.api.*
 import org.http4s.ember.server.EmberServerBuilder
 

@@ -1,6 +1,6 @@
 package prototype.client
 
-import com.raquo.laminar.api.L.{*, given}
+import com.raquo.laminar.api.L.*
 import prototype.api.Token
 import com.raquo.airstream.web.WebStorageVar
 
@@ -25,12 +25,6 @@ object Session:
     usernameStore.signal.combineWith(tokenStore.signal).map {
       case ("", _) | (_, "") => None
       case (username, _)     => Some(username)
-    }
-
-  val currentTokenS: Signal[Option[Token]] =
-    tokenStore.signal.map {
-      case ""    => None
-      case value => Some(Token(value))
     }
 
   def login(username: String, token: Token): Unit =

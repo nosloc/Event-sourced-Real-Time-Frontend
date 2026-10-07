@@ -11,9 +11,10 @@ import org.http4s.Credentials
 import org.http4s.AuthScheme
 import org.http4s.Status
 
+case class NoTokenFoundException()
+    extends Exception("No token found in session")
+
 class AuthMiddleware extends ClientEndpointMiddleware.Simple[IO]:
-  case class NoTokenFoundException()
-      extends Exception("No token found in session")
   override def prepareWithHints(
       serviceHints: Hints,
       endpointHints: Hints
@@ -30,22 +31,18 @@ class AuthMiddleware extends ClientEndpointMiddleware.Simple[IO]:
   private def middleware: Client[IO] => Client[IO] = { inputClient =>
     Client[IO] { request =>
       for
-        tokenOpt <- Resource.eval(IO.delay(Session.currentToken))
-        authHeader <- tokenOpt match
-          case None =>
-            Resource.eval(
-              IO.raiseError(NoTokenFoundException())
-            )
-          case Some(token) =>
-            Resource.eval(
-              IO(
-                Authorization(Credentials.Token(AuthScheme.Bearer, token.value))
-              )
-            )
-        requestWithAuth = request.putHeaders(authHeader)
-        response <- inputClient.run(requestWithAuth).evalTap { r =>
-          if r.status == Status.Unauthorized then IO.delay(Session.logout())
-          else IO.unit
+        // read the token when the request is made, not when the client is built
+        token <- Resource.eval(
+          IO.delay(Session.currentToken)
+            .flatMap(IO.fromOption(_)(NoTokenFoundException()))
+        )
+        authHeader = Authorization(
+          Credentials.Token(AuthScheme.Bearer, token.value)
+        )
+        response <- inputClient.run(request.putHeaders(authHeader)).evalTap {
+          r =>
+            if r.status == Status.Unauthorized then IO.delay(Session.logout())
+            else IO.unit
         }
       yield response
     }
