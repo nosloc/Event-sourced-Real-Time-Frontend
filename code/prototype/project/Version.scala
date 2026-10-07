@@ -8,6 +8,8 @@ object Versions {
 
   val Http4sDom = "0.2.11"
 
+  val Waypoint = "10.0.0-M1"
+
   // -- Backend --
 
   val Http4s = "0.23.38"

@@ -53,7 +53,8 @@ lazy val client =
     .settings(
       libraryDependencies ++= List(
         "com.raquo" %%% "laminar" % Versions.Laminar,
-        "org.http4s" %%% "http4s-dom" % Versions.Http4sDom
+        "org.http4s" %%% "http4s-dom" % Versions.Http4sDom,
+        "com.raquo" %%% "waypoint" % Versions.Waypoint
       ),
       scalaJSUseMainModuleInitializer := true,
 
