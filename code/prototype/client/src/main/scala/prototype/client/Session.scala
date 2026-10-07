@@ -2,17 +2,32 @@ package prototype.client
 
 import com.raquo.laminar.api.L.{*, given}
 import prototype.api.Token
-
-case class SessionUser(username: String, token: Token)
+import com.raquo.airstream.web.WebStorageVar
 
 object Session:
 
-  private val currentUser: Var[Option[SessionUser]] = Var(None)
+  private val usernameStore: WebStorageVar[String] =
+    WebStorageVar
+      .sessionStorage(
+        key = "username",
+        syncOwner = None
+      )
+      .text(default = "")
+  private val tokenStore: WebStorageVar[String] =
+    WebStorageVar
+      .sessionStorage(
+        key = "token",
+        syncOwner = None
+      )
+      .text(default = "")
   val currentUserS: Signal[Option[String]] =
-    currentUser.signal.map(_.map(_.username))
+    usernameStore.signal.combineWith(tokenStore.signal).map {
+      case ("", _) | (_, "") => None
+      case (username, _)     => Some(username)
+    }
 
   def login(username: String, token: Token): Unit =
-    currentUser.set(Some(SessionUser(username, token)))
+    Var.set(usernameStore -> username, tokenStore -> token.value)
 
   def logout(): Unit =
-    currentUser.set(None)
+    Var.set(usernameStore -> "", tokenStore -> "")
