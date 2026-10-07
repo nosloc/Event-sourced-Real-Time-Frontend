@@ -9,9 +9,10 @@ import smithy4s.http4s.SimpleRestJsonBuilder
 object Routes:
   def all(
       staticRoutes: HttpRoutes[IO],
-      companyServiceImpl: CompanyServiceImpl,
-      therapistServiceImpl: TherapistServiceImpl,
-      appointmentServiceImpl: AppointmentServiceImpl
+      companyServiceImpl: CompanyService[IO],
+      therapistServiceImpl: TherapistService[IO],
+      appointmentServiceImpl: AppointmentService[IO],
+      authServiceImpl: AuthService[IO]
   ): Resource[IO, HttpRoutes[IO]] =
     for
       companies <- SimpleRestJsonBuilder
@@ -29,4 +30,10 @@ object Routes:
           appointmentServiceImpl
         )
         .resource
-    yield companies <+> therapists <+> appointments <+> staticRoutes
+      auth <- SimpleRestJsonBuilder
+        .routes(
+          authServiceImpl
+        )
+        .resource
+
+    yield companies <+> therapists <+> appointments <+> staticRoutes <+> auth

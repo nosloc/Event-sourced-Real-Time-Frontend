@@ -9,3 +9,19 @@ GET http://127.0.0.1:9000/api/companies
 GET http://127.0.0.1:9000/api/companies/070874c8-5296-452e-8c91-cfaf54385932
 ###
 GET http://127.0.0.1:9000/api/therapists/mdp/appointments
+###
+GET http://127.0.0.1:9000/api/therapists/zzz/appointments
+###
+POST http://127.0.0.1:9000/api/login
+Content-Type: application/json
+
+{
+  "username": "mdp"
+}
+###
+POST http://127.0.0.1:9000/api/login
+Content-Type: application/json
+
+{
+  "username": "xxx"
+}

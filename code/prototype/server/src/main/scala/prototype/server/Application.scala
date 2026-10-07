@@ -1,10 +1,11 @@
 package prototype.server
 
-import cats.effect.{IO, IOApp}
+import cats.effect.*
 import org.http4s.*
 import org.http4s.dsl.io.*
 import com.comcast.ip4s.*
 import cats.implicits.*
+import prototype.api.*
 import org.http4s.ember.server.EmberServerBuilder
 
 import prototype.Greeting
@@ -23,21 +24,23 @@ object Server extends IOApp.Simple:
     therapistServiceImpl
   )
 
-  private val routes = Routes.all(
-    greetingRoute,
-    companyServiceImpl,
-    therapistServiceImpl,
-    appointmentServiceImpl
-  )
-
-  def run: IO[Unit] =
-    routes
-      .flatMap(routes =>
-        EmberServerBuilder
-          .default[IO]
-          .withHost(host"127.0.0.1")
-          .withPort(port"9000")
-          .withHttpApp(routes.orNotFound)
-          .build
+  private val server =
+    for
+      tokens <- Resource.eval(Ref.of[IO, Map[Token, TherapistId]](Map.empty))
+      authServiceImpl = new AuthServiceImpl(tokens, therapistServiceImpl)
+      routes <- Routes.all(
+        greetingRoute,
+        companyServiceImpl,
+        therapistServiceImpl,
+        appointmentServiceImpl,
+        authServiceImpl
       )
-      .useForever
+      server <- EmberServerBuilder
+        .default[IO]
+        .withHost(host"127.0.0.1")
+        .withPort(port"9000")
+        .withHttpApp(routes.orNotFound)
+        .build
+    yield server
+
+  def run: IO[Unit] = server.useForever
