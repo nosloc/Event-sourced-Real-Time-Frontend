@@ -9,6 +9,7 @@ import prototype.api.*
 import org.http4s.ember.server.EmberServerBuilder
 
 import prototype.Greeting
+import prototype.server.auth.*
 
 object Server extends IOApp.Simple:
 
@@ -28,8 +29,11 @@ object Server extends IOApp.Simple:
     for
       tokens <- Resource.eval(Ref.of[IO, Map[Token, TherapistId]](Map.empty))
       authServiceImpl = new AuthServiceImpl(tokens, therapistServiceImpl)
+      authChecker = AuthChecker(tokens)
+      middleware = new AuthMiddleware(authChecker)
       routes <- Routes.all(
         greetingRoute,
+        middleware,
         companyServiceImpl,
         therapistServiceImpl,
         appointmentServiceImpl,

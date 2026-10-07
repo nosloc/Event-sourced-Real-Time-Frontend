@@ -1,4 +1,4 @@
-package prototype.server
+package prototype.server.auth
 
 import cats.effect.*
 import cats.implicits.*
