@@ -22,5 +22,12 @@ object Api:
       .make
       .fold(throw _, identity)
 
+  val auth: AuthService[IO] =
+    SimpleRestJsonBuilder(AuthService)
+      .client(FetchClientBuilder[IO].create)
+      .uri(origin)
+      .make
+      .fold(throw _, identity)
+
   def stream[A](io: IO[A]): EventStream[Either[Throwable, A]] =
     EventStream.fromFuture(io.attempt.unsafeToFuture())
