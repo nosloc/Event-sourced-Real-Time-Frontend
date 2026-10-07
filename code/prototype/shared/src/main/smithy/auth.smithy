@@ -24,8 +24,6 @@ operation Login {
 }
 
 // Structures
-string Token
-
 structure LoginInput {
     @required
     username: String

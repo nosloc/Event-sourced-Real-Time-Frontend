@@ -7,10 +7,14 @@ use alloy#uuidFormat
 
 // Services
 @simpleRestJson
+@httpBearerAuth
 service AppointmentService {
     version: "1.0.0"
     operations: [
         ListTherapistAppointments
+    ]
+    errors: [
+        Unauthorized
     ]
 }
 

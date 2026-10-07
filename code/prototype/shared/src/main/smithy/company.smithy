@@ -7,11 +7,15 @@ use alloy#uuidFormat
 
 // Services
 @simpleRestJson
+@httpBearerAuth
 service CompanyService {
     version: "1.0.0"
     operations: [
         ListCompanies
         GetCompany
+    ]
+    errors: [
+        Unauthorized
     ]
 }
 

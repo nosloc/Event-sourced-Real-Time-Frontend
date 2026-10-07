@@ -5,11 +5,15 @@ namespace prototype.api
 use alloy#simpleRestJson
 
 @simpleRestJson
+@httpBearerAuth
 service TherapistService {
     version: "1.0.0"
     operations: [
         ListTherapists
         GetTherapist
+    ]
+    errors: [
+        Unauthorized
     ]
 }
 
