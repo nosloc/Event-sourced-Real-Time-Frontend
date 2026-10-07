@@ -32,6 +32,9 @@ lazy val server =
     .in(file("server"))
     .settings(commonSettings)
     .settings(
+      Compile / run / fork := true
+    )
+    .settings(
       libraryDependencies ++= List(
         // Http4s web server framework (brings cats-effect, the IO type, with it)
         "org.http4s" %% "http4s-ember-server" % Versions.Http4s,
