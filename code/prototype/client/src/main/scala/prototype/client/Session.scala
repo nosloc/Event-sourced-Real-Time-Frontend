@@ -20,10 +20,17 @@ object Session:
         syncOwner = None
       )
       .text(default = "")
+
   val currentUserS: Signal[Option[String]] =
     usernameStore.signal.combineWith(tokenStore.signal).map {
       case ("", _) | (_, "") => None
       case (username, _)     => Some(username)
+    }
+
+  val currentTokenS: Signal[Option[Token]] =
+    tokenStore.signal.map {
+      case ""    => None
+      case value => Some(Token(value))
     }
 
   def login(username: String, token: Token): Unit =
@@ -31,3 +38,8 @@ object Session:
 
   def logout(): Unit =
     Var.set(usernameStore -> "", tokenStore -> "")
+
+  def currentToken: Option[Token] =
+    tokenStore.now() match
+      case ""    => None
+      case value => Some(Token(value))

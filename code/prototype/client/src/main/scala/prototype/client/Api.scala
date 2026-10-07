@@ -8,17 +8,23 @@ import cats.effect.*
 import org.http4s.dom.FetchClientBuilder
 import cats.effect.unsafe.implicits.global
 import org.scalajs.macrotaskexecutor.MacrotaskExecutor.Implicits.global
+import org.http4s.client.Client
+import org.http4s.headers.Authorization
+import org.http4s.{Credentials, AuthScheme}
+import prototype.client.auth.AuthMiddleware
 
 import com.raquo.laminar.api.L.{*, given}
 
 object Api:
 
   private val origin = Uri.unsafeFromString(dom.window.location.origin)
+  private val authMiddleware = new AuthMiddleware
 
   val therapists: TherapistService[IO] =
     SimpleRestJsonBuilder(TherapistService)
       .client(FetchClientBuilder[IO].create)
       .uri(origin)
+      .middleware(authMiddleware)
       .make
       .fold(throw _, identity)
 
@@ -26,6 +32,7 @@ object Api:
     SimpleRestJsonBuilder(AuthService)
       .client(FetchClientBuilder[IO].create)
       .uri(origin)
+      .middleware(authMiddleware)
       .make
       .fold(throw _, identity)
 
