@@ -17,15 +17,15 @@ object Server extends IOApp.Simple:
       Ok(Greeting.greet("World !"))
     }
 
-  private val companyServiceImpl = new CompanyServiceImpl(Seed.companies)
-  private val therapistServiceImpl = new TherapistServiceImpl(Seed.therapists)
-  private val appointmentServiceImpl = new AppointmentServiceImpl(
-    Seed.appointments,
-    therapistServiceImpl
-  )
-
   private val server =
     for
+      seed <- Resource.eval(Seed())
+      companyServiceImpl = new CompanyServiceImpl(seed.companies)
+      therapistServiceImpl = new TherapistServiceImpl(seed.therapists)
+      appointmentServiceImpl = new AppointmentServiceImpl(
+        seed.appointments,
+        therapistServiceImpl
+      )
       tokens <- Resource.eval(Ref.of[IO, Map[Token, TherapistId]](Map.empty))
       authServiceImpl = new AuthServiceImpl(tokens, therapistServiceImpl)
       authChecker = AuthChecker(tokens)
