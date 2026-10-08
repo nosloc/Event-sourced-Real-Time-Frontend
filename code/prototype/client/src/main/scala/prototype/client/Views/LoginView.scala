@@ -1,7 +1,9 @@
-package prototype.client
+package prototype.client.Views
 
 import com.raquo.laminar.api.L.*
+
 import prototype.api.InvalidCredentials
+import prototype.client.{Api, AppRouter, Pages, Session}
 
 object LoginView:
   def apply(): HtmlElement =

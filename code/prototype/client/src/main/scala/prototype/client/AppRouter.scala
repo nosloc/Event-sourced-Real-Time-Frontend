@@ -7,14 +7,16 @@ object AppRouter
       routes = Routes.routes,
       getPageTitle = page => page.title,
       serializePage = {
-        case Pages.LoginPage    => "login"
-        case Pages.HomePage     => "home"
-        case Pages.NotFoundPage => "notfound"
+        case Pages.LoginPage     => "login"
+        case Pages.HomePage      => "home"
+        case Pages.TimetablePage => "timetable"
+        case Pages.NotFoundPage  => "notfound"
       },
       deserializePage = {
-        case "login" => Pages.LoginPage
-        case "home"  => Pages.HomePage
-        case _       => Pages.NotFoundPage
+        case "login"     => Pages.LoginPage
+        case "home"      => Pages.HomePage
+        case "timetable" => Pages.TimetablePage
+        case _           => Pages.NotFoundPage
       },
       routeFallback = _ => Pages.NotFoundPage
     )

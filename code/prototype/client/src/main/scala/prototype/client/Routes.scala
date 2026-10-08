@@ -8,5 +8,6 @@ object Routes:
 
   val routes = List(
     Route.static(Pages.LoginPage, appRoot / "login" / endOfSegments),
-    Route.static(Pages.HomePage, appRoot / endOfSegments)
+    Route.static(Pages.HomePage, appRoot / endOfSegments),
+    Route.static(Pages.TimetablePage, appRoot / "timetable" / endOfSegments)
   )
