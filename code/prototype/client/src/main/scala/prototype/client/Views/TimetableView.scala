@@ -10,7 +10,14 @@ object TimetableView:
 
   case class AppointmentWithDate(appointment: Appointment, date: Date)
   case class WeekRange(monday: Date, sunday: Date)
-  type WeekAppointments = Map[Date, List[AppointmentWithDate]]
+
+  case class DayColumn(
+      stringKey: String,
+      date: Date,
+      orderedAppointments: List[AppointmentWithDate]
+  )
+
+  type WeekAppointments = List[DayColumn]
 
   val daysOfTheWeek: List[String] =
     List(
@@ -49,6 +56,8 @@ object TimetableView:
         d.getDate() == other.getDate()
     def decimalHours: Double =
       d.getHours().toDouble + (d.getMinutes().toDouble / 60.0)
+    def getWeekDayIndex: Int =
+      (d.getDay().toInt + 6) % 7 // 0 = Monday, 6 = Sunday
 
   given Ordering[Date] = Ordering.by(_.getTime())
 
@@ -96,11 +105,13 @@ object TimetableView:
               AppointmentWithDate(appointment, appointmentDate)
             }
           weekDays.map { day =>
-            val appointmentsForDay = appointmentsWithDate.filter { awd =>
-              awd.date.sameDayAs(day)
-            }
-            day -> appointmentsForDay
-          }.toMap
+            val appointmentsForDay = appointmentsWithDate
+              .filter { awd =>
+                awd.date.sameDayAs(day)
+              }
+              .sortBy(_.date)
+            DayColumn(day.dateToString, day, appointmentsForDay)
+          }
 
         }
     val currentTimeS: Signal[Double] = EventStream
@@ -129,13 +140,14 @@ object TimetableView:
         allAppointments.loadingS,
         currentTimeS,
         inWindowS,
+        weekDaysS,
         today
       )
     )
   end apply
 
   private def getDayOfCurrentWeek(now: Date, dayIndex: Int): Date =
-    val sinceMonday = (now.getDay().toInt + 6) % 7
+    val sinceMonday = now.getWeekDayIndex
     new Date(
       now.getFullYear().toInt,
       now.getMonth().toInt,
@@ -232,6 +244,7 @@ object TimetableView:
       loadingS: Signal[Boolean],
       currentTimeS: Signal[Double],
       inWindowS: Signal[Boolean],
+      weekDaysS: Signal[List[Date]],
       today: Date
   ): HtmlElement =
     div(
@@ -254,7 +267,7 @@ object TimetableView:
         hidden <-- loadingS,
         table(
           cls := "timetable__table",
-          renderTableHeader(appointmentsS.map(_.keys.toList), today),
+          renderTableHeader(weekDaysS, today),
           renderTableBody(appointmentsS, currentTimeS, inWindowS, today)
         )
       )
@@ -262,21 +275,18 @@ object TimetableView:
   end renderTimetable
 
   private def renderTableHeader(
-      weekDayS: Signal[List[Date]],
+      weekDaysS: Signal[List[Date]],
       today: Date
   ): HtmlElement =
     thead(
       tr(
         th(cls := "gutter"),
-        children <-- weekDayS.map { weeksDay =>
-          weeksDay.sortBy(identity).zip(daysOfTheWeekShort).map {
-            (day, shortName) =>
-              th(
-                todayMods(day, today),
-                span(cls := "day__name", shortName),
-                span(cls := "day__date", day.dateToStringShort)
-              )
-          }
+        children <-- weekDaysS.split(_.dateToString) { (_, day, _) =>
+          th(
+            todayMods(day, today),
+            span(cls := "day__name", daysOfTheWeekShort(day.getWeekDayIndex)),
+            span(cls := "day__date", day.dateToStringShort)
+          )
         }
       )
     )
@@ -291,36 +301,25 @@ object TimetableView:
     tbody(
       tr(
         renderGutter(),
-        children <-- appointmentsS.map { weekAppointments =>
-          val sortedDays = weekAppointments.keys.toList.sorted
-          sortedDays.map { day =>
-            weekAppointments(day).sortBy(
-              _.appointment.timeRange.start.toDate
-            ) match
-              case Nil =>
-                td(
-                  cls := "rail day__empty",
-                  todayMods(day, today),
-                  ul(
-                    if today.sameDayAs(day) then
-                      nowLine(currentTimeS, inWindowS)
-                    else Mod.empty
-                  )
-                )
-              case appointments =>
-                td(
-                  cls := "rail",
-                  todayMods(day, today),
-                  ul(
-                    appointments.map { awd =>
-                      renderAppointment(awd.appointment)
-                    },
-                    if today.sameDayAs(day) then
-                      nowLine(currentTimeS, inWindowS)
-                    else Mod.empty
-                  )
-                )
-          }
+        children <-- appointmentsS.split(_.stringKey) {
+          (_, dayColumn, daySignal) =>
+            td(
+              cls := "rail",
+              cls("day__empty") <-- daySignal.map(
+                _.orderedAppointments.isEmpty
+              ),
+              todayMods(dayColumn.date, today),
+              ul(
+                children <-- daySignal
+                  .map(_.orderedAppointments)
+                  .split(_.appointment.appointmentId) { (_, initialAppt, _) =>
+                    renderAppointment(initialAppt.appointment)
+                  },
+                if today.sameDayAs(dayColumn.date) then
+                  nowLine(currentTimeS, inWindowS)
+                else Mod.empty
+              )
+            )
         }
       )
     )
@@ -333,7 +332,7 @@ object TimetableView:
   private def nowLine(
       currentS: Signal[Double],
       inWindowS: Signal[Boolean]
-  ): Mod[HtmlElement] =
+  ): HtmlElement =
     span(
       cls := "now-line",
       styleProp("--n") <-- currentS,
