@@ -180,7 +180,7 @@ object Seed:
   private val dayStart: LocalTime = LocalTime.of(8, 0)
   private val dayEnd: LocalTime = LocalTime.of(18, 0)
   private val slotMinutes: Int = 15
-  private val durationsMinutes: List[Int] = List(30, 45, 60, 90)
+  private val durationsMinutes: List[Int] = List(15, 30, 45, 60, 90)
 
   // Every possible start time of the day: 08:00, 08:15, ..., 17:45
   private val slotStarts: List[LocalTime] =
