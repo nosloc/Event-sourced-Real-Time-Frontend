@@ -30,6 +30,7 @@ lazy val shared = crossProject(JSPlatform, JVMPlatform)
 lazy val server =
   project
     .in(file("server"))
+    .enablePlugins(JavaAppPackaging)
     .settings(commonSettings)
     .settings(
       Compile / run / fork := true

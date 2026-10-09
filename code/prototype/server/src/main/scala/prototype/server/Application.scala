@@ -17,8 +17,18 @@ object Server extends IOApp.Simple:
       Ok(Greeting.greet("World !"))
     }
 
+  // Bind host: loopback for local dev, overridden (0.0.0.0) inside the container
+  private val bindHost: IO[Host] =
+    IO(sys.env.get("SERVER_HOST")).flatMap:
+      case None => IO.pure(host"127.0.0.1")
+      case Some(raw) =>
+        IO.fromOption(Host.fromString(raw))(
+          new IllegalArgumentException(s"Invalid SERVER_HOST: $raw")
+        )
+
   private val server =
     for
+      bindHost <- Resource.eval(bindHost)
       seed <- Resource.eval(Seed())
       companyServiceImpl = new CompanyServiceImpl(seed.companies)
       therapistServiceImpl = new TherapistServiceImpl(seed.therapists)
@@ -40,7 +50,7 @@ object Server extends IOApp.Simple:
       )
       server <- EmberServerBuilder
         .default[IO]
-        .withHost(host"127.0.0.1")
+        .withHost(bindHost)
         .withPort(port"9000")
         .withHttpApp(routes.orNotFound)
         .build
