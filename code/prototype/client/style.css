@@ -9,7 +9,7 @@
 /* ------------------------------------------------------------------ */
 :root {
   --ground: oklch(95.5% 0.004 150);
-  --panel: oklch(99.4% 0.002 150);
+  --panel: oklch(100% 0 0);
   --ink: oklch(22% 0.02 175);
   --muted: oklch(44% 0.02 175);
   --line: oklch(88% 0.006 160);
@@ -61,7 +61,7 @@ p {
 }
 
 body {
-  background: var(--ground);
+  background: var(--panel);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: 15px;
