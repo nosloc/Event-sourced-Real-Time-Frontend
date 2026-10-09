@@ -1,0 +1,881 @@
+/* Fonts (self-hosted through Fontsource, nothing from a CDN) */
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+/* ------------------------------------------------------------------ */
+/* Tokens                                                               */
+/* One neutral ground, one deep teal for structure and appointments,    */
+/* one amber used only to mark "now" (today's column).                  */
+/* ------------------------------------------------------------------ */
+:root {
+  --ground: oklch(95.5% 0.004 150);
+  --panel: oklch(99.4% 0.002 150);
+  --ink: oklch(22% 0.02 175);
+  --muted: oklch(44% 0.02 175);
+  --line: oklch(88% 0.006 160);
+  --line-strong: oklch(72% 0.01 165);
+  --line-input: oklch(58% 0.015 170);
+
+  --accent: oklch(44% 0.09 185);
+  --accent-strong: oklch(36% 0.08 185);
+  --accent-active: oklch(52% 0.09 185);
+  --accent-soft: oklch(93% 0.035 185);
+  --on-accent: oklch(99% 0 0);
+
+  --now: oklch(82% 0.15 80);
+  --now-soft: oklch(95.5% 0.05 88);
+
+  --error: oklch(42% 0.17 25);
+  --error-soft: oklch(96% 0.025 25);
+  --shadow: oklch(30% 0.02 175 / 0.08);
+
+  --radius-control: 8px;
+  --radius-panel: 14px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --font-sans: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+/* ------------------------------------------------------------------ */
+/* Reset and base                                                       */
+/* ------------------------------------------------------------------ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body,
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+input {
+  background: var(--panel);
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius-control);
+  padding: var(--space-2) var(--space-3);
+  font-size: 16px;
+}
+
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* Shared components                                                    */
+/* ------------------------------------------------------------------ */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 1px 2px var(--shadow), 0 8px 24px var(--shadow);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  background: var(--panel);
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius-control);
+  font-weight: 500;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.btn:hover:not(:disabled):not(.btn--primary) {
+  background: var(--ground);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.btn:disabled {
+  background: var(--line);
+  border-color: var(--line-input);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.btn--icon {
+  min-width: 36px;
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Joined buttons: previous, next (a Today button can sit between them) */
+.btn-group {
+  display: inline-flex;
+}
+
+.btn-group > .btn {
+  border-radius: 0;
+}
+
+.btn-group > .btn + .btn {
+  margin-left: -1px;
+}
+
+.btn-group > .btn:first-child {
+  border-radius: var(--radius-control) 0 0 var(--radius-control);
+}
+
+.btn-group > .btn:last-child {
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+}
+
+.btn-group > .btn:only-child {
+  border-radius: var(--radius-control);
+}
+
+.btn-group > .btn:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field__label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.field__input {
+  width: 100%;
+}
+
+.field__error {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  color: var(--error);
+}
+
+.banner {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+}
+
+.banner--error {
+  background: var(--error-soft);
+  color: var(--error);
+}
+
+/* Loading placeholders (the shimmer only runs when motion is allowed) */
+.skeleton {
+  display: block;
+  height: 1.2em;
+  background: var(--line);
+  border-radius: var(--radius-control);
+}
+
+/* A short line, for the therapist's name while it loads */
+.skeleton--line {
+  width: min(100%, 14rem);
+}
+
+/* Same height as the real frame (see .timetable__scroll), so nothing jumps when the data arrives */
+.skeleton--grid {
+  height: min(604px, max(380px, calc(100dvh - 200px)));
+  border-radius: var(--radius-panel);
+}
+
+/* display: block above would beat the browser's rule for the hidden attribute */
+.skeleton[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes skeleton-pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.55;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Login                                                                */
+/* ------------------------------------------------------------------ */
+.login {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  padding: var(--space-4);
+}
+
+.login__brand,
+.login__card {
+  width: 100%;
+  max-width: 380px;
+}
+
+.login__trust {
+  width: 100%;
+  max-width: 380px;
+  margin: 0;
+  font-size: 13px;
+  text-align: center;
+}
+
+.login__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.login__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6) var(--space-5);
+}
+
+/* The brand mark: a small teal square, shared by the login and the top bar */
+.login__brand::before,
+.topbar__brand::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--accent);
+}
+
+/* ------------------------------------------------------------------ */
+/* Shell and top bar                                                    */
+/* ------------------------------------------------------------------ */
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.topbar {
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  height: 56px;
+  max-width: 1320px;
+  margin-inline: auto;
+  padding: 0 clamp(var(--space-4), 3vw, 40px);
+}
+
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.topbar__nav {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.topbar__link {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.topbar__link:hover {
+  background: var(--ground);
+  color: var(--ink);
+}
+
+.topbar__link--active,
+.topbar__link--active:hover {
+  background: var(--accent-active);
+  color: var(--on-accent);
+}
+
+.topbar__user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.topbar__user > span {
+  min-width: 0;
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar__user .btn:not(:disabled) {
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-3);
+  color: var(--ink);
+}
+
+.page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1320px;
+  margin-inline: auto;
+  padding: var(--space-6) clamp(var(--space-4), 3vw, 40px);
+}
+
+/* ------------------------------------------------------------------ */
+/* Home                                                                 */
+/* ------------------------------------------------------------------ */
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ------------------------------------------------------------------ */
+/* Timetable                                                            */
+/* ------------------------------------------------------------------ */
+.timetable {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Identity on the left, week controls on the right */
+.timetable__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-5);
+}
+
+.timetable__who {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.who__name {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.who__role {
+  padding: 2px var(--space-2);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-radius: var(--radius-control);
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.who__id {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.timetable__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.timetable__range {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* The grid sits in a frame; only the frame scrolls on a narrow window */
+.timetable__scroll {
+  overflow: auto;
+  /* fit the window, scroll inside when the day is taller than the room left */
+  max-height: 100vh;
+  max-height: max(380px, calc(100dvh - 200px));
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-panel);
+}
+
+/* Time rail: each day is a column scaled to the clock, from --from to --from + --hours
+   (08:00 to 18:00 here). The view only sets --s (start hour) and --d (duration in hours)
+   on each appointment. If you change the window, change these and the labels in the view. */
+.timetable__table {
+  --h: 52px;
+  --from: 8;
+  --hours: 10;
+  width: 100%;
+  min-width: 1020px;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.timetable__table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: var(--space-3) var(--space-3);
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+  color: var(--muted);
+  background: var(--accent-soft);
+  box-shadow: inset 0 -1px 0 var(--line-strong);
+}
+
+.timetable__table th + th,
+.timetable__table td + td {
+  border-left: 1px solid var(--line-strong);
+}
+
+.day__name {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent-strong);
+}
+
+.day__date {
+  display: block;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timetable__table td {
+  vertical-align: top;
+  padding: var(--space-2);
+}
+
+/* One day: a positioned column with an hour line every --h */
+.timetable__table td.rail {
+  position: relative;
+  height: calc(var(--hours) * var(--h) + 2 * var(--space-2));
+  padding: var(--space-2) 6px;
+}
+
+/* Saturday and Sunday: tinted, so the days off read at a glance.
+   nth-child counts the gutter cell, so the weekend is cells 7 and 8. */
+.timetable__table td.rail:nth-child(n + 7) {
+  background-color: var(--ground);
+}
+
+/* The hour labels on the left; sticky so they stay visible when the grid scrolls sideways */
+.timetable__table th.gutter,
+.timetable__table td.gutter {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 52px;
+  padding-inline: var(--space-2);
+  box-shadow: inset -1px 0 0 var(--line-strong);
+}
+
+.timetable__table th.gutter {
+  z-index: 3;
+  box-shadow: inset -1px 0 0 var(--line-strong), inset 0 -1px 0 var(--line-strong);
+}
+
+/* The gutter draws its own right edge, so the first day has no left border (it would double up) */
+.timetable__table th.gutter + th,
+.timetable__table td.gutter + td {
+  border-left: 0;
+}
+
+.timetable__table td.gutter {
+  background-color: var(--panel);
+  padding: var(--space-2);
+}
+
+.gutter ol {
+  position: relative;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gutter li {
+  position: absolute;
+  right: 0;
+  top: calc(var(--i) * var(--h) - 6px);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 12px;
+}
+
+/* Today: the one place amber appears. The class is set by the view.
+   Keep the "thead th" / "tbody td" prefix: a bare .timetable__day--today loses to .timetable__table th. */
+.timetable__table thead th.timetable__day--today {
+  background: var(--now);
+  box-shadow: inset 0 3px 0 var(--ink), inset 0 -1px 0 var(--line-strong);
+  color: var(--ink);
+}
+
+.timetable__table thead th.timetable__day--today .day__name {
+  color: var(--ink);
+}
+
+.timetable__table tbody td.timetable__day--today {
+  background-color: var(--now-soft);
+}
+
+.timetable__table ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.appt {
+  margin: 0 0 var(--space-1);
+  padding: 6px var(--space-2);
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: var(--radius-control);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.appt:last-child {
+  margin-bottom: 0;
+}
+
+/* On the rail: top from the start hour, height from the duration */
+.rail ul {
+  position: relative;
+  height: 100%;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 calc(var(--h) - 1px),
+    var(--line) calc(var(--h) - 1px) var(--h)
+  );
+}
+
+.rail .appt {
+  position: absolute;
+  inset-inline: 0;
+  top: calc((var(--s) - var(--from)) * var(--h));
+  height: calc(var(--d) * var(--h) - 2px);
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0 6px;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Too short to hold its label: keep the block, hide the text */
+.rail .appt--short {
+  min-height: 6px;
+  border-radius: 3px;
+}
+
+/* The "now" line: set by the view only in today's column, --n is the current time in hours */
+.now-line {
+  position: absolute;
+  z-index: 1;
+  inset-inline: -6px;
+  top: calc((var(--n) - var(--from)) * var(--h));
+  border-top: 2px solid var(--now);
+  pointer-events: none;
+}
+
+.now-line::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--now);
+}
+
+.appt--short .appt__time {
+  display: none;
+}
+
+/* Live stream hooks: classes set by the view (LOGIC, user's). Delete the block to remove. */
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--ground);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.live__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.live__seq {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.live--stale .live__dot {
+  background: var(--muted);
+}
+
+@media (max-width: 559px) {
+  .live__seq {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .appt--arrived {
+    animation: appt-arrive 1.6s ease-out 1;
+  }
+}
+
+@keyframes appt-arrive {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  20% {
+    opacity: 1;
+    transform: none;
+    box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent-strong);
+  }
+  100% {
+    box-shadow: 0 0 0 2px transparent, 0 0 0 4px transparent;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Narrow windows                                                       */
+/* ------------------------------------------------------------------ */
+@media (max-width: 559px) {
+  h1 {
+    font-size: 24px;
+  }
+
+  .topbar__inner {
+    gap: var(--space-2);
+    padding: 0 var(--space-3);
+  }
+
+  .topbar__link {
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .topbar__user {
+    gap: var(--space-2);
+  }
+
+  .topbar__user > span {
+    display: none;
+  }
+
+  .page {
+    padding-top: var(--space-5);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Print: a paper diary page                                            */
+/* ------------------------------------------------------------------ */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
+
+  body {
+    background: none;
+  }
+
+  .shell {
+    min-height: 0;
+  }
+
+  .topbar,
+  .btn-group {
+    display: none;
+  }
+
+  .page {
+    padding: 0;
+    max-width: none;
+  }
+
+  .timetable__scroll {
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    border-radius: 0;
+    border-color: var(--ink);
+  }
+
+  .timetable__table th {
+    position: static;
+    background: none;
+    box-shadow: none;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .timetable__table th + th,
+  .timetable__table td + td {
+    border-left-color: var(--ink);
+  }
+
+  .timetable__table thead th.timetable__day--today {
+    background: none;
+    box-shadow: none;
+    border-top: 4px solid var(--ink);
+  }
+
+  .timetable__table tbody td.timetable__day--today {
+    background-color: transparent;
+  }
+
+  .now-line {
+    display: none;
+  }
+
+  .timetable__table {
+    --h: 10.5mm;
+  }
+
+  .timetable__table td.rail:nth-child(n + 7) {
+    background-color: transparent;
+  }
+
+  .appt {
+    background: none;
+    color: var(--ink);
+    border: 1px solid var(--ink);
+  }
+
+  .timetable__range::after {
+    content: ' (printed copy, may be out of date)';
+    font-weight: 400;
+    color: var(--muted);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Motion                                                               */
+/* ------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

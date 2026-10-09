@@ -26,10 +26,10 @@ object View:
     pageAndUserS.splitMatchOne
       .handleCase[PageAndUser, String, HtmlElement] {
         case (HomePage, Some(username)) => username
-      }((username, _) => HomeView(username))
+      }((username, _) => Shell(HomeView(username), username))
       .handleCase[PageAndUser, String, HtmlElement] {
         case (TimetablePage, Some(username)) => username
-      }((username, _) => TimetableView(username))
+      }((username, _) => Shell(TimetableView(username), username))
       .handleCase[PageAndUser, Unit, HtmlElement] {
         case (LoginPage, _) | (HomePage | TimetablePage, None) => ()
       }((_, _) => LoginView())

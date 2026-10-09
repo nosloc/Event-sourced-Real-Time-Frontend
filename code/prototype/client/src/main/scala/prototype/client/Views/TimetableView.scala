@@ -5,10 +5,6 @@ import scala.scalajs.js.Date
 import prototype.api.*
 import prototype.client.Api
 import prototype.client.Api.ApiCall
-import prototype.client.Pages.Page
-import prototype.client.AppRouter
-import prototype.client.Session
-import prototype.client.Pages
 
 object TimetableView:
 
@@ -26,6 +22,9 @@ object TimetableView:
       "Saturday",
       "Sunday"
     )
+
+  // Non-breaking space: keeps "to 09:45" together when a narrow column wraps
+  private val Nbsp = "\u00a0"
 
   val daysOfTheWeekShort: List[String] =
     List("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -48,6 +47,8 @@ object TimetableView:
       d.getFullYear() == other.getFullYear() &&
         d.getMonth() == other.getMonth() &&
         d.getDate() == other.getDate()
+    def decimalHours: Double =
+      d.getHours().toDouble + (d.getMinutes().toDouble / 60.0)
 
   given Ordering[Date] = Ordering.by(_.getTime())
 
@@ -102,20 +103,34 @@ object TimetableView:
           }.toMap
 
         }
+    val currentTimeS: Signal[Double] = EventStream
+      .periodic(60 * 1000)
+      .map(_ => new Date().decimalHours)
+      .startWith(new Date().decimalHours)
+
+    val inWindowS: Signal[Boolean] = currentTimeS.map { current =>
+      current >= windowStart && current < windowEnd
+    }.distinct
 
     div(
-      h1("Timetable"),
-      b("Welcome to the timetable page!"),
-      p("You are logged in as: ", username),
-      renderUserInfo(currentUserInfos),
-      renderDateRangePicker(weekRangeS, weekOffsetVar),
-      renderTimetable(appointmentsForCurrentWeekS, allAppointments.errorS),
-      renderNavigationButton(
-        "Go to Home",
-        Pages.HomePage,
-        replaceState = false
+      cls := "timetable",
+      div(
+        cls := "timetable__head",
+        div(
+          cls := "timetable__who",
+          h1("Timetable"),
+          renderUserInfo(currentUserInfos)
+        ),
+        renderDateRangePicker(weekRangeS, weekOffsetVar)
       ),
-      logoutButton()
+      renderTimetable(
+        appointmentsForCurrentWeekS,
+        allAppointments.errorS,
+        allAppointments.loadingS,
+        currentTimeS,
+        inWindowS,
+        today
+      )
     )
   end apply
 
@@ -132,17 +147,28 @@ object TimetableView:
       currentUser: ApiCall[Therapist]
   ): Mod[HtmlElement] =
     div(
+      cls := "muted",
       child <-- currentUser.stateS.map {
         case Api.Loading =>
-          div("Loading user info...")
+          div(cls := "skeleton skeleton--line")
         case Api.Success(therapist) =>
           div(
-            span(s" ${therapist.firstName} ${therapist.lastName}"),
-            span(s" - ${therapist.role.toString().toLowerCase()} "),
-            span(s"(${therapist.therapistId.value})")
+            cls := "who",
+            span(
+              cls := "who__name",
+              s"${therapist.firstName} ${therapist.lastName}"
+            ),
+            span(
+              cls := "who__role",
+              therapist.role.toString().toLowerCase().replace('_', ' ')
+            ),
+            span(cls := "who__id", therapist.therapistId.value)
           )
         case Api.Error(error) =>
-          div(color.red, s"Error loading user info: ${error.getMessage}")
+          div(
+            cls := "banner banner--error",
+            s"Error loading user info: ${error.getMessage}"
+          )
       }
     )
   end renderUserInfo
@@ -152,11 +178,13 @@ object TimetableView:
       weekOffsetVar: Var[Int]
   ): HtmlElement =
     div(
-      backgroundColor.lime,
+      cls := "timetable__toolbar",
+      renderDateRange(weekRangeS.map(_.monday), weekRangeS.map(_.sunday)),
       div(
-        renderDateRange(weekRangeS.map(_.monday), weekRangeS.map(_.sunday)),
-        changingWeekButton("Previous Week", weekOffsetVar, -1),
-        changingWeekButton("Next Week", weekOffsetVar, 1)
+        cls := "btn-group",
+        changingWeekButton("‹", weekOffsetVar, -1),
+        todayButton(weekOffsetVar),
+        changingWeekButton("›", weekOffsetVar, 1)
       )
     )
   end renderDateRangePicker
@@ -166,6 +194,7 @@ object TimetableView:
       sundayS: Signal[Date]
   ): HtmlElement =
     div(
+      cls := "timetable__range",
       child.text <-- mondayS.combineWith(sundayS).map { case (monday, sunday) =>
         s"Week from ${monday.dateToString} to ${sunday.dateToString}"
       }
@@ -178,6 +207,7 @@ object TimetableView:
       weekOffset: Int
   ): HtmlElement =
     button(
+      cls := "btn btn--icon",
       label,
       onClick --> { _ =>
         offsetVar.update(_ + weekOffset)
@@ -185,34 +215,67 @@ object TimetableView:
     )
   end changingWeekButton
 
+  private def todayButton(offsetVar: Var[Int]): HtmlElement =
+    button(
+      cls := "btn",
+      "Today",
+      onClick --> { _ =>
+        offsetVar.set(0)
+      },
+      disabled <-- offsetVar.signal.map(_ == 0)
+    )
+  end todayButton
+
   private def renderTimetable(
       appointmentsS: Signal[WeekAppointments],
-      errorS: Signal[Option[Throwable]]
+      errorS: Signal[Option[Throwable]],
+      loadingS: Signal[Boolean],
+      currentTimeS: Signal[Double],
+      inWindowS: Signal[Boolean],
+      today: Date
   ): HtmlElement =
     div(
       child.maybe <-- errorS.map {
         case Some(error) =>
           Some(
-            div(color.red, s"Error loading appointments: ${error.getMessage}")
+            div(
+              cls := "banner banner--error",
+              s"Error loading appointments: ${error.getMessage}"
+            )
           )
         case None => None
       },
-      backgroundColor.yellow,
-      p("This is where the timetable will be displayed."),
-      table(
-        renderTableHeader(appointmentsS.map(_.keys.toList)),
-        renderTableBody(appointmentsS)
+      div(
+        cls := "skeleton skeleton--grid",
+        hidden <-- loadingS.map(!_)
+      ),
+      div(
+        cls := "timetable__scroll",
+        hidden <-- loadingS,
+        table(
+          cls := "timetable__table",
+          renderTableHeader(appointmentsS.map(_.keys.toList), today),
+          renderTableBody(appointmentsS, currentTimeS, inWindowS, today)
+        )
       )
     )
   end renderTimetable
 
-  private def renderTableHeader(weekDayS: Signal[List[Date]]): HtmlElement =
+  private def renderTableHeader(
+      weekDayS: Signal[List[Date]],
+      today: Date
+  ): HtmlElement =
     thead(
       tr(
+        th(cls := "gutter"),
         children <-- weekDayS.map { weeksDay =>
           weeksDay.sortBy(identity).zip(daysOfTheWeekShort).map {
             (day, shortName) =>
-              th(s"$shortName: ${day.dateToStringShort}")
+              th(
+                todayMods(day, today),
+                span(cls := "day__name", shortName),
+                span(cls := "day__date", day.dateToStringShort)
+              )
           }
         }
       )
@@ -220,10 +283,14 @@ object TimetableView:
   end renderTableHeader
 
   private def renderTableBody(
-      appointmentsS: Signal[WeekAppointments]
+      appointmentsS: Signal[WeekAppointments],
+      currentTimeS: Signal[Double],
+      inWindowS: Signal[Boolean],
+      today: Date
   ): HtmlElement =
     tbody(
       tr(
+        renderGutter(),
         children <-- appointmentsS.map { weekAppointments =>
           val sortedDays = weekAppointments.keys.toList.sorted
           sortedDays.map { day =>
@@ -231,38 +298,82 @@ object TimetableView:
               _.appointment.timeRange.start.toDate
             ) match
               case Nil =>
-                td("No appointments")
-              case appointments =>
                 td(
+                  cls := "rail day__empty",
+                  todayMods(day, today),
                   ul(
-                    appointments.map { awd =>
-                      li(
-                        s"${awd.appointment.timeRange.start.toDate.getTimeString} - ${awd.appointment.timeRange.end.toDate.getTimeString}"
-                      )
-                    }
+                    if today.sameDayAs(day) then
+                      nowLine(currentTimeS, inWindowS)
+                    else Mod.empty
                   )
                 )
-
+              case appointments =>
+                td(
+                  cls := "rail",
+                  todayMods(day, today),
+                  ul(
+                    appointments.map { awd =>
+                      renderAppointment(awd.appointment)
+                    },
+                    if today.sameDayAs(day) then
+                      nowLine(currentTimeS, inWindowS)
+                    else Mod.empty
+                  )
+                )
           }
         }
       )
     )
-
   end renderTableBody
 
-  def renderNavigationButton(
-      label: String,
-      page: Page,
-      replaceState: Boolean
-  ): HtmlElement =
-    button(
-      label,
-      AppRouter.navigateTo(page, replaceState)
+  private def todayMods(day: Date, today: Date): Mod[HtmlElement] =
+    cls("timetable__day--today") := day.sameDayAs(today)
+  end todayMods
+
+  private def nowLine(
+      currentS: Signal[Double],
+      inWindowS: Signal[Boolean]
+  ): Mod[HtmlElement] =
+    span(
+      cls := "now-line",
+      styleProp("--n") <-- currentS,
+      hidden <-- inWindowS.map(!_)
     )
-  def logoutButton(): HtmlElement =
-    button(
-      "Logout",
-      onClick --> { _ =>
-        Session.logout()
-      }
+
+  end nowLine
+
+  // The visible day runs from windowStart to windowEnd (hours). The CSS has the same window
+  // in --from and --hours: change them together.
+  private val windowStart = 8
+  private val windowEnd = 18
+
+  // Hour labels every two hours; --i is the offset in hours from the window start.
+  private def renderGutter(): HtmlElement =
+    td(
+      cls := "gutter",
+      ol(
+        (windowStart to windowEnd by 2).map { hour =>
+          li(styleAttr := s"--i: ${hour - windowStart}", f"$hour%02d:00")
+        }
+      )
     )
+  end renderGutter
+
+  private def renderAppointment(appointment: Appointment): HtmlElement =
+    val start = appointment.timeRange.start.toDate
+    val end = appointment.timeRange.end.toDate
+    val decimalStart =
+      start.decimalHours
+    val decimalDuration =
+      (end.getTime() - start.getTime()).toDouble / (1000.0 * 60.0 * 60.0)
+    li(
+      cls := "appt",
+      cls("appt--short") <-- Signal.fromValue(decimalDuration < 0.5),
+      styleAttr := f"--s: $decimalStart%.2f; --d: $decimalDuration%.2f;",
+      span(
+        cls := "appt__time",
+        s"${start.getTimeString} to${Nbsp}${end.getTimeString}"
+      )
+    )
+  end renderAppointment
+end TimetableView
