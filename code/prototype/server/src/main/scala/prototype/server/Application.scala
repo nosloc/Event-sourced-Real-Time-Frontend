@@ -9,6 +9,7 @@ import org.http4s.ember.server.EmberServerBuilder
 
 import prototype.Greeting
 import prototype.server.auth.*
+import prototype.server.core.appointment.*
 
 object Server extends IOApp.Simple:
 
@@ -20,7 +21,7 @@ object Server extends IOApp.Simple:
   // Bind host: loopback for local dev, overridden (0.0.0.0) inside the container
   private val bindHost: IO[Host] =
     IO(sys.env.get("SERVER_HOST")).flatMap:
-      case None => IO.pure(host"127.0.0.1")
+      case None      => IO.pure(host"127.0.0.1")
       case Some(raw) =>
         IO.fromOption(Host.fromString(raw))(
           new IllegalArgumentException(s"Invalid SERVER_HOST: $raw")
@@ -32,10 +33,7 @@ object Server extends IOApp.Simple:
       seed <- Resource.eval(Seed())
       companyServiceImpl = new CompanyServiceImpl(seed.companies)
       therapistServiceImpl = new TherapistServiceImpl(seed.therapists)
-      appointmentServiceImpl = new AppointmentServiceImpl(
-        seed.appointments,
-        therapistServiceImpl
-      )
+      appointmentServiceImpl <- AppointmentServiceImpl().toResource
       tokens <- Resource.eval(Ref.of[IO, Map[Token, TherapistId]](Map.empty))
       authServiceImpl = new AuthServiceImpl(tokens, therapistServiceImpl)
       authChecker = AuthChecker(tokens)
