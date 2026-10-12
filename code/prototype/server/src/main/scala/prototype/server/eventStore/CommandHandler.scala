@@ -1,6 +1,8 @@
 package prototype.server.eventStore
 
 import cats.effect.*
+import cats.implicits.*
+import scala.reflect.ClassTag
 
 /** A command handler is the event-sourced layer that handles commands and
   * communicates with the event store.
@@ -14,10 +16,10 @@ import cats.effect.*
   *   The viewer is in charge of holding the current state of an object and
   *   evolving it with events.
   */
-final class CommandHandler[S, C, E, R](
+final class CommandHandler[S, C, E <: Event: ClassTag, R](
     decider: Decider[S, C, E, R],
     viewer: Viewer[S, E],
-    store: EventStore[E]
+    store: EventStore
 ):
 
   /** The current state of an object, based on the view */
@@ -28,7 +30,7 @@ final class CommandHandler[S, C, E, R](
   def handle(tag: String, command: C): IO[Either[R, S]] =
     for
       // Load the event, reconstruct the state and validate the command
-      eventsOrRejection <- store.load(tag).map { events =>
+      eventsOrRejection <- narrowLoad(tag).map { events =>
         val current = fold(decider.initialState, events)
         decider.decide(current, command)
       }
@@ -44,3 +46,14 @@ final class CommandHandler[S, C, E, R](
 
   private def fold(from: S, events: Iterable[E]): S =
     events.foldLeft(from)(decider.evolve)
+
+  private def narrowLoad(tag: String): IO[List[E]] =
+    store.load(tag).flatMap { events =>
+      events.traverse {
+        case e: E  => IO.pure(e)
+        case other =>
+          IO.raiseError(
+            new RuntimeException(s"Unexpected event in stream $tag: $other")
+          )
+      }
+    }

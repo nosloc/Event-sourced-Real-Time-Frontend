@@ -17,15 +17,27 @@ import cats.effect.std.Random
 import cats.syntax.all.*
 import prototype.api.*
 import smithy4s.time.Timestamp
+import prototype.server.core.appointment.AppointmentServiceImpl
 
 /** Fictional dummy data loaded at boot. Build it once at startup with `Seed()`,
   * which also generates tst's random appointments, then read its values.
   */
-final class Seed private (generatedAppointments: List[Appointment]):
+final class Seed private (
+    generatedAppointments: List[Appointment],
+    appointmentService: AppointmentServiceImpl
+):
   val companies: List[Company] = Seed.companies
   val therapists: List[Therapist] = Seed.therapists
   val appointments: List[Appointment] =
     Seed.fixedAppointments ++ generatedAppointments
+
+  def generateEvents(): IO[Unit] =
+    appointments.traverse_ { appointment =>
+      appointmentService.createAppointment(
+        appointment.timeRange,
+        appointment.therapistId
+      )
+    }
 
 /** Ids are defined once and reused, so the lists always reference each other
   * consistently.
@@ -40,7 +52,9 @@ object Seed:
   /** tst gets about 2 appointments per weekday over last, current and next week
     * (around 30 in total), relative to the boot date.
     */
-  def apply(): IO[Seed] =
+  def apply(
+      appointmentService: AppointmentServiceImpl
+  ): IO[Seed] =
     IO.realTimeInstant.flatMap { now =>
       val thisMonday = now
         .atZone(zone)
@@ -51,7 +65,7 @@ object Seed:
         from = thisMonday.minusWeeks(2),
         to = thisMonday.plusWeeks(2).`with`(FRIDAY),
         perDay = 3
-      ).map(new Seed(_))
+      ).map(new Seed(_, appointmentService))
     }
 
   private def uuid(value: String): UUID = UUID.fromString(value)

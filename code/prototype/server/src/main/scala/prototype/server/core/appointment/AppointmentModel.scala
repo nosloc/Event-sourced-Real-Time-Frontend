@@ -1,23 +1,24 @@
 package prototype.server.core.appointment
 
 import prototype.api.*
+import prototype.server.eventStore.*
 
 object appointmentModel:
-  sealed trait AppointmentCommand
-  case class CreateAppointment(
+  sealed trait AppointmentCommand extends Command
+  case class CreateAppointmentCommand(
       appointmentId: AppointmentId,
       therapistId: TherapistId,
       timeRange: TimeRange
   ) extends AppointmentCommand
-  case class UpdateAppointment(
+  case class UpdateAppointmentCommand(
       appointmentId: AppointmentId,
       timeRange: TimeRange,
       therapistId: TherapistId
   ) extends AppointmentCommand
-  case class DeleteAppointment(appointmentId: AppointmentId)
+  case class DeleteAppointmentCommand(appointmentId: AppointmentId)
       extends AppointmentCommand
 
-  sealed trait AppointmentEvent
+  sealed trait AppointmentEvent extends Event
   case class AppointmentCreated(
       appointmentId: AppointmentId,
       therapistId: TherapistId,

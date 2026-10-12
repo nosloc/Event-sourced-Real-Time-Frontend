@@ -18,7 +18,7 @@ class AppointmentDecider
       command: AppointmentCommand
   ): Either[AppointmentError, List[AppointmentEvent]] =
     command match
-      case CreateAppointment(appointmentId, therapistId, timeRange) =>
+      case CreateAppointmentCommand(appointmentId, therapistId, timeRange) =>
         if timeRange.end.toInstant.isAfter(timeRange.start.toInstant) then
           state match
             case None =>
@@ -35,7 +35,7 @@ class AppointmentDecider
               Left(AlreadyExists(appointmentId))
         else Left(InvalidRange(timeRange))
 
-      case UpdateAppointment(appointmentId, timeRange, therapistId) =>
+      case UpdateAppointmentCommand(appointmentId, timeRange, therapistId) =>
         if timeRange.end.toInstant.isAfter(timeRange.start.toInstant) then
           state match
             case Some(_) =>
@@ -52,7 +52,7 @@ class AppointmentDecider
               Left(NotFound(appointmentId))
         else Left(InvalidRange(timeRange))
 
-      case DeleteAppointment(appointmentId) =>
+      case DeleteAppointmentCommand(appointmentId) =>
         state match
           case Some(_) =>
             Right(
