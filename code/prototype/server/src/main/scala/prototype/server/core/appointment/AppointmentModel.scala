@@ -2,6 +2,7 @@ package prototype.server.core.appointment
 
 import prototype.api.*
 import prototype.server.eventStore.*
+import prototype.server.ErrorCode
 
 object appointmentModel:
   sealed trait AppointmentCommand extends Command
@@ -32,11 +33,10 @@ object appointmentModel:
   case class AppointmentDeleted(appointmentId: AppointmentId)
       extends AppointmentEvent
 
-  sealed trait AppointmentError
-  case class InvalidRange(timeRange: TimeRange) extends AppointmentError
-  case class AlreadyExists(appointmentId: AppointmentId)
-      extends AppointmentError
-  case class NotFound(appointmentId: AppointmentId) extends AppointmentError
+  sealed trait AppointmentError extends ErrorCode
+  case object INVALID_TIME_RANGE extends AppointmentError
+  case object ALREADY_EXISTS extends AppointmentError
+  case object NOT_FOUND extends AppointmentError
 
   type AppointmentState = Option[Appointment]
 

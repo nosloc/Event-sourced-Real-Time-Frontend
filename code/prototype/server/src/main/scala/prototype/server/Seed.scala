@@ -24,7 +24,7 @@ import prototype.server.core.appointment.AppointmentServiceImpl
   */
 final class Seed private (
     generatedAppointments: List[Appointment],
-    appointmentService: AppointmentServiceImpl
+    appointmentService: AppointmentService[IO]
 ):
   val companies: List[Company] = Seed.companies
   val therapists: List[Therapist] = Seed.therapists
@@ -34,8 +34,8 @@ final class Seed private (
   def generateEvents(): IO[Unit] =
     appointments.traverse_ { appointment =>
       appointmentService.createAppointment(
-        appointment.timeRange,
-        appointment.therapistId
+        appointment.therapistId,
+        appointment.timeRange
       )
     }
 

@@ -25,3 +25,24 @@ Content-Type: application/json
 {
   "username": "xxx"
 }
+
+###
+# ---- Create / delete an appointment (run in order: create, delete) ----
+# Timestamps are epoch seconds: 1791792000 = 2026-10-12 10:00 Zurich (UTC+2).
+# Uses the hardcoded dev token from AuthMiddleware (to be removed, see notes/progress.md).
+@token = ac709fa8-aee3-4e87-b120-14c2c410873a
+
+# Expected: 201 + the created appointment
+# @name create
+POST http://127.0.0.1:9000/api/therapists/tst/appointments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "timeRange": { "start": 1791792000, "end": 1791799200 } }
+
+###
+@appointmentId = {{create.response.body.$.appointment.appointmentId}}
+
+# Expected: 204
+DELETE http://127.0.0.1:9000/api/appointments/{{appointmentId}}
+Authorization: Bearer {{token}}

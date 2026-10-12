@@ -32,8 +32,8 @@ class AppointmentDecider
                 )
               )
             case Some(_) =>
-              Left(AlreadyExists(appointmentId))
-        else Left(InvalidRange(timeRange))
+              Left(ALREADY_EXISTS)
+        else Left(INVALID_TIME_RANGE)
 
       case UpdateAppointmentCommand(appointmentId, timeRange, therapistId) =>
         if timeRange.end.toInstant.isAfter(timeRange.start.toInstant) then
@@ -49,8 +49,8 @@ class AppointmentDecider
                 )
               )
             case None =>
-              Left(NotFound(appointmentId))
-        else Left(InvalidRange(timeRange))
+              Left(NOT_FOUND)
+        else Left(INVALID_TIME_RANGE)
 
       case DeleteAppointmentCommand(appointmentId) =>
         state match
@@ -61,7 +61,7 @@ class AppointmentDecider
               )
             )
           case None =>
-            Left(NotFound(appointmentId))
+            Left(NOT_FOUND)
   end decide
 
   def evolve(
