@@ -867,6 +867,127 @@ input {
 }
 
 /* ------------------------------------------------------------------ */
+/* Appointment modal                                                    */
+/* Classes set by the view: appt--clickable, appt--selected, modal,     */
+/* modal__dialog, modal__head, modal__title, modal__close, modal__row, */
+/* modal__label, modal__value, modal__actions.                          */
+/* ------------------------------------------------------------------ */
+.appt--clickable {
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.appt--clickable:hover {
+  background: var(--accent-active);
+}
+
+.appt--clickable:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.appt--selected {
+  background: var(--accent-strong);
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: oklch(22% 0.02 175 / 0.45);
+}
+
+.modal__dialog {
+  width: min(420px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: var(--space-5);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 1px 2px var(--shadow), 0 16px 48px oklch(30% 0.02 175 / 0.2);
+}
+
+.modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.modal__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal__close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal__close:hover {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.modal__close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.modal__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--line);
+}
+
+.modal__label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.modal__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+/* An error from the delete call sits on its own line above the buttons */
+.modal__actions .banner {
+  flex: 1 1 100%;
+}
+
+/* ------------------------------------------------------------------ */
 /* Motion                                                               */
 /* ------------------------------------------------------------------ */
 @media (prefers-reduced-motion: reduce) {

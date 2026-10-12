@@ -5,6 +5,7 @@ import scala.scalajs.js.Date
 import prototype.api.*
 import prototype.client.Api
 import prototype.client.Api.ApiCall
+import org.scalajs.dom
 
 object TimetableView:
 
@@ -81,6 +82,8 @@ object TimetableView:
       WeekRange(weekDays.head, weekDays.last)
     }
 
+    val reloadVar: Var[Int] = Var(0)
+
     // Current User information
     val currentUserInfos: ApiCall[Therapist] =
       ApiCall.fromIOCall(
@@ -89,9 +92,15 @@ object TimetableView:
       )
 
     val allAppointments: ApiCall[List[Appointment]] =
-      ApiCall.fromIOCall(
-        Api.appointments.listTherapistAppointments(TherapistId(username)),
-        _.appointments
+      ApiCall(
+        reloadVar.signal.flatMapSwitch(_ =>
+          ApiCall
+            .fromIOCall(
+              Api.appointments.listTherapistAppointments(TherapistId(username)),
+              _.appointments
+            )
+            .stateS
+        )
       )
 
     val appointmentsForCurrentWeekS: Signal[WeekAppointments] =
@@ -123,6 +132,8 @@ object TimetableView:
       current >= windowStart && current < windowEnd
     }.distinct
 
+    val selectedAppointmentVar: Var[Option[Appointment]] = Var(None)
+
     div(
       cls := "timetable",
       div(
@@ -141,8 +152,10 @@ object TimetableView:
         currentTimeS,
         inWindowS,
         weekDaysS,
+        selectedAppointmentVar,
         today
-      )
+      ),
+      renderModal(selectedAppointmentVar, reloadVar)
     )
   end apply
 
@@ -245,6 +258,7 @@ object TimetableView:
       currentTimeS: Signal[Double],
       inWindowS: Signal[Boolean],
       weekDaysS: Signal[List[Date]],
+      selectedAppointmentVar: Var[Option[Appointment]],
       today: Date
   ): HtmlElement =
     div(
@@ -268,7 +282,13 @@ object TimetableView:
         table(
           cls := "timetable__table",
           renderTableHeader(weekDaysS, today),
-          renderTableBody(appointmentsS, currentTimeS, inWindowS, today)
+          renderTableBody(
+            appointmentsS,
+            currentTimeS,
+            inWindowS,
+            selectedAppointmentVar,
+            today
+          )
         )
       )
     )
@@ -296,6 +316,7 @@ object TimetableView:
       appointmentsS: Signal[WeekAppointments],
       currentTimeS: Signal[Double],
       inWindowS: Signal[Boolean],
+      selectedAppointmentVar: Var[Option[Appointment]],
       today: Date
   ): HtmlElement =
     tbody(
@@ -313,7 +334,10 @@ object TimetableView:
                 children <-- daySignal
                   .map(_.orderedAppointments)
                   .split(_.appointment.appointmentId) { (_, initialAppt, _) =>
-                    renderAppointment(initialAppt.appointment)
+                    renderAppointment(
+                      initialAppt.appointment,
+                      selectedAppointmentVar
+                    )
                   },
                 if today.sameDayAs(dayColumn.date) then
                   nowLine(currentTimeS, inWindowS)
@@ -358,7 +382,10 @@ object TimetableView:
     )
   end renderGutter
 
-  private def renderAppointment(appointment: Appointment): HtmlElement =
+  private def renderAppointment(
+      appointment: Appointment,
+      selectedAppointmentVar: Var[Option[Appointment]]
+  ): HtmlElement =
     val start = appointment.timeRange.start.toDate
     val end = appointment.timeRange.end.toDate
     val decimalStart =
@@ -367,12 +394,118 @@ object TimetableView:
       (end.getTime() - start.getTime()).toDouble / (1000.0 * 60.0 * 60.0)
     li(
       cls := "appt",
+      cls := "appt--clickable",
       cls("appt--short") <-- Signal.fromValue(decimalDuration < 0.5),
+      cls("appt--selected") <-- selectedAppointmentVar.signal.map {
+        case Some(selected) =>
+          selected.appointmentId == appointment.appointmentId
+        case None => false
+      },
       styleAttr := f"--s: $decimalStart%.2f; --d: $decimalDuration%.2f;",
       span(
         cls := "appt__time",
         s"${start.getTimeString} to${Nbsp}${end.getTimeString}"
-      )
+      ),
+      onClick --> { _ =>
+        selectedAppointmentVar.set(Some(appointment))
+      }
     )
   end renderAppointment
+
+  private def renderModal(
+      selectedAppointmentVar: Var[Option[Appointment]],
+      reloadVar: Var[Int]
+  ): Mod[HtmlElement] =
+    child.maybe <-- selectedAppointmentVar.signal.map {
+      _.map(appt =>
+        div(
+          cls := "modal",
+          div(
+            cls := "modal__dialog",
+            div(
+              cls := "modal__head",
+              h2(cls := "modal__title", "Appointment Details"),
+              button(
+                cls := "modal__close",
+                "×",
+                onClick --> { _ =>
+                  selectedAppointmentVar.set(None)
+                }
+              )
+            ),
+            appointmentDetailsRow(
+              "Date",
+              appt.timeRange.start.toDate.dateToString
+            ),
+            appointmentDetailsRow(
+              "Start Time",
+              appt.timeRange.start.toDate.getTimeString
+            ),
+            appointmentDetailsRow(
+              "End Time",
+              appt.timeRange.end.toDate.getTimeString
+            ),
+            appointmentDetailsRow("Therapist ID", appt.therapistId.value),
+            renderModalActions(appt, selectedAppointmentVar, reloadVar)
+          ),
+          onClick.filter(ev => ev.target == ev.currentTarget) --> { _ =>
+            selectedAppointmentVar.set(None)
+          },
+          documentEvents(_.onKeyDown.filter(_.key == "Escape")) --> { _ =>
+            selectedAppointmentVar.set(None)
+          }
+        )
+      )
+    }
+  end renderModal
+
+  private def appointmentDetailsRow(label: String, value: String): HtmlElement =
+    div(
+      cls := "modal__row",
+      span(cls := "modal__label", label),
+      span(cls := "modal__value", value)
+    )
+  end appointmentDetailsRow
+
+  private def renderModalActions(
+      appointment: Appointment,
+      selectedAppointmentVar: Var[Option[Appointment]],
+      reloadVar: Var[Int]
+  ): HtmlElement =
+    val loadingVar: Var[Boolean] = Var(false)
+    val errorVar: Var[Option[String]] = Var(None)
+    div(
+      cls := "modal__actions",
+      child.maybe <-- errorVar.signal.map(
+        _.map(msg => div(cls := "banner banner--error", msg))
+      ),
+      button(
+        cls := "btn",
+        "Delete",
+        onClick.flatMap(_ =>
+          ApiCall
+            .fromIOCallSimple(
+              Api.appointments.deleteAppointment(appointment.appointmentId)
+            )
+            .stateS
+        )
+          --> {
+            case Api.Loading =>
+              loadingVar.set(true)
+              errorVar.set(None)
+            case Api.Success(_) | Api.Error(AppointmentNotFound) =>
+              loadingVar.set(false)
+              selectedAppointmentVar.set(None)
+              reloadVar.update(_ + 1)
+            case Api.Error(error) =>
+              loadingVar.set(false)
+              errorVar.set(
+                Some(s"Error: ${error.getMessage}")
+              )
+          },
+        disabled <-- loadingVar.signal
+      )
+    )
+  end renderModalActions
+
 end TimetableView
