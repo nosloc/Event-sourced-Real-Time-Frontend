@@ -24,20 +24,48 @@ import prototype.server.core.appointment.AppointmentServiceImpl
   */
 final class Seed private (
     generatedAppointments: List[Appointment],
-    appointmentService: AppointmentService[IO]
+    appointmentService: AppointmentService[IO],
+    companyService: CompanyService[IO],
+    therapistService: TherapistService[IO]
 ):
   val companies: List[Company] = Seed.companies
-  val therapists: List[Therapist] = Seed.therapists
+  val therapists: List[Seed.SeedTherapist] = Seed.therapists
   val appointments: List[Appointment] =
     Seed.fixedAppointments ++ generatedAppointments
 
+  /** Creates everything through the services, in dependency order: companies
+    * first (their ids are generated), then the therapists in those companies,
+    * then the appointments.
+    */
   def generateEvents(): IO[Unit] =
-    appointments.traverse_ { appointment =>
-      appointmentService.createAppointment(
-        appointment.therapistId,
-        appointment.timeRange
-      )
-    }
+    for
+      created <- companies.traverse { company =>
+        companyService
+          .createCompany(company.name, company.address)
+          .map(_.company)
+      }
+      // The seed companies are matched with the created ones by name
+      companyIdByName = created.map(c => c.name -> c.companyId).toMap
+      _ <- therapists.traverse_ { seedTherapist =>
+        // The real therapist can only be built now that its company exists
+        val therapist =
+          seedTherapist.toTherapist(companyIdByName(seedTherapist.company.name))
+        therapistService.createTherapist(
+          therapist.firstName,
+          therapist.lastName,
+          therapist.therapistId,
+          therapist.companyId,
+          therapist.role
+        )
+      }
+      _ <- appointments.traverse_ { appointment =>
+        appointmentService.createAppointment(
+          appointment.therapistId,
+          appointment.timeRange
+        )
+      }
+    yield ()
+  end generateEvents
 
 /** Ids are defined once and reused, so the lists always reference each other
   * consistently.
@@ -53,7 +81,9 @@ object Seed:
     * (around 30 in total), relative to the boot date.
     */
   def apply(
-      appointmentService: AppointmentServiceImpl
+      appointmentService: AppointmentServiceImpl,
+      companyService: CompanyService[IO],
+      therapistService: TherapistService[IO]
   ): IO[Seed] =
     IO.realTimeInstant.flatMap { now =>
       val thisMonday = now
@@ -65,7 +95,7 @@ object Seed:
         from = thisMonday.minusWeeks(2),
         to = thisMonday.plusWeeks(2).`with`(FRIDAY),
         perDay = 3
-      ).map(new Seed(_, appointmentService))
+      ).map(new Seed(_, appointmentService, companyService, therapistService))
     }
 
   private def uuid(value: String): UUID = UUID.fromString(value)
@@ -91,20 +121,29 @@ object Seed:
   private val companies: List[Company] = List(exampleClinic, demoHealthCenter)
 
   // Therapists
+
+  /** The static information of a seed therapist. Its `company` is only a
+    * template: the real company is created at boot with a generated id, so the
+    * real `Therapist` is built with `toTherapist` once that id is known.
+    */
+  final case class SeedTherapist(
+      therapistId: TherapistId,
+      firstName: String,
+      lastName: String,
+      company: Company,
+      role: Role
+  ):
+    def toTherapist(companyId: CompanyId): Therapist =
+      Therapist(firstName, lastName, therapistId, companyId, role)
+
   private def therapist(
       trigram: String,
       firstName: String,
       lastName: String,
       company: Company,
       role: Role
-  ): Therapist =
-    Therapist(
-      firstName,
-      lastName,
-      TherapistId(trigram),
-      company.companyId,
-      role
-    )
+  ): SeedTherapist =
+    SeedTherapist(TherapistId(trigram), firstName, lastName, company, role)
 
   val arb =
     therapist("arb", "Alexandre", "Robert", exampleClinic, Role.PSYCHOLOGIST)
@@ -134,14 +173,14 @@ object Seed:
   // Test user, whose appointments are generated at boot (see apply)
   val tst = therapist("tst", "Test", "User", exampleClinic, Role.PSYCHOLOGIST)
 
-  private val therapists: List[Therapist] =
+  private val therapists: List[SeedTherapist] =
     List(arb, mdp, jma, sda, lbo, fgr, nle, tpe, tst)
 
   // Fixed appointments: arb has 3, mdp has 2, jma/sda/lbo have 1 each, fgr/nle/tpe have
   // none (tst gets generated ones, see apply)
   private def appointment(
       id: String,
-      therapist: Therapist,
+      therapist: SeedTherapist,
       timeRange: TimeRange
   ): Appointment =
     Appointment(AppointmentId(uuid(id)), therapist.therapistId, timeRange)
@@ -209,7 +248,7 @@ object Seed:
     * step and end by 18:00.
     */
   private def generateAppointments(
-      therapist: Therapist,
+      therapist: SeedTherapist,
       from: LocalDate,
       to: LocalDate,
       perDay: Int
@@ -227,7 +266,7 @@ object Seed:
 
   private def generatedDay(
       random: Random[IO],
-      therapist: Therapist,
+      therapist: SeedTherapist,
       day: LocalDate,
       perDay: Int
   ): IO[List[Appointment]] =

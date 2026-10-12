@@ -5,11 +5,14 @@ GET http://127.0.0.1:9000/api/therapists
 GET http://127.0.0.1:9000/api/therapists/mdp
 ###
 GET http://127.0.0.1:9000/api/companies
+Authorization: Bearer ac709fa8-aee3-4e87-b120-14c2c410873a
 ###
 GET http://127.0.0.1:9000/api/companies/070874c8-5296-452e-8c91-cfaf54385932
 ###
 GET http://127.0.0.1:9000/api/therapists/mdp/appointments
+Authorization: Bearer ac709fa8-aee3-4e87-b120-14c2c410873a
 ###
+# Expected now: 404 (unknown therapist; needs a token, see the section below)
 GET http://127.0.0.1:9000/api/therapists/zzz/appointments
 ###
 POST http://127.0.0.1:9000/api/login
@@ -46,3 +49,40 @@ Content-Type: application/json
 # Expected: 204
 DELETE http://127.0.0.1:9000/api/appointments/{{appointmentId}}
 Authorization: Bearer {{token}}
+
+###
+# Expected: 404 TherapistNotFound (unknown therapist)
+POST http://127.0.0.1:9000/api/therapists/zzz/appointments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "timeRange": { "start": 1791792000, "end": 1791799200 } }
+
+###
+# ---- Create a company, then a therapist in it (run in order) ----
+
+# Expected: 201 + the created company
+# @name createCompany
+POST http://127.0.0.1:9000/api/companies
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Test Clinic", "address": { "street": "Test Street", "number": "1", "city": "Testville", "state": "VD" } }
+
+###
+@companyId = {{createCompany.response.body.$.company.companyId}}
+
+# Expected: 201 + the created therapist (a second run returns 409, the trigram is taken)
+POST http://127.0.0.1:9000/api/therapists
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "firstName": "New", "lastName": "Therapist", "therapistId": "ntp", "companyId": "{{companyId}}", "role": "PSYCHOLOGIST" }
+
+###
+# Expected: 404 CompanyNotFound (unknown company)
+POST http://127.0.0.1:9000/api/therapists
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "firstName": "No", "lastName": "Company", "therapistId": "nco", "companyId": "00000000-0000-4000-8000-000000000000", "role": "PSYCHOLOGIST" }

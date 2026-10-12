@@ -11,7 +11,8 @@ trait AppointmentServiceImpl extends AppointmentService[IO]
 
 object AppointmentServiceImpl:
   def apply(
-      eventStore: EventStore
+      eventStore: EventStore,
+      therapistService: TherapistService[IO]
   ): IO[AppointmentServiceImpl] =
     for
       view <- Ref.of[IO, Map[String, Appointment]](Map.empty)
@@ -21,13 +22,15 @@ object AppointmentServiceImpl:
 
       val handler = new CommandHandler(decider, viewer, eventStore)
 
-      // TODO: check that the therapist exists (the old service did)
+      // Fails with TherapistNotFound if the therapist does not exist
       override def listTherapistAppointments(
           therapistId: TherapistId
       ): IO[ListTherapistAppointmentsOutput] =
-        viewer
-          .listAppointments(therapistId.value)
-          .map(ListTherapistAppointmentsOutput.apply)
+        therapistService.getTherapist(therapistId).flatMap { _ =>
+          viewer
+            .listAppointments(therapistId.value)
+            .map(ListTherapistAppointmentsOutput.apply)
+        }
 
       override def createAppointment(
           therapistId: TherapistId,
@@ -39,11 +42,14 @@ object AppointmentServiceImpl:
           therapistId,
           timeRange
         )
-        handler.handle(id.toString, command).flatMap {
-          case Right(appt) => IO.pure(CreateAppointmentOutput(appt.get))
-          case Left(INVALID_TIME_RANGE) =>
-            IO.raiseError(InvalidTimeRange())
-          case Left(error) => IO.raiseError(UserFacingError(error))
+        // Fails with TherapistNotFound if the therapist does not exist
+        therapistService.getTherapist(therapistId).flatMap { _ =>
+          handler.handle(id.toString, command).flatMap {
+            case Right(appt) => IO.pure(CreateAppointmentOutput(appt.get))
+            case Left(INVALID_TIME_RANGE) =>
+              IO.raiseError(InvalidTimeRange())
+            case Left(error) => IO.raiseError(UserFacingError(error))
+          }
         }
 
       override def deleteAppointment(

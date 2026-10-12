@@ -11,6 +11,7 @@ service TherapistService {
     operations: [
         ListTherapists
         GetTherapist
+        CreateTherapist
     ]
     errors: [
         Unauthorized
@@ -33,6 +34,16 @@ operation GetTherapist {
         TherapistNotFound
     ]
 }
+@http(method: "POST", uri: "/api/therapists", code: 201)
+operation CreateTherapist {
+    input: CreateTherapistInput
+    output: CreateTherapistOutput
+    errors: [
+        CompanyNotFound
+        TherapistAlreadyExists
+    ]
+}
+
 // Structures
 // Trigram for TherapistId: 3 lowercase letters
 
@@ -56,9 +67,36 @@ structure GetTherapistOutput {
     therapist: Therapist
 }
 
+// The therapist id (trigram) is chosen by the caller, unlike company and appointment ids
+structure CreateTherapistInput {
+    @required
+    firstName: String
+
+    @required
+    lastName: String
+
+    @required
+    therapistId: TherapistId
+
+    @required
+    companyId: CompanyId
+
+    @required
+    role: Role
+}
+
+structure CreateTherapistOutput {
+    @required
+    therapist: Therapist
+}
+
 @error("client")
 @httpError(404)
 structure TherapistNotFound {}
+
+@error("client")
+@httpError(409)
+structure TherapistAlreadyExists {}
 
 @pattern("^[a-z]{3}$")
 string TherapistId

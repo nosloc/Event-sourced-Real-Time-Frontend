@@ -10,6 +10,8 @@ import org.http4s.ember.server.EmberServerBuilder
 import prototype.Greeting
 import prototype.server.auth.*
 import prototype.server.core.appointment.*
+import prototype.server.core.company.*
+import prototype.server.core.therapist.*
 import prototype.server.eventStore.*
 
 object Server extends IOApp.Simple:
@@ -32,10 +34,18 @@ object Server extends IOApp.Simple:
     for
       bindHost <- Resource.eval(bindHost)
       eventStore <- InMemoryEventStore.create.toResource
-      appointmentServiceImpl <- AppointmentServiceImpl(eventStore).toResource
-      seed <- Resource.eval(Seed(appointmentServiceImpl))
-      companyServiceImpl = new CompanyServiceImpl(seed.companies)
-      therapistServiceImpl = new TherapistServiceImpl(seed.therapists)
+      companyServiceImpl <- CompanyServiceImpl(eventStore).toResource
+      therapistServiceImpl <- TherapistServiceImpl(
+        eventStore,
+        companyServiceImpl
+      ).toResource
+      appointmentServiceImpl <- AppointmentServiceImpl(
+        eventStore,
+        therapistServiceImpl
+      ).toResource
+      seed <- Resource.eval(
+        Seed(appointmentServiceImpl, companyServiceImpl, therapistServiceImpl)
+      )
       _ <- seed.generateEvents().toResource
       tokens <- Resource.eval(Ref.of[IO, Map[Token, TherapistId]](Map.empty))
       authServiceImpl = new AuthServiceImpl(tokens, therapistServiceImpl)
