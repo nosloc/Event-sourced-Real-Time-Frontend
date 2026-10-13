@@ -988,6 +988,67 @@ input {
 }
 
 /* ------------------------------------------------------------------ */
+/* Appointment form (inside the modal)                                  */
+/* Classes set by the view: form__row, form__row--error, form__label,   */
+/* form__error, form__actions.                                          */
+/* ------------------------------------------------------------------ */
+.form__row {
+  margin-bottom: var(--space-4);
+}
+
+.form__label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.form__label > span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.form__row input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.form__row input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.form__row--error input {
+  border-color: var(--error);
+  background: var(--error-soft);
+}
+
+.form__error {
+  margin-top: var(--space-1);
+  color: var(--error);
+  font-size: 13px;
+}
+
+.form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+/* The banner for a server error sits above the buttons, full width */
+.modal__dialog form > .banner {
+  margin-top: var(--space-2);
+}
+
+/* ------------------------------------------------------------------ */
 /* Motion                                                               */
 /* ------------------------------------------------------------------ */
 @media (prefers-reduced-motion: reduce) {

@@ -7,13 +7,15 @@ import scala.scalajs.js.Date
 object WeekToolbar:
   def apply(
       weekRangeS: Signal[WeekRange],
-      weekOffsetVar: Var[Int]
+      weekOffsetVar: Var[Int],
+      showCreateAppointmentModalVar: Var[Boolean]
   ): HtmlElement =
     div(
       cls := "timetable__toolbar",
       renderDateRange(weekRangeS.map(_.monday), weekRangeS.map(_.sunday)),
       div(
         cls := "btn-group",
+        createAppointmentButton(showCreateAppointmentModalVar),
         changingWeekButton("‹", weekOffsetVar, -1),
         todayButton(weekOffsetVar),
         changingWeekButton("›", weekOffsetVar, 1)
@@ -57,3 +59,15 @@ object WeekToolbar:
       disabled <-- offsetVar.signal.map(_ == 0)
     )
   end todayButton
+
+  private def createAppointmentButton(
+      showCreateAppointmentModalVar: Var[Boolean]
+  ): HtmlElement =
+    button(
+      cls := "btn btn--primary",
+      "Create Appointment",
+      onClick --> { _ =>
+        showCreateAppointmentModalVar.set(true)
+      }
+    )
+  end createAppointmentButton

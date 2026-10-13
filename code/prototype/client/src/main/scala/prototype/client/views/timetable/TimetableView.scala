@@ -77,6 +77,8 @@ object TimetableView:
 
     val selectedAppointmentVar: Var[Option[Appointment]] = Var(None)
 
+    val showCreateAppointmentModalVar: Var[Boolean] = Var(false)
+
     div(
       cls := "timetable",
       div(
@@ -86,7 +88,7 @@ object TimetableView:
           h1("Timetable"),
           UserInfo(currentUserInfos)
         ),
-        WeekToolbar(weekRangeS, weekOffsetVar)
+        WeekToolbar(weekRangeS, weekOffsetVar, showCreateAppointmentModalVar)
       ),
       WeekGrid(
         appointmentsForCurrentWeekS,
@@ -97,7 +99,13 @@ object TimetableView:
         selectedAppointmentVar,
         today
       ),
-      AppointmentModal(selectedAppointmentVar, reloadVar)
+      AppointmentModal(selectedAppointmentVar, reloadVar),
+      CreateAppointmentModal(
+        today,
+        username,
+        showCreateAppointmentModalVar,
+        reloadVar
+      )
     )
   end apply
 

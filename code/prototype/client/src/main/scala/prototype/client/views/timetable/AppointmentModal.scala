@@ -11,45 +11,27 @@ object AppointmentModal:
       reloadVar: Var[Int]
   ): Mod[HtmlElement] =
     child.maybe <-- selectedAppointmentVar.signal.map {
-      _.map(appt =>
-        div(
-          cls := "modal",
-          div(
-            cls := "modal__dialog",
-            div(
-              cls := "modal__head",
-              h2(cls := "modal__title", "Appointment Details"),
-              button(
-                cls := "modal__close",
-                "×",
-                onClick --> { _ =>
-                  selectedAppointmentVar.set(None)
-                }
-              )
-            ),
-            appointmentDetailsRow(
-              "Date",
-              appt.timeRange.start.toDate.dateToString
-            ),
-            appointmentDetailsRow(
-              "Start Time",
-              appt.timeRange.start.toDate.getTimeString
-            ),
-            appointmentDetailsRow(
-              "End Time",
-              appt.timeRange.end.toDate.getTimeString
-            ),
-            appointmentDetailsRow("Therapist ID", appt.therapistId.value),
-            renderModalActions(appt, selectedAppointmentVar, reloadVar)
+      _.map(appt => {
+        Modal(
+          title = s"Appointment details",
+          onClose = () => selectedAppointmentVar.set(None)
+        )(
+          appointmentDetailsRow(
+            "Date",
+            appt.timeRange.start.toDate.dateToString
           ),
-          onClick.filter(ev => ev.target == ev.currentTarget) --> { _ =>
-            selectedAppointmentVar.set(None)
-          },
-          documentEvents(_.onKeyDown.filter(_.key == "Escape")) --> { _ =>
-            selectedAppointmentVar.set(None)
-          }
+          appointmentDetailsRow(
+            "Start Time",
+            appt.timeRange.start.toDate.getTimeString
+          ),
+          appointmentDetailsRow(
+            "End Time",
+            appt.timeRange.end.toDate.getTimeString
+          ),
+          appointmentDetailsRow("Therapist ID", appt.therapistId.value),
+          renderModalActions(appt, selectedAppointmentVar, reloadVar)
         )
-      )
+      })
     }
   end apply
 
