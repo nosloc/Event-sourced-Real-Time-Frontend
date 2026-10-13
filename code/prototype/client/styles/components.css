@@ -1,0 +1,156 @@
+/* ------------------------------------------------------------------ */
+/* Shared components                                                    */
+/* ------------------------------------------------------------------ */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 1px 2px var(--shadow), 0 8px 24px var(--shadow);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  background: var(--panel);
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius-control);
+  font-weight: 500;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.btn:hover:not(:disabled):not(.btn--primary) {
+  background: var(--ground);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.btn:disabled {
+  background: var(--line);
+  border-color: var(--line-input);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.btn--icon {
+  min-width: 36px;
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Joined buttons: previous, next (a Today button can sit between them) */
+.btn-group {
+  display: inline-flex;
+}
+
+.btn-group > .btn {
+  border-radius: 0;
+}
+
+.btn-group > .btn + .btn {
+  margin-left: -1px;
+}
+
+.btn-group > .btn:first-child {
+  border-radius: var(--radius-control) 0 0 var(--radius-control);
+}
+
+.btn-group > .btn:last-child {
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+}
+
+.btn-group > .btn:only-child {
+  border-radius: var(--radius-control);
+}
+
+.btn-group > .btn:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field__label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.field__input {
+  width: 100%;
+}
+
+.field__error {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  color: var(--error);
+}
+
+.banner {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+}
+
+.banner--error {
+  background: var(--error-soft);
+  color: var(--error);
+}
+
+/* Loading placeholders (the shimmer only runs when motion is allowed) */
+.skeleton {
+  display: block;
+  height: 1.2em;
+  background: var(--line);
+  border-radius: var(--radius-control);
+}
+
+/* A short line, for the therapist's name while it loads */
+.skeleton--line {
+  width: min(100%, 14rem);
+}
+
+/* Same height as the real frame (see .timetable__scroll), so nothing jumps when the data arrives */
+.skeleton--grid {
+  height: min(604px, max(380px, calc(100dvh - 200px)));
+  border-radius: var(--radius-panel);
+}
+
+/* display: block above would beat the browser's rule for the hidden attribute */
+.skeleton[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes skeleton-pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.55;
+  }
+}

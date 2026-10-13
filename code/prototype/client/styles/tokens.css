@@ -1,0 +1,40 @@
+/* ------------------------------------------------------------------ */
+/* Tokens                                                               */
+/* One neutral ground, one deep teal for structure and appointments,    */
+/* one amber used only to mark "now" (today's column).                  */
+/* ------------------------------------------------------------------ */
+:root {
+  --ground: oklch(95.5% 0.004 150);
+  --panel: oklch(100% 0 0);
+  --ink: oklch(22% 0.02 175);
+  --muted: oklch(44% 0.02 175);
+  --line: oklch(88% 0.006 160);
+  --line-strong: oklch(72% 0.01 165);
+  --line-input: oklch(58% 0.015 170);
+
+  --accent: oklch(44% 0.09 185);
+  --accent-strong: oklch(36% 0.08 185);
+  --accent-active: oklch(52% 0.09 185);
+  --accent-soft: oklch(93% 0.035 185);
+  --on-accent: oklch(99% 0 0);
+
+  --now: oklch(82% 0.15 80);
+  --now-soft: oklch(95.5% 0.05 88);
+
+  --error: oklch(42% 0.17 25);
+  --error-soft: oklch(96% 0.025 25);
+  --shadow: oklch(30% 0.02 175 / 0.08);
+
+  --radius-control: 8px;
+  --radius-panel: 14px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --font-sans: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+}

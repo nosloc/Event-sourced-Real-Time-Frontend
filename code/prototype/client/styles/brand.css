@@ -1,0 +1,9 @@
+/* The brand mark: a small teal square, shared by the login and the top bar */
+.login__brand::before,
+.topbar__brand::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--accent);
+}

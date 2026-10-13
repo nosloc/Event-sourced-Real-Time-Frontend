@@ -1,0 +1,82 @@
+/* ------------------------------------------------------------------ */
+/* Print: a paper diary page                                            */
+/* ------------------------------------------------------------------ */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
+
+  body {
+    background: none;
+  }
+
+  .shell {
+    min-height: 0;
+  }
+
+  .topbar,
+  .btn-group,
+  .timetable__create {
+    display: none;
+  }
+
+  .page {
+    padding: 0;
+    max-width: none;
+  }
+
+  .timetable__scroll {
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    border-radius: 0;
+    border-color: var(--ink);
+  }
+
+  .timetable__table th {
+    position: static;
+    background: none;
+    box-shadow: none;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .timetable__table th + th,
+  .timetable__table td + td {
+    border-left-color: var(--ink);
+  }
+
+  .timetable__table thead th.timetable__day--today {
+    background: none;
+    box-shadow: none;
+    border-top: 4px solid var(--ink);
+  }
+
+  .timetable__table tbody td.timetable__day--today {
+    background-color: transparent;
+  }
+
+  .now-line {
+    display: none;
+  }
+
+  .timetable__table {
+    --h: 10.5mm;
+  }
+
+  .timetable__table td.rail:nth-child(n + 7) {
+    background-color: transparent;
+  }
+
+  .appt {
+    background: none;
+    color: var(--ink);
+    border: 1px solid var(--ink);
+  }
+
+  .timetable__range::after {
+    content: ' (printed copy, may be out of date)';
+    font-weight: 400;
+    color: var(--muted);
+  }
+}

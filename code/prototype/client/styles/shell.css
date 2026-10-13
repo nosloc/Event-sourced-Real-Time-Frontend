@@ -1,0 +1,90 @@
+/* ------------------------------------------------------------------ */
+/* Shell and top bar                                                    */
+/* ------------------------------------------------------------------ */
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.topbar {
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  height: 56px;
+  max-width: 1320px;
+  margin-inline: auto;
+  padding: 0 clamp(var(--space-4), 3vw, 40px);
+}
+
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.topbar__nav {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.topbar__link {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.topbar__link:hover {
+  background: var(--ground);
+  color: var(--ink);
+}
+
+.topbar__link--active,
+.topbar__link--active:hover {
+  background: var(--accent-active);
+  color: var(--on-accent);
+}
+
+.topbar__user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.topbar__user > span {
+  min-width: 0;
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar__user .btn:not(:disabled) {
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-3);
+  color: var(--ink);
+}
+
+.page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1320px;
+  margin-inline: auto;
+  padding: var(--space-6) clamp(var(--space-4), 3vw, 40px);
+}
