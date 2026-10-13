@@ -1,4 +1,4 @@
-package prototype.client.views.Timetable
+package prototype.client.views.timetable
 
 import com.raquo.laminar.api.L.*
 import prototype.api.*

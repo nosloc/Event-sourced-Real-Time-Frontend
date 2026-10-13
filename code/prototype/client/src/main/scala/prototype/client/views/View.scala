@@ -2,7 +2,7 @@ package prototype.client.views
 
 import com.raquo.laminar.api.L.*
 import prototype.client.Pages.*
-import prototype.client.views.Timetable.*
+import prototype.client.views.timetable.*
 
 import prototype.client.{AppRouter, Session}
 

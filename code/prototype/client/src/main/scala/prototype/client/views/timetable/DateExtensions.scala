@@ -1,4 +1,4 @@
-package prototype.client.views.Timetable
+package prototype.client.views.timetable
 
 import scala.scalajs.js.Date
 
