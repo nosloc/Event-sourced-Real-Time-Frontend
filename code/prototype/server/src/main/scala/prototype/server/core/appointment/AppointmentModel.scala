@@ -40,6 +40,16 @@ object appointmentModel:
 
   type AppointmentState = Option[Appointment]
 
+  /** Two time ranges overlap when each starts before the other ends, so
+    * back-to-back appointments (one ends exactly when the next starts) do not.
+    */
+  def overlaps(a: TimeRange, b: TimeRange): Boolean =
+    a.start.toInstant.isBefore(b.end.toInstant) &&
+      b.start.toInstant.isBefore(a.end.toInstant)
+
+  def isValidRange(timeRange: TimeRange): Boolean =
+    timeRange.end.toInstant.isAfter(timeRange.start.toInstant)
+
   // We put the evolve function here since it is the same for the decider and the viewer. Otherwise, we could have put it in the decider and the viewer separately.
   def evolve(
       state: AppointmentState,

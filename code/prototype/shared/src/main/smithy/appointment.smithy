@@ -14,6 +14,7 @@ service AppointmentService {
         ListTherapistAppointments
         CreateAppointment
         DeleteAppointment
+        UpdateAppointment
     ]
     errors: [
         Unauthorized
@@ -38,6 +39,7 @@ operation CreateAppointment {
     errors: [
         TherapistNotFound
         InvalidTimeRange
+        OverlappingAppointment
     ]
 }
 
@@ -47,6 +49,17 @@ operation DeleteAppointment {
     input: DeleteAppointmentInput
     errors: [
         AppointmentNotFound
+    ]
+}
+
+@http(method: "PUT", uri: "/api/appointments/{appointmentId}", code: 200)
+operation UpdateAppointment {
+    input: UpdateAppointmentInput
+    output: UpdateAppointmentOutput
+    errors: [
+        AppointmentNotFound
+        InvalidTimeRange
+        OverlappingAppointment
     ]
 }
 
@@ -97,6 +110,24 @@ structure DeleteAppointmentInput {
 @error("client")
 @httpError(404)
 structure AppointmentNotFound {}
+
+structure UpdateAppointmentInput {
+    @httpLabel
+    @required
+    appointmentId: AppointmentId
+
+    @required
+    timeRange: TimeRange
+}
+
+structure UpdateAppointmentOutput {
+    @required
+    appointment: Appointment
+}
+
+@error("client")
+@httpError(409)
+structure OverlappingAppointment {}
 
 structure TimeRange {
     @required
