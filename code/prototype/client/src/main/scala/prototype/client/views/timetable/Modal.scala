@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L.*
 
 object Modal:
   def apply(
-      title: String,
+      titleS: Signal[String],
       onClose: () => Unit
   )(content: Mod[HtmlElement]*): HtmlElement =
     div(
@@ -13,7 +13,7 @@ object Modal:
         cls := "modal__dialog",
         div(
           cls := "modal__head",
-          h2(cls := "modal__title", title),
+          h2(cls := "modal__title", text <-- titleS),
           button(
             cls := "modal__close",
             "×",
@@ -31,3 +31,9 @@ object Modal:
         onClose()
       }
     )
+
+  def apply(
+      title: String,
+      onClose: () => Unit
+  )(content: Mod[HtmlElement]*): HtmlElement =
+    apply(Val(title), onClose)(content*)

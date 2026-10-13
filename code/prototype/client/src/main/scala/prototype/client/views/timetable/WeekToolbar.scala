@@ -13,9 +13,9 @@ object WeekToolbar:
     div(
       cls := "timetable__toolbar",
       renderDateRange(weekRangeS.map(_.monday), weekRangeS.map(_.sunday)),
+      createAppointmentButton(showCreateAppointmentModalVar),
       div(
         cls := "btn-group",
-        createAppointmentButton(showCreateAppointmentModalVar),
         changingWeekButton("‹", weekOffsetVar, -1),
         todayButton(weekOffsetVar),
         changingWeekButton("›", weekOffsetVar, 1)
@@ -64,7 +64,7 @@ object WeekToolbar:
       showCreateAppointmentModalVar: Var[Boolean]
   ): HtmlElement =
     button(
-      cls := "btn btn--primary",
+      cls := "btn btn--primary timetable__create",
       "Create Appointment",
       onClick --> { _ =>
         showCreateAppointmentModalVar.set(true)
