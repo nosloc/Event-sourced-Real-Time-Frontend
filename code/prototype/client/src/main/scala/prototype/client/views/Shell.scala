@@ -1,4 +1,4 @@
-package prototype.client.Views
+package prototype.client.views
 
 import com.raquo.laminar.api.L.*
 import prototype.client.Pages.Page

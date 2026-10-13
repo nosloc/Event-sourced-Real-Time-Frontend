@@ -1,9 +1,9 @@
-package prototype.client.Views.Timetable
+package prototype.client.views.Timetable
 
 import prototype.api.*
 import scala.scalajs.js.Date
 import com.raquo.laminar.api.L.*
-import prototype.client.Views.Timetable.TimetableModel.*
+import prototype.client.views.Timetable.TimetableModel.*
 import prototype.client.Api
 import prototype.client.Api.ApiCall
 
