@@ -37,11 +37,16 @@ Content-Type: application/json
 
 # Expected: 201 + the created appointment
 # @name create
-POST http://127.0.0.1:9000/api/therapists/tst/appointments
+POST http://127.0.0.1:9000/api/appointments
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "timeRange": { "start": 1791792000, "end": 1791799200 } }
+{ 
+  "timeRange": { "start": 1791792000, "end": 1791799200 }, 
+  "therapistIds": ["mdp"],
+  "patientIds": [],
+  "appointmentType": "INDIVIDUAL"
+}
 
 ###
 @appointmentId = {{create.response.body.$.appointment.appointmentId}}
@@ -51,12 +56,17 @@ DELETE http://127.0.0.1:9000/api/appointments/{{appointmentId}}
 Authorization: Bearer {{token}}
 
 ###
-# Expected: 404 TherapistNotFound (unknown therapist)
-POST http://127.0.0.1:9000/api/therapists/zzz/appointments
+# Expected: 404 TherapistsNotFound (unknown therapist)
+POST http://127.0.0.1:9000/api/appointments
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "timeRange": { "start": 1791792000, "end": 1791799200 } }
+{ 
+  "timeRange": { "start": 1791792000, "end": 1791799200 },
+  "therapistIds": ["zzz"],
+  "patientIds": [],
+  "appointmentType": "INDIVIDUAL"
+}
 
 ###
 # ---- Create a company, then a therapist in it (run in order) ----

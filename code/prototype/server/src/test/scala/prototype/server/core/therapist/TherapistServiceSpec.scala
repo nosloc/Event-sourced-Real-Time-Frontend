@@ -90,7 +90,7 @@ class TherapistServiceSpec
 
     test.asserting { case (result, afterwards) =>
       result shouldBe Left(CompanyNotFound())
-      afterwards shouldBe Left(TherapistNotFound())
+      afterwards shouldBe Left(TherapistNotFound(arb))
     }
   }
 
@@ -136,9 +136,10 @@ class TherapistServiceSpec
   }
 
   "getTherapist" should "fail with TherapistNotFound for an unknown trigram" in {
-    val test = setup.flatMap(_.therapists.getTherapist(TherapistId("zzz")))
+    val unknown = TherapistId("zzz")
+    val test = setup.flatMap(_.therapists.getTherapist(unknown))
 
-    test.attempt.asserting(_ shouldBe Left(TherapistNotFound()))
+    test.attempt.asserting(_ shouldBe Left(TherapistNotFound(unknown)))
   }
 
   "listTherapists" should "be empty before any therapist is created" in {

@@ -81,7 +81,10 @@ structure GetPatientOutput {
 
 @error("client")
 @httpError(404)
-structure PatientNotFound {}
+structure PatientNotFound {
+    @required
+    patientId: PatientId
+}
 
 structure ListPatientsOutput {
     @required

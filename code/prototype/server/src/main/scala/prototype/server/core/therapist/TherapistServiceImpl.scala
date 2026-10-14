@@ -5,7 +5,8 @@ import prototype.api.*
 import prototype.server.eventStore.*
 import prototype.server.core.therapist.therapistModel.*
 
-trait TherapistServiceImpl extends TherapistService[IO]
+trait TherapistServiceImpl extends TherapistService[IO]:
+  def getTherapists(therapistIds: List[TherapistId]): IO[List[Therapist]]
 
 object TherapistServiceImpl:
   def apply(
@@ -28,7 +29,16 @@ object TherapistServiceImpl:
       ): IO[GetTherapistOutput] =
         viewer.getState(therapistId.value).flatMap {
           case Some(therapist) => IO.pure(GetTherapistOutput(therapist))
-          case None            => IO.raiseError(TherapistNotFound())
+          case None            => IO.raiseError(TherapistNotFound(therapistId))
+        }
+
+      override def getTherapists(
+          therapistIds: List[TherapistId]
+      ): IO[List[Therapist]] =
+        val wantedIds = therapistIds.toSet
+        viewer.getAllTherapists().map { allTherapists =>
+          allTherapists
+            .filter(therapist => wantedIds.contains(therapist.therapistId))
         }
 
       // The therapist id (a trigram) is chosen by the caller, so it is also

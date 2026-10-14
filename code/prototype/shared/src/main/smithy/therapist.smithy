@@ -34,6 +34,7 @@ operation GetTherapist {
         TherapistNotFound
     ]
 }
+
 @http(method: "POST", uri: "/api/therapists", code: 201)
 operation CreateTherapist {
     input: CreateTherapistInput
@@ -46,7 +47,6 @@ operation CreateTherapist {
 
 // Structures
 // Trigram for TherapistId: 3 lowercase letters
-
 list Therapists {
     member: Therapist
 }
@@ -92,7 +92,10 @@ structure CreateTherapistOutput {
 
 @error("client")
 @httpError(404)
-structure TherapistNotFound {}
+structure TherapistNotFound {
+    @required
+    therapistId: TherapistId
+}
 
 @error("client")
 @httpError(409)

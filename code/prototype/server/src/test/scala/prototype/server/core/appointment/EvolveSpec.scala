@@ -14,8 +14,9 @@ import smithy4s.time.Timestamp
 class EvolveSpec extends AnyFlatSpec with Matchers:
 
   private val id = AppointmentId(UUID.fromString("9fc986ad-fbf1-40f3-9468-a44d1a5fb177"))
-  private val therapist = TherapistId("tst")
-  private val otherTherapist = TherapistId("arb")
+  private val therapists = List(TherapistId("tst"), TherapistId("arb"))
+  private val patients = List(PatientId(UUID.fromString("0b2f6d5e-5b0a-4a43-9a9e-3a6b0a1c2d3e")))
+  private val kind = AppointmentType.INDIVIDUAL
 
   private def range(from: Int, to: Int): TimeRange =
     TimeRange(
@@ -26,32 +27,24 @@ class EvolveSpec extends AnyFlatSpec with Matchers:
   private val morning = range(9, 10)
   private val afternoon = range(14, 15)
 
+  private val created = AppointmentCreated(id, therapists, patients, kind, morning)
+
   private val existing: AppointmentState =
-    Some(Appointment(id, therapist, morning))
+    Some(Appointment(id, therapists, patients, kind, morning))
 
-  "evolve" should "build the appointment from AppointmentCreated" in {
-    val state =
-      evolve(None, AppointmentCreated(id, therapist, morning))
-
-    state shouldBe Some(Appointment(id, therapist, morning))
+  "evolve" should "build the appointment, with all its participants and its type, from AppointmentCreated" in {
+    evolve(None, created) shouldBe
+      Some(Appointment(id, therapists, patients, kind, morning))
   }
 
-  it should "change the time range and the therapist on AppointmentUpdated" in {
-    val state =
-      evolve(existing, AppointmentUpdated(id, afternoon, otherTherapist))
-
-    state shouldBe Some(Appointment(id, otherTherapist, afternoon))
-  }
-
-  it should "keep the appointment id on AppointmentUpdated" in {
-    val state = evolve(existing, AppointmentUpdated(id, afternoon, therapist))
-
-    state.map(_.appointmentId) shouldBe Some(id)
+  it should "change only the time range on AppointmentUpdated" in {
+    evolve(existing, AppointmentUpdated(id, afternoon)) shouldBe
+      Some(Appointment(id, therapists, patients, kind, afternoon))
   }
 
   it should "leave a missing appointment missing on AppointmentUpdated" in {
     // The easy one to forget: there is nothing to update.
-    evolve(None, AppointmentUpdated(id, afternoon, therapist)) shouldBe None
+    evolve(None, AppointmentUpdated(id, afternoon)) shouldBe None
   }
 
   it should "remove the appointment on AppointmentDeleted" in {
@@ -64,22 +57,18 @@ class EvolveSpec extends AnyFlatSpec with Matchers:
 
   it should "reach the expected state when a history is replayed" in {
     val history = List(
-      AppointmentCreated(id, therapist, morning),
-      AppointmentUpdated(id, afternoon, therapist),
-      AppointmentUpdated(id, morning, otherTherapist)
+      created,
+      AppointmentUpdated(id, afternoon),
+      AppointmentUpdated(id, morning)
     )
 
-    val stepByStep = history.foldLeft(Option.empty[Appointment]) {
-      (state, event) => evolve(state, event)
-    }
-
-    stepByStep shouldBe Some(Appointment(id, otherTherapist, morning))
+    history.foldLeft(Option.empty[Appointment])(evolve) shouldBe existing
   }
 
   it should "end with no appointment when a history ends with a delete" in {
     val history = List(
-      AppointmentCreated(id, therapist, morning),
-      AppointmentUpdated(id, afternoon, therapist),
+      created,
+      AppointmentUpdated(id, afternoon),
       AppointmentDeleted(id)
     )
 

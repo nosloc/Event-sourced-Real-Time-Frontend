@@ -21,7 +21,7 @@ class AuthServiceImpl(
 
     token
       .map(LoginOutput(_))
-      .adaptError { case TherapistNotFound() =>
+      .adaptError { case TherapistNotFound(_) =>
         InvalidCredentials()
       }
   end login

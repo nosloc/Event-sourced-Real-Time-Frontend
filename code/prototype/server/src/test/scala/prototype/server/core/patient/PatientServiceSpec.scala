@@ -47,7 +47,7 @@ class PatientServiceSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
     val unknown = PatientId(UUID.randomUUID())
     val test = newService.flatMap(_.getPatient(unknown))
 
-    test.attempt.asserting(_ shouldBe Left(PatientNotFound()))
+    test.attempt.asserting(_ shouldBe Left(PatientNotFound(unknown)))
   }
 
   "listPatients" should "be empty before any patient is created" in {

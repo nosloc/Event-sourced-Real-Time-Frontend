@@ -36,15 +36,16 @@ object Server extends IOApp.Simple:
       bindHost <- Resource.eval(bindHost)
       eventStore <- InMemoryEventStore.create.toResource
       companyServiceImpl <- CompanyServiceImpl(eventStore).toResource
+      patientServiceImpl <- PatientServiceImpl(eventStore).toResource
       therapistServiceImpl <- TherapistServiceImpl(
         eventStore,
         companyServiceImpl
       ).toResource
       appointmentServiceImpl <- AppointmentServiceImpl(
         eventStore,
-        therapistServiceImpl
+        therapistServiceImpl,
+        patientServiceImpl
       ).toResource
-      patientServiceImpl <- PatientServiceImpl(eventStore).toResource
       seed <- Resource.eval(
         Seed(appointmentServiceImpl, companyServiceImpl, therapistServiceImpl)
       )

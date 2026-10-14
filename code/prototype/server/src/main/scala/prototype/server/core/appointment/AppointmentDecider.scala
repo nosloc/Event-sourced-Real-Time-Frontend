@@ -18,15 +18,24 @@ class AppointmentDecider
       command: AppointmentCommand
   ): Either[AppointmentError, List[AppointmentEvent]] =
     command match
-      case CreateAppointmentCommand(appointmentId, therapistId, timeRange) =>
-        if timeRange.end.toInstant.isAfter(timeRange.start.toInstant) then
+      case CreateAppointmentCommand(
+            appointmentId,
+            therapistIds,
+            patientIds,
+            apptType,
+            timeRange
+          ) =>
+        if therapistIds.isEmpty then Left(NO_THERAPIST)
+        else if timeRange.end.toInstant.isAfter(timeRange.start.toInstant) then
           state match
             case None =>
               Right(
                 List(
                   AppointmentCreated(
                     appointmentId,
-                    therapistId,
+                    therapistIds,
+                    patientIds,
+                    apptType,
                     timeRange
                   )
                 )
@@ -35,7 +44,7 @@ class AppointmentDecider
               Left(ALREADY_EXISTS)
         else Left(INVALID_TIME_RANGE)
 
-      case UpdateAppointmentCommand(appointmentId, timeRange, therapistId) =>
+      case UpdateAppointmentCommand(appointmentId, timeRange) =>
         if timeRange.end.toInstant.isAfter(timeRange.start.toInstant) then
           state match
             case Some(_) =>
@@ -43,8 +52,7 @@ class AppointmentDecider
                 List(
                   AppointmentUpdated(
                     appointmentId,
-                    timeRange,
-                    therapistId
+                    timeRange
                   )
                 )
               )

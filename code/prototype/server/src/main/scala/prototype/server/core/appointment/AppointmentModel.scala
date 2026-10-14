@@ -8,13 +8,14 @@ object appointmentModel:
   sealed trait AppointmentCommand extends Command
   case class CreateAppointmentCommand(
       appointmentId: AppointmentId,
-      therapistId: TherapistId,
+      therapistIds: List[TherapistId],
+      patientIds: List[PatientId],
+      apptType: AppointmentType,
       timeRange: TimeRange
   ) extends AppointmentCommand
   case class UpdateAppointmentCommand(
       appointmentId: AppointmentId,
-      timeRange: TimeRange,
-      therapistId: TherapistId
+      timeRange: TimeRange
   ) extends AppointmentCommand
   case class DeleteAppointmentCommand(appointmentId: AppointmentId)
       extends AppointmentCommand
@@ -22,19 +23,21 @@ object appointmentModel:
   sealed trait AppointmentEvent extends Event
   case class AppointmentCreated(
       appointmentId: AppointmentId,
-      therapistId: TherapistId,
+      therapistIds: List[TherapistId],
+      patientIds: List[PatientId],
+      apptType: AppointmentType,
       timeRange: TimeRange
   ) extends AppointmentEvent
   case class AppointmentUpdated(
       appointmentId: AppointmentId,
-      timeRange: TimeRange,
-      therapistId: TherapistId
+      timeRange: TimeRange
   ) extends AppointmentEvent
   case class AppointmentDeleted(appointmentId: AppointmentId)
       extends AppointmentEvent
 
   sealed trait AppointmentError extends ErrorCode
   case object INVALID_TIME_RANGE extends AppointmentError
+  case object NO_THERAPIST extends AppointmentError
   case object ALREADY_EXISTS extends AppointmentError
   case object NOT_FOUND extends AppointmentError
 
@@ -56,8 +59,22 @@ object appointmentModel:
       event: AppointmentEvent
   ): AppointmentState =
     event match
-      case AppointmentCreated(appointmentId, therapistId, timeRange) =>
-        Some(Appointment(appointmentId, therapistId, timeRange))
-      case AppointmentUpdated(appointmentId, timeRange, therapistId) =>
-        state.map(_.copy(timeRange = timeRange, therapistId = therapistId))
+      case AppointmentCreated(
+            appointmentId,
+            therapistIds,
+            patientIds,
+            apptType,
+            timeRange
+          ) =>
+        Some(
+          Appointment(
+            appointmentId,
+            therapistIds,
+            patientIds,
+            apptType,
+            timeRange
+          )
+        )
+      case AppointmentUpdated(appointmentId, timeRange) =>
+        state.map(_.copy(timeRange = timeRange))
       case AppointmentDeleted(_) => None

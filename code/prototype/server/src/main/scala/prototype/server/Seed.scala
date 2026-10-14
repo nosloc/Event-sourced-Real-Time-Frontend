@@ -60,7 +60,9 @@ final class Seed private (
       }
       _ <- appointments.traverse_ { appointment =>
         appointmentService.createAppointment(
-          appointment.therapistId,
+          appointment.therapistIds,
+          appointment.patientIds,
+          appointment.appointmentType,
           appointment.timeRange
         )
       }
@@ -183,7 +185,13 @@ object Seed:
       therapist: SeedTherapist,
       timeRange: TimeRange
   ): Appointment =
-    Appointment(AppointmentId(uuid(id)), therapist.therapistId, timeRange)
+    Appointment(
+      AppointmentId(uuid(id)),
+      List(therapist.therapistId),
+      Nil,
+      AppointmentType.INDIVIDUAL,
+      timeRange
+    )
 
   private val fixedAppointments: List[Appointment] = List(
     appointment(
@@ -285,7 +293,9 @@ object Seed:
         IO.randomUUID.map(id =>
           Appointment(
             AppointmentId(id),
-            therapist.therapistId,
+            List(therapist.therapistId),
+            Nil,
+            AppointmentType.INDIVIDUAL,
             TimeRange(timestamp(day, start), timestamp(day, end))
           )
         )

@@ -20,7 +20,10 @@ import smithy4s.time.Timestamp
   */
 class CommandHandlerSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
 
-  private val therapist = TherapistId("tst")
+  private val therapists = List(TherapistId("tst"))
+  private val patients =
+    List(PatientId(UUID.fromString("0b2f6d5e-5b0a-4a43-9a9e-3a6b0a1c2d3e")))
+  private val kind = AppointmentType.INDIVIDUAL
 
   private def range(from: Int, to: Int): TimeRange =
     TimeRange(
@@ -59,15 +62,15 @@ class CommandHandlerSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
     val test =
       for
         s <- setup
-        result <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapist, morning))
+        result <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapists, patients, kind, morning))
         stored <- s.store.load(tag(id))
         shown <- s.viewer.getState(tag(id))
       yield (result, stored, shown)
 
     test.asserting { case (result, stored, shown) =>
-      val expected = Appointment(id, therapist, morning)
+      val expected = Appointment(id, therapists, patients, kind, morning)
       result shouldBe Right(Some(expected))
-      stored shouldBe List(AppointmentCreated(id, therapist, morning))
+      stored shouldBe List(AppointmentCreated(id, therapists, patients, kind, morning))
       shown shouldBe Some(expected)
     }
   }
@@ -94,15 +97,15 @@ class CommandHandlerSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
     val test =
       for
         s <- setup
-        _ <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapist, morning))
-        second <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapist, afternoon))
+        _ <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapists, patients, kind, morning))
+        second <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapists, patients, kind, afternoon))
         stored <- s.store.load(tag(id))
       yield (second, stored)
 
     test.asserting { case (second, stored) =>
       second shouldBe Left(ALREADY_EXISTS)
       // The rejected command added nothing: only the first event is stored
-      stored shouldBe List(AppointmentCreated(id, therapist, morning))
+      stored shouldBe List(AppointmentCreated(id, therapists, patients, kind, morning))
     }
   }
 
@@ -111,8 +114,8 @@ class CommandHandlerSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
     val test =
       for
         s <- setup
-        _ <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapist, morning))
-        _ <- s.handler.handle(tag(id), UpdateAppointmentCommand(id, afternoon, therapist))
+        _ <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapists, patients, kind, morning))
+        _ <- s.handler.handle(tag(id), UpdateAppointmentCommand(id, afternoon))
         deleted <- s.handler.handle(tag(id), DeleteAppointmentCommand(id))
         stored <- s.store.load(tag(id))
         shown <- s.viewer.getState(tag(id))
@@ -122,8 +125,8 @@ class CommandHandlerSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
       deleted shouldBe Right(None)
       // Events are never removed: the delete is one more event
       stored shouldBe List(
-        AppointmentCreated(id, therapist, morning),
-        AppointmentUpdated(id, afternoon, therapist),
+        AppointmentCreated(id, therapists, patients, kind, morning),
+        AppointmentUpdated(id, afternoon),
         AppointmentDeleted(id)
       )
       shown shouldBe None
@@ -136,15 +139,15 @@ class CommandHandlerSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
     val test =
       for
         s <- setup
-        _ <- s.handler.handle(tag(first), CreateAppointmentCommand(first, therapist, morning))
-        _ <- s.handler.handle(tag(second), CreateAppointmentCommand(second, therapist, afternoon))
+        _ <- s.handler.handle(tag(first), CreateAppointmentCommand(first, therapists, patients, kind, morning))
+        _ <- s.handler.handle(tag(second), CreateAppointmentCommand(second, therapists, patients, kind, afternoon))
         storedFirst <- s.store.load(tag(first))
         storedSecond <- s.store.load(tag(second))
       yield (storedFirst, storedSecond)
 
     test.asserting { case (storedFirst, storedSecond) =>
-      storedFirst shouldBe List(AppointmentCreated(first, therapist, morning))
-      storedSecond shouldBe List(AppointmentCreated(second, therapist, afternoon))
+      storedFirst shouldBe List(AppointmentCreated(first, therapists, patients, kind, morning))
+      storedSecond shouldBe List(AppointmentCreated(second, therapists, patients, kind, afternoon))
     }
   }
 
@@ -155,8 +158,8 @@ class CommandHandlerSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
     val test =
       for
         s <- setup
-        _ <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapist, morning))
-        _ <- s.handler.handle(tag(id), UpdateAppointmentCommand(id, afternoon, therapist))
+        _ <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapists, patients, kind, morning))
+        _ <- s.handler.handle(tag(id), UpdateAppointmentCommand(id, afternoon))
         stored <- s.store.load(tag(id))
         shown <- s.viewer.getState(tag(id))
       yield (stored, shown)
@@ -167,6 +170,6 @@ class CommandHandlerSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
         .foldLeft(Option.empty[Appointment])(appointmentModel.evolve)
 
       replayed shouldBe shown
-      replayed shouldBe Some(Appointment(id, therapist, afternoon))
+      replayed shouldBe Some(Appointment(id, therapists, patients, kind, afternoon))
     }
   }

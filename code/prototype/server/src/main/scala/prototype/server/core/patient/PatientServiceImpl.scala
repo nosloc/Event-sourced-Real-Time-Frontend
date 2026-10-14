@@ -7,7 +7,8 @@ import prototype.server.core.patient.patientModel.*
 import smithy4s.time.LocalDate
 import java.util.UUID
 
-trait PatientServiceImpl extends PatientService[IO]
+trait PatientServiceImpl extends PatientService[IO]:
+  def getPatients(patientIds: List[PatientId]): IO[List[Patient]]
 
 object PatientServiceImpl:
   def apply(
@@ -63,5 +64,12 @@ object PatientServiceImpl:
       override def getPatient(patientId: PatientId): IO[GetPatientOutput] =
         viewer.getState(patientId.value.toString).flatMap {
           case Some(patient) => IO.pure(GetPatientOutput(patient))
-          case None          => IO.raiseError(PatientNotFound())
+          case None          => IO.raiseError(PatientNotFound(patientId))
+        }
+
+      override def getPatients(patientIds: List[PatientId]): IO[List[Patient]] =
+        val wantedIds = patientIds.toSet
+        viewer.getAllPatients().map { allPatients =>
+          allPatients
+            .filter(patient => wantedIds.contains(patient.id))
         }

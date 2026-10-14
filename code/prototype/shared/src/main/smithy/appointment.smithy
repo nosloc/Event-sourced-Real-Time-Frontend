@@ -15,6 +15,7 @@ service AppointmentService {
         CreateAppointment
         DeleteAppointment
         UpdateAppointment
+        GetAppointment
     ]
     errors: [
         Unauthorized
@@ -32,14 +33,17 @@ operation ListTherapistAppointments {
     ]
 }
 
-@http(method: "POST", uri: "/api/therapists/{therapistId}/appointments", code: 201)
+@http(method: "POST", uri: "/api/appointments", code: 201)
 operation CreateAppointment {
     input: CreateAppointmentInput
     output: CreateAppointmentOutput
     errors: [
-        TherapistNotFound
+        TherapistsNotFound
         InvalidTimeRange
-        OverlappingAppointment
+        InvalidParticipants
+        TherapistBusy
+        PatientsNotFound
+        PatientBusy
     ]
 }
 
@@ -52,6 +56,7 @@ operation DeleteAppointment {
     ]
 }
 
+@idempotent
 @http(method: "PUT", uri: "/api/appointments/{appointmentId}", code: 200)
 operation UpdateAppointment {
     input: UpdateAppointmentInput
@@ -59,8 +64,30 @@ operation UpdateAppointment {
     errors: [
         AppointmentNotFound
         InvalidTimeRange
-        OverlappingAppointment
+        TherapistsNotFound
+        TherapistBusy
+        PatientsNotFound
+        PatientBusy
     ]
+}
+
+@readonly
+@http(method: "GET", uri: "/api/appointments/{appointmentId}", code: 200)
+operation GetAppointment {
+    input: GetAppointmentInput
+    output: GetAppointmentOutput
+    errors: [
+        AppointmentNotFound
+    ]
+}
+
+// enums
+enum AppointmentType {
+    NEW_PATIENT
+    INDIVIDUAL
+    COUPLE
+    FAMILY
+    GROUP
 }
 
 // Definitions
@@ -83,10 +110,23 @@ structure ListTherapistAppointmentsOutput {
     appointments: Appointments
 }
 
+list TherapistIds {
+    member: TherapistId
+}
+
+list PatientIds {
+    member: PatientId
+}
+
 structure CreateAppointmentInput {
-    @httpLabel
     @required
-    therapistId: TherapistId
+    therapistIds: TherapistIds
+
+    @required
+    patientIds: PatientIds
+
+    @required
+    appointmentType: AppointmentType
 
     @required
     timeRange: TimeRange
@@ -100,6 +140,38 @@ structure CreateAppointmentOutput {
 @error("client")
 @httpError(400)
 structure InvalidTimeRange {}
+
+@error("client")
+@httpError(400)
+structure InvalidParticipants {}
+
+@error("client")
+@httpError(409)
+structure TherapistBusy {
+    @required
+    therapistIds: TherapistIds
+}
+
+@error("client")
+@httpError(409)
+structure PatientBusy {
+    @required
+    patientIds: PatientIds
+}
+
+@error("client")
+@httpError(404)
+structure TherapistsNotFound {
+    @required
+    therapistIds: TherapistIds
+}
+
+@error("client")
+@httpError(404)
+structure PatientsNotFound {
+    @required
+    patientIds: PatientIds
+}
 
 structure DeleteAppointmentInput {
     @httpLabel
@@ -125,9 +197,16 @@ structure UpdateAppointmentOutput {
     appointment: Appointment
 }
 
-@error("client")
-@httpError(409)
-structure OverlappingAppointment {}
+structure GetAppointmentInput {
+    @httpLabel
+    @required
+    appointmentId: AppointmentId
+}
+
+structure GetAppointmentOutput {
+    @required
+    appointment: Appointment
+}
 
 structure TimeRange {
     @required
@@ -142,7 +221,13 @@ structure Appointment {
     appointmentId: AppointmentId
 
     @required
-    therapistId: TherapistId
+    therapistIds: TherapistIds
+
+    @required
+    patientIds: PatientIds
+
+    @required
+    appointmentType: AppointmentType
 
     @required
     timeRange: TimeRange
