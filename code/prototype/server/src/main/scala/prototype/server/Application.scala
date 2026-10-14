@@ -12,6 +12,7 @@ import prototype.server.auth.*
 import prototype.server.core.appointment.*
 import prototype.server.core.company.*
 import prototype.server.core.therapist.*
+import prototype.server.core.patient.*
 import prototype.server.eventStore.*
 
 object Server extends IOApp.Simple:
@@ -43,6 +44,7 @@ object Server extends IOApp.Simple:
         eventStore,
         therapistServiceImpl
       ).toResource
+      patientServiceImpl <- PatientServiceImpl(eventStore).toResource
       seed <- Resource.eval(
         Seed(appointmentServiceImpl, companyServiceImpl, therapistServiceImpl)
       )
@@ -57,6 +59,7 @@ object Server extends IOApp.Simple:
         companyServiceImpl,
         therapistServiceImpl,
         appointmentServiceImpl,
+        patientServiceImpl,
         authServiceImpl
       )
       server <- EmberServerBuilder

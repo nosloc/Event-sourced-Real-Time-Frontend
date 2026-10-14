@@ -86,3 +86,26 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "firstName": "No", "lastName": "Company", "therapistId": "nco", "companyId": "00000000-0000-4000-8000-000000000000", "role": "PSYCHOLOGIST" }
+
+
+###
+# exppected: 201 + the created patient
+POST http://127.0.0.1:9000/api/patients
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "dateOfBirth": "1990-01-01"
+}
+
+###
+# expected: 200 + the created patient
+GET http://127.0.0.1:9000/api/patients/<UUID of the created patient>
+Authorization: Bearer {{token}}
+
+###
+# expected: 200 + the list of patients
+GET http://127.0.0.1:9000/api/patients
+Authorization: Bearer {{token}}

@@ -48,7 +48,7 @@ object TherapistServiceImpl:
           role
         )
         // Fails with CompanyNotFound if the company does not exist
-        IO.print(s"Creating therapist $therapistId for company $companyId") *>
+        IO.print(s"Creating therapist $therapistId for company $companyId\n") *>
           companyService.getCompany(companyId).flatMap { _ =>
             handler.handle(therapistId.value, command).flatMap {
               case Right(therapist) =>

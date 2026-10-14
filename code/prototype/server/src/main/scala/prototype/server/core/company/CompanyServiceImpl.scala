@@ -31,7 +31,7 @@ object CompanyServiceImpl:
           name,
           address
         )
-        IO.print(s"Creating company $name with id $id") *>
+        IO.print(s"Creating company $name with id $id\n") *>
           handler.handle(id.toString, command).flatMap {
             case Right(company) => IO.pure(CreateCompanyOutput(company.get))
             case Left(ALREADY_EXISTS) =>
