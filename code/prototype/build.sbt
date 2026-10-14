@@ -44,7 +44,10 @@ lazy val server =
         "com.disneystreaming.smithy4s" %% "smithy4s-http4s-swagger" % smithy4sVersion.value,
         // Logging
         "org.typelevel" %% "log4cats-slf4j" % Versions.Log4Cats,
-        "ch.qos.logback" % "logback-classic" % Versions.Logback
+        "ch.qos.logback" % "logback-classic" % Versions.Logback,
+        // Tests: ScalaTest, and support for tests that return an IO
+        "org.scalatest" %% "scalatest" % Versions.ScalaTest % Test,
+        "org.typelevel" %% "cats-effect-testing-scalatest" % Versions.CatsEffectTesting % Test
       )
     )
     .dependsOn(shared.jvm)

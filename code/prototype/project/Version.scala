@@ -18,4 +18,11 @@ object Versions {
 
   val Logback = "1.6.5"
 
+  // -- Tests (server) --
+
+  val ScalaTest = "3.2.19"
+
+  // Lets a ScalaTest test return an IO (AsyncIOSpec)
+  val CatsEffectTesting = "1.6.0"
+
 }
