@@ -7,13 +7,20 @@
   gap: var(--space-5);
 }
 
-/* Identity on the left, week controls on the right */
+/* Title on top; below it the therapist picker on the left, week controls on
+   the right */
 .timetable__head {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.timetable__controls {
+  display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--space-4) var(--space-5);
+  gap: var(--space-3) var(--space-5);
 }
 
 .timetable__who {
@@ -42,11 +49,6 @@
   font-size: 13px;
   font-weight: 500;
   text-transform: capitalize;
-}
-
-.who__id {
-  font-family: var(--font-mono);
-  font-size: 13px;
 }
 
 .timetable__toolbar {

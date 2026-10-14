@@ -1,4 +1,4 @@
-package prototype.client.views.timetable
+package prototype.client.views.components
 
 import prototype.api.*
 import com.raquo.laminar.api.L.*
@@ -24,8 +24,7 @@ object UserInfo:
             span(
               cls := "who__role",
               therapist.role.toString().toLowerCase().replace('_', ' ')
-            ),
-            span(cls := "who__id", therapist.therapistId.value)
+            )
           )
         case Api.Error(error) =>
           div(

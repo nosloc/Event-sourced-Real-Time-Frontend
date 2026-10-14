@@ -31,23 +31,21 @@ object TimetableView:
 
     val reloadVar: Var[Int] = Var(0)
 
-    // Current User information
-    val currentUserInfos: ApiCall[Therapist] =
-      ApiCall.fromIOCall(
-        Api.therapists.getTherapist(TherapistId(username)),
-        _.therapist
-      )
+    val selectedTherapistVar: Var[String] = Var(username)
 
     val allAppointments: ApiCall[List[Appointment]] =
       ApiCall(
-        reloadVar.signal.flatMapSwitch(_ =>
-          ApiCall
-            .fromIOCall(
-              Api.appointments.listTherapistAppointments(TherapistId(username)),
-              _.appointments
-            )
-            .stateS
-        )
+        reloadVar.signal
+          .combineWith(selectedTherapistVar.signal)
+          .flatMapSwitch((_, username) =>
+            ApiCall
+              .fromIOCall(
+                Api.appointments
+                  .listTherapistAppointments(TherapistId(username)),
+                _.appointments
+              )
+              .stateS
+          )
       )
 
     val appointmentsForCurrentWeekS: Signal[WeekAppointments] =
@@ -79,16 +77,22 @@ object TimetableView:
 
     val showCreateAppointmentModalVar: Var[Boolean] = Var(false)
 
+    val therapistsIdVar: ApiCall[List[Therapist]] =
+      ApiCall.fromIOCall(
+        Api.therapists.listTherapists(),
+        _.therapists
+      )
+
     div(
       cls := "timetable",
       div(
         cls := "timetable__head",
+        h1("Timetable"),
         div(
-          cls := "timetable__who",
-          h1("Timetable"),
-          UserInfo(currentUserInfos)
-        ),
-        WeekToolbar(weekRangeS, weekOffsetVar, showCreateAppointmentModalVar)
+          cls := "timetable__controls",
+          TherapistPicker(therapistsIdVar, selectedTherapistVar),
+          WeekToolbar(weekRangeS, weekOffsetVar, showCreateAppointmentModalVar)
+        )
       ),
       WeekGrid(
         appointmentsForCurrentWeekS,

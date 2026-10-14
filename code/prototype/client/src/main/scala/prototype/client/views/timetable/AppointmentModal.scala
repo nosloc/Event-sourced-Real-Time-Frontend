@@ -4,6 +4,7 @@ import com.raquo.laminar.api.L.*
 import prototype.api.*
 import prototype.client.Api.ApiCall
 import prototype.client.Api
+import prototype.client.views.components.Modal
 import prototype.client.views.timetable.AppointmentForm.AppointmentFormState
 
 object AppointmentModal:
@@ -58,7 +59,14 @@ object AppointmentModal:
         "End Time",
         appt.timeRange.end.toDate.getTimeString
       ),
-      appointmentDetailsRow("Therapist ID", appt.therapistId.value),
+      appointmentDetailsRow(
+        "Type",
+        appt.appointmentType.stringValue.toLowerCase
+          .replace("_", " ")
+          .capitalize
+          .toString
+      ),
+      // appointmentDetailsRow("Therapist ID", appt.therapistId.value),
       renderModalActions(appt, selectedAppointmentVar, reloadVar, editingVar)
     )
   end renderRows
@@ -129,10 +137,11 @@ object AppointmentModal:
       initialState = AppointmentFormState(
         date = appt.timeRange.start.toDate.dateToString,
         start = appt.timeRange.start.toDate.getTimeString,
-        end = appt.timeRange.end.toDate.getTimeString
+        end = appt.timeRange.end.toDate.getTimeString,
+        appointmentType = appt.appointmentType
       ),
-      saveFunction = (range: TimeRange) =>
-        Api.appointments.updateAppointment(appt.appointmentId, range),
+      saveFunction = (range: TimeRange, apptType: AppointmentType) =>
+        Api.appointments.updateAppointment(appt.appointmentId, apptType, range),
       onSuccess = () => {
         selectedAppointmentVar.set(None)
         reloadVar.update(_ + 1)

@@ -17,6 +17,7 @@
 
   .topbar,
   .btn-group,
+  .picker,
   .timetable__create {
     display: none;
   }

@@ -6,6 +6,10 @@ import prototype.client.AppRouter
 import prototype.client.Pages.HomePage
 import prototype.client.Pages.TimetablePage
 import prototype.client.Session
+import prototype.client.Api
+import prototype.client.Api.ApiCall
+import prototype.api.*
+import prototype.client.views.components.UserInfo
 
 object Shell:
 
@@ -51,11 +55,15 @@ object Shell:
     )
 
   private def renderUser(username: String): HtmlElement =
+    // The logged-in therapist, shown next to the logout button
+    val currentUser: ApiCall[Therapist] =
+      ApiCall.fromIOCall(
+        Api.therapists.getTherapist(TherapistId(username)),
+        _.therapist
+      )
     div(
       cls("topbar__user"),
-      span(
-        username
-      ),
+      UserInfo(currentUser),
       button(
         cls("btn"),
         "Logout",

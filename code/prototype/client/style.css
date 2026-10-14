@@ -12,6 +12,7 @@
 @import './styles/shell.css';
 @import './styles/home.css';
 @import './styles/timetable.css';
+@import './styles/picker.css';
 @import './styles/responsive.css';
 @import './styles/print.css';
 @import './styles/modal.css';

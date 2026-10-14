@@ -7,12 +7,14 @@ import prototype.client.Api.ApiCall
 import prototype.client.Api
 import scala.scalajs.js.Date
 import smithy4s.time.Timestamp
+import prototype.client.views.components.PopoverPicker
 
 object AppointmentForm:
   final case class AppointmentFormState(
       date: String,
       start: String,
       end: String,
+      appointmentType: AppointmentType,
       showErrors: Boolean = false
   ):
     private def parse(d: String, t: String): Option[Date] =
@@ -53,7 +55,7 @@ object AppointmentForm:
 
   def apply[R](
       initialState: AppointmentFormState,
-      saveFunction: TimeRange => IO[R],
+      saveFunction: (TimeRange, AppointmentType) => IO[R],
       onSuccess: () => Unit,
       onCancel: () => Unit,
       submitLabel: String
@@ -70,12 +72,12 @@ object AppointmentForm:
       onSubmit.preventDefault.compose(
         _.sample(
           stateVar.signal
-        ).map(_.toTimeRange)
-          .collect { case Some(range) => range }
-          .flatMapSwitch { range =>
+        ).map(s => (s.toTimeRange, s.appointmentType))
+          .collect { case (Some(range), apptType) => (range, apptType) }
+          .flatMapSwitch { (range, apptType) =>
             ApiCall
               .fromIOCallSimple(
-                saveFunction(range)
+                saveFunction(range, apptType)
               )
               .stateS
           }
@@ -97,19 +99,41 @@ object AppointmentForm:
         stateVar,
         _.dateError
       ),
-      renderRow(
-        "Start",
-        "time",
-        stateVar.zoomLazy(_.start)((state, s) => state.copy(start = s)),
-        stateVar,
-        _.startError
+      // Start and end side by side
+      div(
+        cls := "form__pair",
+        renderRow(
+          "Start",
+          "time",
+          stateVar.zoomLazy(_.start)((state, s) => state.copy(start = s)),
+          stateVar,
+          _.startError
+        ),
+        renderRow(
+          "End",
+          "time",
+          stateVar.zoomLazy(_.end)((state, e) => state.copy(end = e)),
+          stateVar,
+          _.endError
+        )
       ),
-      renderRow(
-        "End",
-        "time",
-        stateVar.zoomLazy(_.end)((state, e) => state.copy(end = e)),
-        stateVar,
-        _.endError
+      renderDropdownRow[AppointmentType](
+        selectedVar = stateVar.zoomLazy(_.appointmentType)((state, t) =>
+          state.copy(appointmentType = t)
+        ),
+        labelText = "Type",
+        popoverText = "",
+        popoverId = "appointment-type-picker",
+        items = Signal.fromValue(
+          AppointmentType.values.map { t =>
+            PopoverPicker.Item(
+              value = t,
+              name = t.name.toLowerCase.replace("_", " ").capitalize,
+              hint = None
+            )
+          }
+        ),
+        fallbackLabel = _.name
       ),
       child.maybe <-- errorVar.signal.map(
         _.map(msg => div(cls := "banner banner--error", msg))
@@ -165,3 +189,23 @@ object AppointmentForm:
       child.maybe <-- errorS.map(_.map(msg => div(cls := "form__error", msg)))
     )
   end renderRow
+
+  private def renderDropdownRow[V](
+      selectedVar: Var[V],
+      labelText: String,
+      popoverText: String,
+      popoverId: String,
+      items: Signal[List[PopoverPicker.Item[V]]],
+      fallbackLabel: V => String
+  ): HtmlElement =
+    label(
+      cls := "form__label",
+      span(labelText),
+      PopoverPicker(
+        id = popoverId,
+        label = popoverText,
+        items = items,
+        selectedVar = selectedVar,
+        fallbackLabel = fallbackLabel
+      )
+    )

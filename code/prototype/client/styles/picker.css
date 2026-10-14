@@ -1,0 +1,143 @@
+/* ------------------------------------------------------------------ */
+/* Popover picker: a button that opens a list to pick one value from.         */
+/* Used for the therapist on the timetable and for the lists in the forms.     */
+.picker {
+  display: inline-block;
+}
+
+.picker__button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.picker__button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.picker__button:focus-visible,
+.picker__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.picker__value {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* A small chevron that turns when the list is open */
+.picker__button::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin-left: var(--space-1);
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.picker__button:has(+ .picker__list:popover-open)::after {
+  transform: translateY(1px) rotate(225deg);
+}
+
+/* The list lives in the top layer, so it is placed from the button; each
+   picker names its own anchor (set inline by the view) */
+.picker__list {
+  margin: 0;
+  padding: var(--space-1);
+  min-width: 9em;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  box-shadow: 0 1px 2px var(--shadow), 0 8px 24px var(--shadow);
+  inset: auto;
+  top: calc(anchor(bottom) + var(--space-1));
+  left: anchor(left);
+  /* about ten rows (36px each) are shown, the rest scrolls */
+  max-height: min(calc(10 * 36px + 2 * var(--space-1)), 60dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.picker__list:popover-open {
+  display: flex;
+  flex-direction: column;
+}
+
+/* No anchor positioning: open under the controls on the left */
+@supports not (anchor-name: --a) {
+  .picker__list {
+    top: 170px;
+    left: clamp(var(--space-4), 3vw, 40px);
+  }
+}
+
+.picker__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 var(--space-3);
+  white-space: nowrap;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The trigram stays in the mono font, softer than the name */
+.picker__id {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.picker__item--selected {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.picker__item:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Inside a modal form the picker is a full-width row, like the inputs */
+.modal__dialog .picker {
+  display: block;
+  margin-bottom: var(--space-4);
+}
+
+.modal__dialog .picker__button {
+  width: 100%;
+}
+
+/* the chevron goes to the right edge */
+.modal__dialog .picker__button::after {
+  margin-left: auto;
+}
+
+.modal__dialog .picker__list {
+  width: anchor-size(width);
+}

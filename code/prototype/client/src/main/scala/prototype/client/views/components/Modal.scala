@@ -1,6 +1,7 @@
-package prototype.client.views.timetable
+package prototype.client.views.components
 
 import com.raquo.laminar.api.L.*
+import org.scalajs.dom
 
 object Modal:
   def apply(
@@ -27,7 +28,12 @@ object Modal:
       onClick.filter(ev => ev.target == ev.currentTarget) --> { _ =>
         onClose()
       },
-      documentEvents(_.onKeyDown.filter(_.key == "Escape")) --> { _ =>
+      // Escape first closes an open popover (a picker list), not the modal
+      documentEvents(
+        _.onKeyDown.filter(ev =>
+          ev.key == "Escape" && dom.document.querySelector(":popover-open") == null
+        )
+      ) --> { _ =>
         onClose()
       }
     )

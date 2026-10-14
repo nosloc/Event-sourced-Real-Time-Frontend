@@ -44,7 +44,7 @@ class AppointmentDecider
               Left(ALREADY_EXISTS)
         else Left(INVALID_TIME_RANGE)
 
-      case UpdateAppointmentCommand(appointmentId, timeRange) =>
+      case UpdateAppointmentCommand(appointmentId, apptType, timeRange) =>
         if timeRange.end.toInstant.isAfter(timeRange.start.toInstant) then
           state match
             case Some(_) =>
@@ -52,6 +52,7 @@ class AppointmentDecider
                 List(
                   AppointmentUpdated(
                     appointmentId,
+                    apptType,
                     timeRange
                   )
                 )

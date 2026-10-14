@@ -56,6 +56,7 @@
   color: var(--on-accent);
 }
 
+/* Who is logged in (name and profession), then the logout button */
 .topbar__user {
   display: flex;
   align-items: center;
@@ -65,8 +66,11 @@
   color: var(--muted);
 }
 
-.topbar__user > span {
-  min-width: 0;
+.topbar__user .who {
+  justify-content: flex-end;
+}
+
+.topbar__user .who__name {
   max-width: 24ch;
   overflow: hidden;
   text-overflow: ellipsis;

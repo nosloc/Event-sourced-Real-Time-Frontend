@@ -88,17 +88,26 @@ class AppointmentDeciderSpec extends AnyFlatSpec with Matchers:
   // --- update -------------------------------------------------------------
 
   "decide, for an update command," should "produce AppointmentUpdated when the appointment exists" in {
-    decider.decide(existing, UpdateAppointmentCommand(id, afternoon)) shouldBe
-      Right(List(AppointmentUpdated(id, afternoon)))
+    decider.decide(existing, UpdateAppointmentCommand(id, kind, afternoon)) shouldBe
+      Right(List(AppointmentUpdated(id, kind, afternoon)))
+  }
+
+  it should "carry the chosen type, which may differ from the current one" in {
+    decider.decide(
+      existing,
+      UpdateAppointmentCommand(id, AppointmentType.FAMILY, afternoon)
+    ) shouldBe Right(
+      List(AppointmentUpdated(id, AppointmentType.FAMILY, afternoon))
+    )
   }
 
   it should "reject it with NOT_FOUND when the appointment does not exist" in {
-    decider.decide(noAppointment, UpdateAppointmentCommand(id, afternoon)) shouldBe
+    decider.decide(noAppointment, UpdateAppointmentCommand(id, kind, afternoon)) shouldBe
       Left(NOT_FOUND)
   }
 
   it should "reject an invalid range" in {
-    decider.decide(existing, UpdateAppointmentCommand(id, range(15, 14))) shouldBe
+    decider.decide(existing, UpdateAppointmentCommand(id, kind, range(15, 14))) shouldBe
       Left(INVALID_TIME_RANGE)
   }
 
@@ -129,7 +138,7 @@ class AppointmentDeciderSpec extends AnyFlatSpec with Matchers:
 
     val afterUpdate = afterCreate.flatMap(state =>
       decider
-        .decide(state, UpdateAppointmentCommand(id, afternoon))
+        .decide(state, UpdateAppointmentCommand(id, kind, afternoon))
         .map(_.foldLeft(state)(decider.evolve))
     )
 

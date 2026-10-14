@@ -15,6 +15,7 @@ object appointmentModel:
   ) extends AppointmentCommand
   case class UpdateAppointmentCommand(
       appointmentId: AppointmentId,
+      apptType: AppointmentType,
       timeRange: TimeRange
   ) extends AppointmentCommand
   case class DeleteAppointmentCommand(appointmentId: AppointmentId)
@@ -30,6 +31,7 @@ object appointmentModel:
   ) extends AppointmentEvent
   case class AppointmentUpdated(
       appointmentId: AppointmentId,
+      apptType: AppointmentType,
       timeRange: TimeRange
   ) extends AppointmentEvent
   case class AppointmentDeleted(appointmentId: AppointmentId)
@@ -75,6 +77,6 @@ object appointmentModel:
             timeRange
           )
         )
-      case AppointmentUpdated(appointmentId, timeRange) =>
-        state.map(_.copy(timeRange = timeRange))
+      case AppointmentUpdated(appointmentId, apptType, timeRange) =>
+        state.map(_.copy(timeRange = timeRange, appointmentType = apptType))
       case AppointmentDeleted(_) => None

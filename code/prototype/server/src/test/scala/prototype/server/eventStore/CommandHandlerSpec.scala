@@ -115,7 +115,7 @@ class CommandHandlerSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
       for
         s <- setup
         _ <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapists, patients, kind, morning))
-        _ <- s.handler.handle(tag(id), UpdateAppointmentCommand(id, afternoon))
+        _ <- s.handler.handle(tag(id), UpdateAppointmentCommand(id, kind, afternoon))
         deleted <- s.handler.handle(tag(id), DeleteAppointmentCommand(id))
         stored <- s.store.load(tag(id))
         shown <- s.viewer.getState(tag(id))
@@ -126,7 +126,7 @@ class CommandHandlerSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
       // Events are never removed: the delete is one more event
       stored shouldBe List(
         AppointmentCreated(id, therapists, patients, kind, morning),
-        AppointmentUpdated(id, afternoon),
+        AppointmentUpdated(id, kind, afternoon),
         AppointmentDeleted(id)
       )
       shown shouldBe None
@@ -159,7 +159,7 @@ class CommandHandlerSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
       for
         s <- setup
         _ <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapists, patients, kind, morning))
-        _ <- s.handler.handle(tag(id), UpdateAppointmentCommand(id, afternoon))
+        _ <- s.handler.handle(tag(id), UpdateAppointmentCommand(id, kind, afternoon))
         stored <- s.store.load(tag(id))
         shown <- s.viewer.getState(tag(id))
       yield (stored, shown)

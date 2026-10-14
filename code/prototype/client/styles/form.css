@@ -7,6 +7,17 @@
   margin-bottom: var(--space-4);
 }
 
+/* Two rows side by side (start and end); each keeps its own error */
+.form__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 var(--space-4);
+}
+
+.form__pair .form__row {
+  min-width: 0;
+}
+
 .form__label {
   display: flex;
   flex-direction: column;

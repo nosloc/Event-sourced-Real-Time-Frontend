@@ -77,6 +77,7 @@ object AppointmentServiceImpl:
       // The update changes the time only: the participants stay the same
       override def updateAppointment(
           appointmentId: AppointmentId,
+          apptType: AppointmentType,
           timeRange: TimeRange
       ): IO[UpdateAppointmentOutput] =
         viewer.getState(appointmentId.value.toString).flatMap {
@@ -84,6 +85,7 @@ object AppointmentServiceImpl:
           case Some(current) =>
             val command = UpdateAppointmentCommand(
               appointmentId,
+              apptType = apptType,
               timeRange
             )
             for

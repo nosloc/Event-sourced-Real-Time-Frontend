@@ -4,6 +4,7 @@ import com.raquo.laminar.api.L.*
 import scala.scalajs.js.Date
 import prototype.api.*
 import prototype.client.Api
+import prototype.client.views.components.Modal
 import prototype.client.views.timetable.AppointmentForm.AppointmentFormState
 
 object CreateAppointmentModal:
@@ -19,7 +20,8 @@ object CreateAppointmentModal:
         val initialState = AppointmentFormState(
           date = today.dateToString,
           start = "09:00",
-          end = "10:00"
+          end = "10:00",
+          appointmentType = AppointmentType.INDIVIDUAL
         )
         Modal(
           title = "Create Appointment",
@@ -27,9 +29,11 @@ object CreateAppointmentModal:
         )(
           AppointmentForm(
             initialState = initialState,
-            saveFunction = (range: TimeRange) =>
+            saveFunction = (range: TimeRange, apptType: AppointmentType) =>
               Api.appointments.createAppointment(
-                TherapistId(username),
+                List(TherapistId(username)),
+                List.empty,
+                apptType,
                 range
               ),
             onSuccess = () => {

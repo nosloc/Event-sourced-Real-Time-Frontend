@@ -189,6 +189,9 @@ structure UpdateAppointmentInput {
     appointmentId: AppointmentId
 
     @required
+    appointmentType: AppointmentType
+
+    @required
     timeRange: TimeRange
 }
 

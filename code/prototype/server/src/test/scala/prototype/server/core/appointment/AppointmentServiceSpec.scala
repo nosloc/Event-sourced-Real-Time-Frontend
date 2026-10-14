@@ -230,14 +230,14 @@ class AppointmentServiceSpec
 
   // --- update -------------------------------------------------------------
 
-  "updateAppointment" should "change the time range and keep the participants and the type" in {
+  "updateAppointment" should "change the time range and keep the participants" in {
     val test =
       for
         service <- newService
         created <- service.createAppointment(
           List(tst, arb), List(ann), AppointmentType.COUPLE, range(9, 10)
         )
-        updated <- service.updateAppointment(created.appointment.appointmentId, range(14, 15))
+        updated <- service.updateAppointment(created.appointment.appointmentId, AppointmentType.COUPLE, range(14, 15))
         listed <- service.listTherapistAppointments(arb)
       yield (created, updated, listed)
 
@@ -247,12 +247,27 @@ class AppointmentServiceSpec
     }
   }
 
+  it should "change the type and keep the time range and the participants" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst, arb), List(ann), range(9, 10))
+        updated <- service.updateAppointment(created.appointment.appointmentId, AppointmentType.GROUP, range(9, 10))
+        got <- service.listTherapistAppointments(tst)
+      yield (created, updated, got)
+
+    test.asserting { case (created, updated, got) =>
+      updated.appointment shouldBe created.appointment.copy(appointmentType = AppointmentType.GROUP)
+      got.appointments shouldBe List(updated.appointment)
+    }
+  }
+
   it should "accept its own current range (no overlap with itself)" in {
     val test =
       for
         service <- newService
         created <- book(service, List(tst), List(ann), range(9, 11))
-        result <- service.updateAppointment(created.appointment.appointmentId, range(9, 11)).attempt
+        result <- service.updateAppointment(created.appointment.appointmentId, kind, range(9, 11)).attempt
       yield result.map(_.appointment.timeRange)
 
     test.asserting(_ shouldBe Right(range(9, 11)))
@@ -263,7 +278,7 @@ class AppointmentServiceSpec
       for
         service <- newService
         created <- book(service, List(tst), List(ann), range(9, 11))
-        result <- service.updateAppointment(created.appointment.appointmentId, range(10, 12)).attempt
+        result <- service.updateAppointment(created.appointment.appointmentId, kind, range(10, 12)).attempt
       yield result.map(_.appointment.timeRange)
 
     test.asserting(_ shouldBe Right(range(10, 12)))
@@ -275,7 +290,7 @@ class AppointmentServiceSpec
         service <- newService
         first <- book(service, List(tst), List(ann), range(9, 10))
         _ <- book(service, List(tst), List(bob), range(14, 15))
-        clash <- service.updateAppointment(first.appointment.appointmentId, range(14, 16)).attempt
+        clash <- service.updateAppointment(first.appointment.appointmentId, kind, range(14, 16)).attempt
         listed <- timeRangesOf(service, tst)
       yield (clash, listed)
 
@@ -291,7 +306,7 @@ class AppointmentServiceSpec
         service <- newService
         first <- book(service, List(tst), List(ann), range(9, 10))
         _ <- book(service, List(arb), List(ann), range(14, 15))
-        clash <- service.updateAppointment(first.appointment.appointmentId, range(14, 16)).attempt
+        clash <- service.updateAppointment(first.appointment.appointmentId, kind, range(14, 16)).attempt
       yield clash
 
     test.asserting(_ shouldBe Left(PatientBusy(List(ann))))
@@ -299,7 +314,7 @@ class AppointmentServiceSpec
 
   it should "fail with AppointmentNotFound for an unknown id" in {
     val unknown = AppointmentId(UUID.randomUUID())
-    val test = newService.flatMap(_.updateAppointment(unknown, range(9, 10)))
+    val test = newService.flatMap(_.updateAppointment(unknown, kind, range(9, 10)))
 
     test.attempt.asserting(_ shouldBe Left(AppointmentNotFound()))
   }
@@ -309,7 +324,7 @@ class AppointmentServiceSpec
       for
         service <- newService
         created <- book(service, List(tst), List(ann), range(9, 10))
-        result <- service.updateAppointment(created.appointment.appointmentId, range(11, 10)).attempt
+        result <- service.updateAppointment(created.appointment.appointmentId, kind, range(11, 10)).attempt
       yield result
 
     test.asserting(_ shouldBe Left(InvalidTimeRange()))
