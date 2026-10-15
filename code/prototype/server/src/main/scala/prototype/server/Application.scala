@@ -67,7 +67,7 @@ object Server extends IOApp.Simple:
         .default[IO]
         .withHost(bindHost)
         .withPort(port"9000")
-        .withHttpApp(routes.orNotFound)
+        .withHttpApp(ErrorLogging(routes.orNotFound))
         .build
     yield server
 
