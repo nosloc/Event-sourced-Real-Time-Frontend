@@ -230,14 +230,25 @@ class AppointmentServiceSpec
 
   // --- update -------------------------------------------------------------
 
-  "updateAppointment" should "change the time range and keep the participants" in {
+  // Sends an appointment as the new version of itself: a test passes
+  // `appt.copy(...)` with only what it changes
+  private def update(service: AppointmentService[IO], edited: Appointment) =
+    service.updateAppointment(
+      edited.appointmentId,
+      edited.appointmentType,
+      edited.therapistIds,
+      edited.patientIds,
+      edited.timeRange
+    )
+
+  "updateAppointment" should "change the time range and keep the participants and the type" in {
     val test =
       for
         service <- newService
         created <- service.createAppointment(
           List(tst, arb), List(ann), AppointmentType.COUPLE, range(9, 10)
         )
-        updated <- service.updateAppointment(created.appointment.appointmentId, AppointmentType.COUPLE, range(14, 15))
+        updated <- update(service, created.appointment.copy(timeRange = range(14, 15)))
         listed <- service.listTherapistAppointments(arb)
       yield (created, updated, listed)
 
@@ -252,7 +263,7 @@ class AppointmentServiceSpec
       for
         service <- newService
         created <- book(service, List(tst, arb), List(ann), range(9, 10))
-        updated <- service.updateAppointment(created.appointment.appointmentId, AppointmentType.GROUP, range(9, 10))
+        updated <- update(service, created.appointment.copy(appointmentType = AppointmentType.GROUP))
         got <- service.listTherapistAppointments(tst)
       yield (created, updated, got)
 
@@ -262,12 +273,106 @@ class AppointmentServiceSpec
     }
   }
 
+  it should "change the participants: a new therapist sees it, a removed one no longer does" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        updated <- update(service, created.appointment.copy(therapistIds = List(arb), patientIds = List(bob)))
+        forTst <- service.listTherapistAppointments(tst)
+        forArb <- service.listTherapistAppointments(arb)
+      yield (updated, forTst, forArb)
+
+    test.asserting { case (updated, forTst, forArb) =>
+      updated.appointment.therapistIds shouldBe List(arb)
+      updated.appointment.patientIds shouldBe List(bob)
+      forTst.appointments shouldBe Nil
+      forArb.appointments shouldBe List(updated.appointment)
+    }
+  }
+
+  it should "accept removing every patient" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        updated <- update(service, created.appointment.copy(patientIds = Nil))
+      yield updated
+
+    test.asserting(_.appointment.patientIds shouldBe Nil)
+  }
+
+  it should "fail with InvalidParticipants when there is no therapist, and change nothing" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        result <- update(service, created.appointment.copy(therapistIds = Nil)).attempt
+        got <- service.getAppointment(created.appointment.appointmentId)
+      yield (created, result, got)
+
+    test.asserting { case (created, result, got) =>
+      result shouldBe Left(InvalidParticipants())
+      got.appointment shouldBe created.appointment
+    }
+  }
+
+  it should "fail with TherapistsNotFound, naming the unknown therapists" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        result <- update(service, created.appointment.copy(therapistIds = List(tst, zzz))).attempt
+      yield result
+
+    test.asserting(_ shouldBe Left(TherapistsNotFound(List(zzz))))
+  }
+
+  it should "fail with PatientsNotFound, naming the unknown patients" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        result <- update(service, created.appointment.copy(patientIds = List(ann, ghost))).attempt
+      yield result
+
+    test.asserting(_ shouldBe Left(PatientsNotFound(List(ghost))))
+  }
+
+  it should "fail with TherapistBusy when an added therapist is booked at that time, and change nothing" in {
+    val test =
+      for
+        service <- newService
+        mine <- book(service, List(tst), List(ann), range(9, 10))
+        _ <- book(service, List(arb), List(bob), range(9, 10))
+        clash <- update(service, mine.appointment.copy(therapistIds = List(tst, arb))).attempt
+        got <- service.getAppointment(mine.appointment.appointmentId)
+      yield (mine, clash, got)
+
+    test.asserting { case (mine, clash, got) =>
+      clash shouldBe Left(TherapistBusy(List(arb)))
+      got.appointment shouldBe mine.appointment
+    }
+  }
+
+  it should "fail with PatientBusy when an added patient is booked at that time" in {
+    val test =
+      for
+        service <- newService
+        mine <- book(service, List(tst), List(ann), range(9, 10))
+        _ <- book(service, List(arb), List(bob), range(9, 10))
+        clash <- update(service, mine.appointment.copy(patientIds = List(ann, bob))).attempt
+      yield clash
+
+    test.asserting(_ shouldBe Left(PatientBusy(List(bob))))
+  }
+
   it should "accept its own current range (no overlap with itself)" in {
     val test =
       for
         service <- newService
         created <- book(service, List(tst), List(ann), range(9, 11))
-        result <- service.updateAppointment(created.appointment.appointmentId, kind, range(9, 11)).attempt
+        result <- update(service, created.appointment).attempt
       yield result.map(_.appointment.timeRange)
 
     test.asserting(_ shouldBe Right(range(9, 11)))
@@ -278,7 +383,7 @@ class AppointmentServiceSpec
       for
         service <- newService
         created <- book(service, List(tst), List(ann), range(9, 11))
-        result <- service.updateAppointment(created.appointment.appointmentId, kind, range(10, 12)).attempt
+        result <- update(service, created.appointment.copy(timeRange = range(10, 12))).attempt
       yield result.map(_.appointment.timeRange)
 
     test.asserting(_ shouldBe Right(range(10, 12)))
@@ -290,7 +395,7 @@ class AppointmentServiceSpec
         service <- newService
         first <- book(service, List(tst), List(ann), range(9, 10))
         _ <- book(service, List(tst), List(bob), range(14, 15))
-        clash <- service.updateAppointment(first.appointment.appointmentId, kind, range(14, 16)).attempt
+        clash <- update(service, first.appointment.copy(timeRange = range(14, 16))).attempt
         listed <- timeRangesOf(service, tst)
       yield (clash, listed)
 
@@ -306,7 +411,7 @@ class AppointmentServiceSpec
         service <- newService
         first <- book(service, List(tst), List(ann), range(9, 10))
         _ <- book(service, List(arb), List(ann), range(14, 15))
-        clash <- service.updateAppointment(first.appointment.appointmentId, kind, range(14, 16)).attempt
+        clash <- update(service, first.appointment.copy(timeRange = range(14, 16))).attempt
       yield clash
 
     test.asserting(_ shouldBe Left(PatientBusy(List(ann))))
@@ -314,7 +419,9 @@ class AppointmentServiceSpec
 
   it should "fail with AppointmentNotFound for an unknown id" in {
     val unknown = AppointmentId(UUID.randomUUID())
-    val test = newService.flatMap(_.updateAppointment(unknown, kind, range(9, 10)))
+    val test = newService.flatMap(
+      _.updateAppointment(unknown, kind, List(tst), List(ann), range(9, 10))
+    )
 
     test.attempt.asserting(_ shouldBe Left(AppointmentNotFound()))
   }
@@ -324,7 +431,7 @@ class AppointmentServiceSpec
       for
         service <- newService
         created <- book(service, List(tst), List(ann), range(9, 10))
-        result <- service.updateAppointment(created.appointment.appointmentId, kind, range(11, 10)).attempt
+        result <- update(service, created.appointment.copy(timeRange = range(11, 10))).attempt
       yield result
 
     test.asserting(_ shouldBe Left(InvalidTimeRange()))

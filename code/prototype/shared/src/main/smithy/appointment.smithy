@@ -64,6 +64,7 @@ operation UpdateAppointment {
     errors: [
         AppointmentNotFound
         InvalidTimeRange
+        InvalidParticipants
         TherapistsNotFound
         TherapistBusy
         PatientsNotFound
@@ -190,6 +191,12 @@ structure UpdateAppointmentInput {
 
     @required
     appointmentType: AppointmentType
+
+    @required
+    therapistIds: TherapistIds
+
+    @required
+    patientIds: PatientIds
 
     @required
     timeRange: TimeRange

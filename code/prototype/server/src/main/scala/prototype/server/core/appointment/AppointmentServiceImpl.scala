@@ -74,28 +74,33 @@ object AppointmentServiceImpl:
           case Right(_)        => IO.unit
         }
 
-      // The update changes the time only: the participants stay the same
+      // The update sets the type, the participants and the time: the new
+      // participants must exist and be free in the new range
       override def updateAppointment(
           appointmentId: AppointmentId,
           apptType: AppointmentType,
+          therapistIds: List[TherapistId],
+          patientIds: List[PatientId],
           timeRange: TimeRange
       ): IO[UpdateAppointmentOutput] =
         viewer.getState(appointmentId.value.toString).flatMap {
-          case None          => IO.raiseError(AppointmentNotFound())
-          case Some(current) =>
+          case None    => IO.raiseError(AppointmentNotFound())
+          case Some(_) =>
             val command = UpdateAppointmentCommand(
               appointmentId,
               apptType = apptType,
-              timeRange
+              timeRange,
+              therapistIds = therapistIds,
+              patientIds = patientIds
             )
             for
               _ <- verifyTherapists(
-                current.therapistIds,
+                therapistIds,
                 timeRange,
                 ignoring = Some(appointmentId)
               )
               _ <- verifyPatients(
-                current.patientIds,
+                patientIds,
                 timeRange,
                 ignoring = Some(appointmentId)
               )
@@ -106,7 +111,9 @@ object AppointmentServiceImpl:
                   case Left(INVALID_TIME_RANGE) =>
                     IO.raiseError(InvalidTimeRange())
                   case Left(NOT_FOUND) => IO.raiseError(AppointmentNotFound())
-                  case Left(error)     => IO.raiseError(UserFacingError(error))
+                  case Left(NO_THERAPIST) =>
+                    IO.raiseError(InvalidParticipants())
+                  case Left(error) => IO.raiseError(UserFacingError(error))
                 }
             yield (result)
         }

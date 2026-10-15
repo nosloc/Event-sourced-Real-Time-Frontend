@@ -203,6 +203,8 @@ object AppointmentModal:
         Api.appointments.updateAppointment(
           appt.appointmentId,
           draft.appointmentType,
+          draft.therapistIds,
+          draft.patientIds,
           draft.timeRange
         ),
       onSuccess = () => {

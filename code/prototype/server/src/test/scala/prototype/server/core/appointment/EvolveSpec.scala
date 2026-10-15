@@ -37,19 +37,25 @@ class EvolveSpec extends AnyFlatSpec with Matchers:
       Some(Appointment(id, therapists, patients, kind, morning))
   }
 
-  it should "change the time range on AppointmentUpdated and keep the participants" in {
-    evolve(existing, AppointmentUpdated(id, kind, afternoon)) shouldBe
+  it should "change the time range on AppointmentUpdated" in {
+    evolve(existing, AppointmentUpdated(id, kind, afternoon, therapists, patients)) shouldBe
       Some(Appointment(id, therapists, patients, kind, afternoon))
   }
 
   it should "change the type on AppointmentUpdated" in {
-    evolve(existing, AppointmentUpdated(id, AppointmentType.GROUP, morning)) shouldBe
+    evolve(existing, AppointmentUpdated(id, AppointmentType.GROUP, morning, therapists, patients)) shouldBe
       Some(Appointment(id, therapists, patients, AppointmentType.GROUP, morning))
+  }
+
+  it should "change the participants on AppointmentUpdated" in {
+    val otherTherapists = List(TherapistId("lbo"))
+    evolve(existing, AppointmentUpdated(id, kind, morning, otherTherapists, Nil)) shouldBe
+      Some(Appointment(id, otherTherapists, Nil, kind, morning))
   }
 
   it should "leave a missing appointment missing on AppointmentUpdated" in {
     // The easy one to forget: there is nothing to update.
-    evolve(None, AppointmentUpdated(id, kind, afternoon)) shouldBe None
+    evolve(None, AppointmentUpdated(id, kind, afternoon, therapists, patients)) shouldBe None
   }
 
   it should "remove the appointment on AppointmentDeleted" in {
@@ -63,8 +69,8 @@ class EvolveSpec extends AnyFlatSpec with Matchers:
   it should "reach the expected state when a history is replayed" in {
     val history = List(
       created,
-      AppointmentUpdated(id, kind, afternoon),
-      AppointmentUpdated(id, kind, morning)
+      AppointmentUpdated(id, kind, afternoon, therapists, patients),
+      AppointmentUpdated(id, kind, morning, therapists, patients)
     )
 
     history.foldLeft(Option.empty[Appointment])(evolve) shouldBe existing
@@ -73,7 +79,7 @@ class EvolveSpec extends AnyFlatSpec with Matchers:
   it should "end with no appointment when a history ends with a delete" in {
     val history = List(
       created,
-      AppointmentUpdated(id, kind, afternoon),
+      AppointmentUpdated(id, kind, afternoon, therapists, patients),
       AppointmentDeleted(id)
     )
 

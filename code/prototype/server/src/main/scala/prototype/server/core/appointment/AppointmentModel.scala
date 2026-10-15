@@ -16,7 +16,9 @@ object appointmentModel:
   case class UpdateAppointmentCommand(
       appointmentId: AppointmentId,
       apptType: AppointmentType,
-      timeRange: TimeRange
+      timeRange: TimeRange,
+      therapistIds: List[TherapistId],
+      patientIds: List[PatientId]
   ) extends AppointmentCommand
   case class DeleteAppointmentCommand(appointmentId: AppointmentId)
       extends AppointmentCommand
@@ -32,7 +34,9 @@ object appointmentModel:
   case class AppointmentUpdated(
       appointmentId: AppointmentId,
       apptType: AppointmentType,
-      timeRange: TimeRange
+      timeRange: TimeRange,
+      therapistIds: List[TherapistId],
+      patientIds: List[PatientId]
   ) extends AppointmentEvent
   case class AppointmentDeleted(appointmentId: AppointmentId)
       extends AppointmentEvent
@@ -77,6 +81,19 @@ object appointmentModel:
             timeRange
           )
         )
-      case AppointmentUpdated(appointmentId, apptType, timeRange) =>
-        state.map(_.copy(timeRange = timeRange, appointmentType = apptType))
+      case AppointmentUpdated(
+            appointmentId,
+            apptType,
+            timeRange,
+            therapistIds,
+            patientIds
+          ) =>
+        state.map(
+          _.copy(
+            timeRange = timeRange,
+            appointmentType = apptType,
+            therapistIds = therapistIds,
+            patientIds = patientIds
+          )
+        )
       case AppointmentDeleted(_) => None

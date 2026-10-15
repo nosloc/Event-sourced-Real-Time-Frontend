@@ -88,26 +88,61 @@ class AppointmentDeciderSpec extends AnyFlatSpec with Matchers:
   // --- update -------------------------------------------------------------
 
   "decide, for an update command," should "produce AppointmentUpdated when the appointment exists" in {
-    decider.decide(existing, UpdateAppointmentCommand(id, kind, afternoon)) shouldBe
-      Right(List(AppointmentUpdated(id, kind, afternoon)))
+    decider.decide(existing, UpdateAppointmentCommand(id, kind, afternoon, therapists, patients)) shouldBe
+      Right(List(AppointmentUpdated(id, kind, afternoon, therapists, patients)))
   }
 
   it should "carry the chosen type, which may differ from the current one" in {
     decider.decide(
       existing,
-      UpdateAppointmentCommand(id, AppointmentType.FAMILY, afternoon)
+      UpdateAppointmentCommand(id, AppointmentType.FAMILY, afternoon, therapists, patients)
     ) shouldBe Right(
-      List(AppointmentUpdated(id, AppointmentType.FAMILY, afternoon))
+      List(AppointmentUpdated(id, AppointmentType.FAMILY, afternoon, therapists, patients))
     )
   }
 
+  it should "carry the new participants, which may differ from the current ones" in {
+    val otherTherapists = List(TherapistId("lbo"))
+    val noPatients = Nil
+    decider.decide(
+      existing,
+      UpdateAppointmentCommand(id, kind, morning, otherTherapists, noPatients)
+    ) shouldBe Right(
+      List(AppointmentUpdated(id, kind, morning, otherTherapists, noPatients))
+    )
+  }
+
+  it should "reject it with NO_THERAPIST when there is no therapist" in {
+    decider.decide(
+      existing,
+      UpdateAppointmentCommand(id, kind, afternoon, Nil, patients)
+    ) shouldBe Left(NO_THERAPIST)
+  }
+
+  it should "accept an update with no patient" in {
+    decider.decide(
+      existing,
+      UpdateAppointmentCommand(id, kind, afternoon, therapists, Nil)
+    ) shouldBe Right(
+      List(AppointmentUpdated(id, kind, afternoon, therapists, Nil))
+    )
+  }
+
+  it should "check the therapists before the appointment exists" in {
+    // Documents the current order, as for create: the participants first
+    decider.decide(
+      noAppointment,
+      UpdateAppointmentCommand(id, kind, afternoon, Nil, patients)
+    ) shouldBe Left(NO_THERAPIST)
+  }
+
   it should "reject it with NOT_FOUND when the appointment does not exist" in {
-    decider.decide(noAppointment, UpdateAppointmentCommand(id, kind, afternoon)) shouldBe
+    decider.decide(noAppointment, UpdateAppointmentCommand(id, kind, afternoon, therapists, patients)) shouldBe
       Left(NOT_FOUND)
   }
 
   it should "reject an invalid range" in {
-    decider.decide(existing, UpdateAppointmentCommand(id, kind, range(15, 14))) shouldBe
+    decider.decide(existing, UpdateAppointmentCommand(id, kind, range(15, 14), therapists, patients)) shouldBe
       Left(INVALID_TIME_RANGE)
   }
 
@@ -138,7 +173,7 @@ class AppointmentDeciderSpec extends AnyFlatSpec with Matchers:
 
     val afterUpdate = afterCreate.flatMap(state =>
       decider
-        .decide(state, UpdateAppointmentCommand(id, kind, afternoon))
+        .decide(state, UpdateAppointmentCommand(id, kind, afternoon, therapists, patients))
         .map(_.foldLeft(state)(decider.evolve))
     )
 

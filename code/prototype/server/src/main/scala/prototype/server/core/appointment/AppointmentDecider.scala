@@ -44,8 +44,15 @@ class AppointmentDecider
               Left(ALREADY_EXISTS)
         else Left(INVALID_TIME_RANGE)
 
-      case UpdateAppointmentCommand(appointmentId, apptType, timeRange) =>
-        if timeRange.end.toInstant.isAfter(timeRange.start.toInstant) then
+      case UpdateAppointmentCommand(
+            appointmentId,
+            apptType,
+            timeRange,
+            therapistIds,
+            patientIds
+          ) =>
+        if therapistIds.isEmpty then Left(NO_THERAPIST)
+        else if timeRange.end.toInstant.isAfter(timeRange.start.toInstant) then
           state match
             case Some(_) =>
               Right(
@@ -53,7 +60,9 @@ class AppointmentDecider
                   AppointmentUpdated(
                     appointmentId,
                     apptType,
-                    timeRange
+                    timeRange,
+                    therapistIds,
+                    patientIds
                   )
                 )
               )
