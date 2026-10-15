@@ -47,7 +47,12 @@ object Server extends IOApp.Simple:
         patientServiceImpl
       ).toResource
       seed <- Resource.eval(
-        Seed(appointmentServiceImpl, companyServiceImpl, therapistServiceImpl)
+        Seed(
+          appointmentServiceImpl,
+          companyServiceImpl,
+          therapistServiceImpl,
+          patientServiceImpl
+        )
       )
       _ <- seed.generateEvents().toResource
       tokens <- Resource.eval(Ref.of[IO, Map[Token, TherapistId]](Map.empty))

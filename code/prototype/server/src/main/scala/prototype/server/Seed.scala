@@ -10,6 +10,7 @@ import java.time.{
   ZoneId,
   ZonedDateTime
 }
+import smithy4s.time.{LocalDate as SmithyLocalDate}
 import java.util.UUID
 
 import cats.effect.IO
@@ -26,12 +27,14 @@ final class Seed private (
     generatedAppointments: List[Appointment],
     appointmentService: AppointmentService[IO],
     companyService: CompanyService[IO],
-    therapistService: TherapistService[IO]
+    therapistService: TherapistService[IO],
+    patientService: PatientService[IO]
 ):
   val companies: List[Company] = Seed.companies
   val therapists: List[Seed.SeedTherapist] = Seed.therapists
   val appointments: List[Appointment] =
     Seed.fixedAppointments ++ generatedAppointments
+  val seedPatients: List[(String, String, SmithyLocalDate)] = Seed.seedPatients
 
   /** Creates everything through the services, in dependency order: companies
     * first (their ids are generated), then the therapists in those companies,
@@ -66,6 +69,9 @@ final class Seed private (
           appointment.timeRange
         )
       }
+      _ <- seedPatients.traverse_ { (firstName, lastName, birthDate) =>
+        patientService.createPatient(firstName, lastName, birthDate)
+      }
     yield ()
   end generateEvents
 
@@ -85,7 +91,8 @@ object Seed:
   def apply(
       appointmentService: AppointmentServiceImpl,
       companyService: CompanyService[IO],
-      therapistService: TherapistService[IO]
+      therapistService: TherapistService[IO],
+      patientService: PatientService[IO]
   ): IO[Seed] =
     IO.realTimeInstant.flatMap { now =>
       val thisMonday = now
@@ -97,7 +104,15 @@ object Seed:
         from = thisMonday.minusWeeks(2),
         to = thisMonday.plusWeeks(2).`with`(FRIDAY),
         perDay = 3
-      ).map(new Seed(_, appointmentService, companyService, therapistService))
+      ).map(
+        new Seed(
+          _,
+          appointmentService,
+          companyService,
+          therapistService,
+          patientService
+        )
+      )
     }
 
   private def uuid(value: String): UUID = UUID.fromString(value)
@@ -234,6 +249,19 @@ object Seed:
       lbo,
       range("2026-10-16T09:00:00+02:00", "2026-10-16T09:30:00+02:00")
     )
+  )
+
+  private val seedPatients: List[(String, String, SmithyLocalDate)] = List(
+    ("Camille", "Rochat", SmithyLocalDate(1987, 4, 12)),
+    ("Noah", "Favre", SmithyLocalDate(1994, 9, 3)),
+    ("Léa", "Gindroz", SmithyLocalDate(2001, 1, 28)),
+    ("Théo", "Perrin", SmithyLocalDate(1979, 11, 17)),
+    ("Inès", "Bovet", SmithyLocalDate(1992, 6, 5)),
+    ("Lucas", "Monnard", SmithyLocalDate(1985, 2, 21)),
+    ("Sarah", "Dufour", SmithyLocalDate(1998, 8, 14)),
+    ("Maxime", "Jaquier", SmithyLocalDate(1973, 12, 9)),
+    ("Eva", "Chappuis", SmithyLocalDate(2005, 3, 30)),
+    ("Hugo", "Berset", SmithyLocalDate(1990, 10, 22))
   )
 
   // Generated appointments
