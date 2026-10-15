@@ -25,12 +25,12 @@ object PopoverPicker:
   )
 
   // The popover is a native HTML element, but it is not yet supported by Laminar, so we have to define the attributes ourselves.
-  private val popover = htmlAttr("popover", StringAsIsCodec)
-  private val popoverTarget = htmlAttr("popovertarget", StringAsIsCodec)
-  private val popoverTargetAction =
+  private[components] val popover = htmlAttr("popover", StringAsIsCodec)
+  private[components] val popoverTarget = htmlAttr("popovertarget", StringAsIsCodec)
+  private[components] val popoverTargetAction =
     htmlAttr("popovertargetaction", StringAsIsCodec)
-  private val anchorName = styleProp[String]("anchor-name")
-  private val positionAnchor = styleProp[String]("position-anchor")
+  private[components] val anchorName = styleProp[String]("anchor-name")
+  private[components] val positionAnchor = styleProp[String]("position-anchor")
 
   /** @param id
     *   unique on the page: it names the popover and its anchor

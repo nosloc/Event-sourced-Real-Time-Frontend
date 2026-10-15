@@ -10,7 +10,9 @@ import prototype.client.views.timetable.AppointmentForm.AppointmentFormState
 object AppointmentModal:
   def apply(
       selectedAppointmentVar: Var[Option[Appointment]],
-      reloadVar: Var[Int]
+      reloadVar: Var[Int],
+      therapistListS: Signal[List[Therapist]],
+      patientListS: Signal[List[Patient]]
   ): Mod[HtmlElement] =
     child.maybe <-- selectedAppointmentVar.signal
       .map {
@@ -26,13 +28,22 @@ object AppointmentModal:
           )(
             child <-- editingVar.signal.map(isEditing =>
               if !isEditing then
-                renderRows(selectedAppointmentVar, reloadVar, appt, editingVar)
+                renderRows(
+                  selectedAppointmentVar,
+                  reloadVar,
+                  appt,
+                  editingVar,
+                  therapistListS,
+                  patientListS
+                )
               else
                 renderEditForm(
                   selectedAppointmentVar,
                   reloadVar,
                   editingVar,
-                  appt
+                  appt,
+                  therapistListS,
+                  patientListS
                 )
             )
           )
@@ -44,7 +55,9 @@ object AppointmentModal:
       selectedAppointmentVar: Var[Option[Appointment]],
       reloadVar: Var[Int],
       appt: Appointment,
-      editingVar: Var[Boolean]
+      editingVar: Var[Boolean],
+      therapistListS: Signal[List[Therapist]],
+      patientListS: Signal[List[Patient]]
   ): HtmlElement =
     div(
       appointmentDetailsRow(
@@ -66,7 +79,29 @@ object AppointmentModal:
           .capitalize
           .toString
       ),
-      // appointmentDetailsRow("Therapist ID", appt.therapistId.value),
+      appointmentDetailsListRow(
+        "Therapists",
+        therapistListS.map(therapists =>
+          appt.therapistIds.map(id =>
+            therapists
+              .find(_.therapistId == id)
+              .map(t => s"${t.firstName} ${t.lastName} (${id.value})")
+              .getOrElse(id.value)
+          )
+        )
+      ),
+      appointmentDetailsListRow(
+        "Patients",
+        patientListS.map(patients =>
+          appt.patientIds.map(id =>
+            patients
+              .find(_.id == id)
+              .map(p => s"${p.firstName} ${p.lastName}")
+              .getOrElse(id.value.toString)
+          )
+        ),
+        emptyText = "None"
+      ),
       renderModalActions(appt, selectedAppointmentVar, reloadVar, editingVar)
     )
   end renderRows
@@ -78,6 +113,26 @@ object AppointmentModal:
       span(cls := "modal__value", value)
     )
   end appointmentDetailsRow
+
+  // A row whose value is a list, one entry per line (names are looked up, so
+  // the entries arrive as a signal)
+  private def appointmentDetailsListRow(
+      label: String,
+      entriesS: Signal[List[String]],
+      emptyText: String = "-"
+  ): HtmlElement =
+    div(
+      cls := "modal__row",
+      span(cls := "modal__label", label),
+      div(
+        cls := "modal__value modal__value--list",
+        children <-- entriesS.map {
+          case Nil     => List(span(emptyText))
+          case entries => entries.map(entry => span(entry))
+        }
+      )
+    )
+  end appointmentDetailsListRow
 
   private def renderModalActions(
       appointment: Appointment,
@@ -131,22 +186,32 @@ object AppointmentModal:
       selectedAppointmentVar: Var[Option[Appointment]],
       reloadVar: Var[Int],
       editingVar: Var[Boolean],
-      appt: Appointment
+      appt: Appointment,
+      therapistListS: Signal[List[Therapist]],
+      patientListS: Signal[List[Patient]]
   ): HtmlElement =
     AppointmentForm(
       initialState = AppointmentFormState(
         date = appt.timeRange.start.toDate.dateToString,
         start = appt.timeRange.start.toDate.getTimeString,
         end = appt.timeRange.end.toDate.getTimeString,
-        appointmentType = appt.appointmentType
+        appointmentType = appt.appointmentType,
+        therapistIds = appt.therapistIds,
+        patientIds = appt.patientIds
       ),
-      saveFunction = (range: TimeRange, apptType: AppointmentType) =>
-        Api.appointments.updateAppointment(appt.appointmentId, apptType, range),
+      saveFunction = draft =>
+        Api.appointments.updateAppointment(
+          appt.appointmentId,
+          draft.appointmentType,
+          draft.timeRange
+        ),
       onSuccess = () => {
         selectedAppointmentVar.set(None)
         reloadVar.update(_ + 1)
       },
       onCancel = () => editingVar.set(false),
-      submitLabel = "Submit"
+      submitLabel = "Submit",
+      therapistListS = therapistListS,
+      patientListS = patientListS
     )
   end renderEditForm

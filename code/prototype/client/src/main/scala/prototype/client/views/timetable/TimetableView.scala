@@ -77,10 +77,16 @@ object TimetableView:
 
     val showCreateAppointmentModalVar: Var[Boolean] = Var(false)
 
-    val therapistsIdVar: ApiCall[List[Therapist]] =
+    val therapistsVar: ApiCall[List[Therapist]] =
       ApiCall.fromIOCall(
         Api.therapists.listTherapists(),
         _.therapists
+      )
+
+    val patientsVar: ApiCall[List[Patient]] =
+      ApiCall.fromIOCall(
+        Api.patients.listPatients(),
+        _.patients
       )
 
     div(
@@ -90,7 +96,7 @@ object TimetableView:
         h1("Timetable"),
         div(
           cls := "timetable__controls",
-          TherapistPicker(therapistsIdVar, selectedTherapistVar),
+          TherapistPicker(therapistsVar, selectedTherapistVar),
           WeekToolbar(weekRangeS, weekOffsetVar, showCreateAppointmentModalVar)
         )
       ),
@@ -103,12 +109,19 @@ object TimetableView:
         selectedAppointmentVar,
         today
       ),
-      AppointmentModal(selectedAppointmentVar, reloadVar),
+      AppointmentModal(
+        selectedAppointmentVar,
+        reloadVar,
+        therapistsVar.successS.map(_.getOrElse(Nil)),
+        patientsVar.successS.map(_.getOrElse(Nil))
+      ),
       CreateAppointmentModal(
         today,
         username,
         showCreateAppointmentModalVar,
-        reloadVar
+        reloadVar,
+        therapistsVar.successS.map(_.getOrElse(Nil)),
+        patientsVar.successS.map(_.getOrElse(Nil))
       )
     )
   end apply

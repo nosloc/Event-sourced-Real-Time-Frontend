@@ -7,14 +7,24 @@ import prototype.client.Api.ApiCall
 import prototype.client.Api
 import scala.scalajs.js.Date
 import smithy4s.time.Timestamp
-import prototype.client.views.components.PopoverPicker
+import prototype.client.views.components.{PopoverPicker, PopoverMultiPicker}
 
 object AppointmentForm:
+  // Used to represent the form state on save
+  final case class AppointmentDraft(
+      timeRange: TimeRange,
+      appointmentType: AppointmentType,
+      therapistIds: List[TherapistId],
+      patientIds: List[PatientId]
+  )
+
   final case class AppointmentFormState(
       date: String,
       start: String,
       end: String,
       appointmentType: AppointmentType,
+      therapistIds: List[TherapistId],
+      patientIds: List[PatientId],
       showErrors: Boolean = false
   ):
     private def parse(d: String, t: String): Option[Date] =
@@ -55,7 +65,9 @@ object AppointmentForm:
 
   def apply[R](
       initialState: AppointmentFormState,
-      saveFunction: (TimeRange, AppointmentType) => IO[R],
+      saveFunction: AppointmentDraft => IO[R],
+      therapistListS: Signal[List[Therapist]],
+      patientListS: Signal[List[Patient]],
       onSuccess: () => Unit,
       onCancel: () => Unit,
       submitLabel: String
@@ -72,12 +84,20 @@ object AppointmentForm:
       onSubmit.preventDefault.compose(
         _.sample(
           stateVar.signal
-        ).map(s => (s.toTimeRange, s.appointmentType))
-          .collect { case (Some(range), apptType) => (range, apptType) }
-          .flatMapSwitch { (range, apptType) =>
+        ).map(s =>
+          s.toTimeRange.map(range =>
+            AppointmentDraft(
+              range,
+              s.appointmentType,
+              s.therapistIds,
+              s.patientIds
+            )
+          )
+        ).collect { case Some(draft) => draft }
+          .flatMapSwitch { draft =>
             ApiCall
               .fromIOCallSimple(
-                saveFunction(range, apptType)
+                saveFunction(draft)
               )
               .stateS
           }
@@ -134,6 +154,44 @@ object AppointmentForm:
           }
         ),
         fallbackLabel = _.name
+      ),
+      renderMultiDropdownRow[TherapistId](
+        selectedVar = stateVar.zoomLazy(_.therapistIds)((state, t) =>
+          state.copy(therapistIds = t)
+        ),
+        labelText = "Therapists",
+        popoverText = "",
+        popoverId = "therapist-picker",
+        items = therapistListS.map { ts =>
+          ts.map { t =>
+            PopoverPicker.Item(
+              value = t.therapistId,
+              name = s"${t.firstName} ${t.lastName}",
+              hint = Some(t.therapistId.value),
+              buttonLabel = Some(t.therapistId.value)
+            )
+          }
+        },
+        fallbackLabel = _.value
+      ),
+      renderMultiDropdownRow[PatientId](
+        selectedVar = stateVar.zoomLazy(_.patientIds)((state, p) =>
+          state.copy(patientIds = p)
+        ),
+        labelText = "Patients",
+        popoverText = "",
+        popoverId = "patient-picker",
+        items = patientListS.map { ps =>
+          ps.map { p =>
+            PopoverPicker.Item(
+              value = p.id,
+              name = s"${p.firstName} ${p.lastName}",
+              hint = Some(p.dateOfBirth.toString),
+              buttonLabel = Some(s"${p.firstName} ${p.lastName}")
+            )
+          }
+        },
+        fallbackLabel = _.value.toString
       ),
       child.maybe <-- errorVar.signal.map(
         _.map(msg => div(cls := "banner banner--error", msg))
@@ -202,6 +260,26 @@ object AppointmentForm:
       cls := "form__label",
       span(labelText),
       PopoverPicker(
+        id = popoverId,
+        label = popoverText,
+        items = items,
+        selectedVar = selectedVar,
+        fallbackLabel = fallbackLabel
+      )
+    )
+
+  private def renderMultiDropdownRow[V](
+      selectedVar: Var[List[V]],
+      labelText: String,
+      popoverText: String,
+      popoverId: String,
+      items: Signal[List[PopoverPicker.Item[V]]],
+      fallbackLabel: V => String
+  ): HtmlElement =
+    label(
+      cls := "form__label",
+      span(labelText),
+      PopoverMultiPicker(
         id = popoverId,
         label = popoverText,
         items = items,

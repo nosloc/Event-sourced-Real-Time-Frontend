@@ -60,6 +60,14 @@ object Api:
       .make
       .fold(throw _, identity)
 
+  val patients: PatientService[IO] =
+    SimpleRestJsonBuilder(PatientService)
+      .client(FetchClientBuilder[IO].create)
+      .uri(origin)
+      .middleware(authMiddleware)
+      .make
+      .fold(throw _, identity)
+
   val appointments: AppointmentService[IO] =
     SimpleRestJsonBuilder(AppointmentService)
       .client(FetchClientBuilder[IO].create)

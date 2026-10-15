@@ -12,7 +12,9 @@ object CreateAppointmentModal:
       today: Date,
       username: String,
       showCreateAppointmentModalVar: Var[Boolean],
-      reloadVar: Var[Int]
+      reloadVar: Var[Int],
+      therapistListS: Signal[List[Therapist]],
+      patientListS: Signal[List[Patient]]
   ): Mod[HtmlElement] =
     child.maybe <-- showCreateAppointmentModalVar.signal.map(isOpen =>
       Option.when(isOpen) {
@@ -21,7 +23,9 @@ object CreateAppointmentModal:
           date = today.dateToString,
           start = "09:00",
           end = "10:00",
-          appointmentType = AppointmentType.INDIVIDUAL
+          appointmentType = AppointmentType.INDIVIDUAL,
+          therapistIds = List(TherapistId(username)),
+          patientIds = Nil
         )
         Modal(
           title = "Create Appointment",
@@ -29,19 +33,21 @@ object CreateAppointmentModal:
         )(
           AppointmentForm(
             initialState = initialState,
-            saveFunction = (range: TimeRange, apptType: AppointmentType) =>
+            saveFunction = draft =>
               Api.appointments.createAppointment(
-                List(TherapistId(username)),
-                List.empty,
-                apptType,
-                range
+                draft.therapistIds,
+                draft.patientIds,
+                draft.appointmentType,
+                draft.timeRange
               ),
             onSuccess = () => {
               showCreateAppointmentModalVar.set(false)
               reloadVar.update(_ + 1)
             },
             onCancel = () => showCreateAppointmentModalVar.set(false),
-            submitLabel = "Create"
+            submitLabel = "Create",
+            therapistListS = therapistListS,
+            patientListS = patientListS
           )
         )
       }
