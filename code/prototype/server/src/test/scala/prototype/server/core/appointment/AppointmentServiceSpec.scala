@@ -480,3 +480,250 @@ class AppointmentServiceSpec
 
     test.asserting(_.appointments shouldBe Nil)
   }
+
+  // --- prestations --------------------------------------------------------
+
+  private def addPrestation(
+      service: AppointmentService[IO],
+      appt: Appointment,
+      label: String = "Consultation",
+      quantity: Int = 1,
+      unitPrice: Float = 120.0f
+  ) =
+    service.createPrestation(appt.appointmentId, label, quantity, unitPrice)
+
+  "createPrestation" should "add a prestation in status TO_BILL and return the appointment" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        added <- addPrestation(service, created.appointment, "Report", 2, 45.5f)
+      yield added
+
+    test.asserting { added =>
+      val prestations = added.appointment.prestations
+      prestations should have size 1
+      prestations.head.label shouldBe "Report"
+      prestations.head.quantity shouldBe 2
+      prestations.head.unitPrice shouldBe 45.5f
+      prestations.head.status shouldBe PrestationStatus.TO_BILL
+      prestations.head.appointmentId shouldBe added.appointment.appointmentId
+    }
+  }
+
+  it should "give every prestation its own id" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        _ <- addPrestation(service, created.appointment)
+        second <- addPrestation(service, created.appointment)
+      yield second.appointment.prestations.map(_.prestationId)
+
+    test.asserting(ids => ids.distinct should have size 2)
+  }
+
+  it should "show the prestation when the appointment is read or listed" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        added <- addPrestation(service, created.appointment)
+        got <- service.getAppointment(created.appointment.appointmentId)
+        listed <- service.listTherapistAppointments(tst)
+      yield (added, got, listed)
+
+    test.asserting { case (added, got, listed) =>
+      got.appointment shouldBe added.appointment
+      listed.appointments shouldBe List(added.appointment)
+    }
+  }
+
+  it should "fail with AppointmentNotFound for an unknown appointment" in {
+    val unknown = AppointmentId(UUID.randomUUID())
+    val test = newService.flatMap(_.createPrestation(unknown, "Consultation", 1, 120.0f))
+
+    test.attempt.asserting(_ shouldBe Left(AppointmentNotFound()))
+  }
+
+  it should "fail with InvalidPrestation for an invalid label, quantity or price, and add nothing" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        blank <- addPrestation(service, created.appointment, label = " ").attempt
+        noQuantity <- addPrestation(service, created.appointment, quantity = 0).attempt
+        negative <- addPrestation(service, created.appointment, unitPrice = -1.0f).attempt
+        got <- service.getAppointment(created.appointment.appointmentId)
+      yield (blank, noQuantity, negative, got)
+
+    test.asserting { case (blank, noQuantity, negative, got) =>
+      blank shouldBe Left(InvalidPrestation())
+      noQuantity shouldBe Left(InvalidPrestation())
+      negative shouldBe Left(InvalidPrestation())
+      got.appointment.prestations shouldBe Nil
+    }
+  }
+
+  "updatePrestationStatus" should "move a prestation forward and return the appointment" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        added <- addPrestation(service, created.appointment)
+        id = added.appointment.prestations.head.prestationId
+        billed <- service.updatePrestationStatus(created.appointment.appointmentId, id, PrestationStatus.BILLED)
+        paid <- service.updatePrestationStatus(created.appointment.appointmentId, id, PrestationStatus.PAID)
+      yield (billed, paid)
+
+    test.asserting { case (billed, paid) =>
+      billed.appointment.prestations.map(_.status) shouldBe List(PrestationStatus.BILLED)
+      paid.appointment.prestations.map(_.status) shouldBe List(PrestationStatus.PAID)
+    }
+  }
+
+  it should "change only the named prestation" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        _ <- addPrestation(service, created.appointment, "First")
+        two <- addPrestation(service, created.appointment, "Second")
+        firstId = two.appointment.prestations.head.prestationId
+        changed <- service.updatePrestationStatus(created.appointment.appointmentId, firstId, PrestationStatus.CANCELLED)
+      yield changed
+
+    test.asserting { changed =>
+      changed.appointment.prestations.map(p => (p.label, p.status)) shouldBe
+        List(("First", PrestationStatus.CANCELLED), ("Second", PrestationStatus.TO_BILL))
+    }
+  }
+
+  it should "fail with InvalidStatusChange and change nothing when the change is not allowed" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        added <- addPrestation(service, created.appointment)
+        id = added.appointment.prestations.head.prestationId
+        jump <- service.updatePrestationStatus(created.appointment.appointmentId, id, PrestationStatus.PAID).attempt
+        got <- service.getAppointment(created.appointment.appointmentId)
+      yield (jump, got)
+
+    test.asserting { case (jump, got) =>
+      jump shouldBe Left(InvalidStatusChange())
+      got.appointment.prestations.map(_.status) shouldBe List(PrestationStatus.TO_BILL)
+    }
+  }
+
+  it should "refuse any change once a prestation is PAID or CANCELLED" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        paidOne <- addPrestation(service, created.appointment, "Paid")
+        cancelledOne <- addPrestation(service, created.appointment, "Cancelled")
+        apptId = created.appointment.appointmentId
+        paidId = paidOne.appointment.prestations.head.prestationId
+        cancelledId = cancelledOne.appointment.prestations.last.prestationId
+        _ <- service.updatePrestationStatus(apptId, paidId, PrestationStatus.BILLED)
+        _ <- service.updatePrestationStatus(apptId, paidId, PrestationStatus.PAID)
+        _ <- service.updatePrestationStatus(apptId, cancelledId, PrestationStatus.CANCELLED)
+        fromPaid <- service.updatePrestationStatus(apptId, paidId, PrestationStatus.CANCELLED).attempt
+        fromCancelled <- service.updatePrestationStatus(apptId, cancelledId, PrestationStatus.BILLED).attempt
+      yield (fromPaid, fromCancelled)
+
+    test.asserting { case (fromPaid, fromCancelled) =>
+      fromPaid shouldBe Left(InvalidStatusChange())
+      fromCancelled shouldBe Left(InvalidStatusChange())
+    }
+  }
+
+  it should "fail with PrestationNotFound for an unknown prestation" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        result <- service
+          .updatePrestationStatus(created.appointment.appointmentId, PrestationId(UUID.randomUUID()), PrestationStatus.BILLED)
+          .attempt
+      yield result
+
+    test.asserting(_ shouldBe Left(PrestationNotFound()))
+  }
+
+  it should "fail with AppointmentNotFound for an unknown appointment" in {
+    val test = newService.flatMap(
+      _.updatePrestationStatus(AppointmentId(UUID.randomUUID()), PrestationId(UUID.randomUUID()), PrestationStatus.BILLED)
+    )
+
+    test.attempt.asserting(_ shouldBe Left(AppointmentNotFound()))
+  }
+
+  "deletePrestation" should "remove the prestation, whatever its status" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        apptId = created.appointment.appointmentId
+        toBill <- addPrestation(service, created.appointment, "To bill")
+        paidOne <- addPrestation(service, created.appointment, "Paid")
+        paidId = paidOne.appointment.prestations.last.prestationId
+        _ <- service.updatePrestationStatus(apptId, paidId, PrestationStatus.BILLED)
+        _ <- service.updatePrestationStatus(apptId, paidId, PrestationStatus.PAID)
+        _ <- service.deletePrestation(apptId, paidId)
+        _ <- service.deletePrestation(apptId, toBill.appointment.prestations.head.prestationId)
+        got <- service.getAppointment(apptId)
+      yield got
+
+    test.asserting(_.appointment.prestations shouldBe Nil)
+  }
+
+  it should "fail with PrestationNotFound for an unknown prestation" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        result <- service
+          .deletePrestation(created.appointment.appointmentId, PrestationId(UUID.randomUUID()))
+          .attempt
+      yield result
+
+    test.asserting(_ shouldBe Left(PrestationNotFound()))
+  }
+
+  it should "fail with AppointmentNotFound for an unknown appointment" in {
+    val test = newService.flatMap(
+      _.deletePrestation(AppointmentId(UUID.randomUUID()), PrestationId(UUID.randomUUID()))
+    )
+
+    test.attempt.asserting(_ shouldBe Left(AppointmentNotFound()))
+  }
+
+  "an appointment with prestations" should "keep them when it is updated" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        added <- addPrestation(service, created.appointment)
+        updated <- update(service, added.appointment.copy(timeRange = range(14, 15)))
+      yield (added, updated)
+
+    test.asserting { case (added, updated) =>
+      updated.appointment.timeRange shouldBe range(14, 15)
+      updated.appointment.prestations shouldBe added.appointment.prestations
+    }
+  }
+
+  it should "be deletable" in {
+    val test =
+      for
+        service <- newService
+        created <- book(service, List(tst), List(ann), range(9, 10))
+        _ <- addPrestation(service, created.appointment)
+        _ <- service.deleteAppointment(created.appointment.appointmentId)
+        gone <- service.getAppointment(created.appointment.appointmentId).attempt
+      yield gone
+
+    test.asserting(_ shouldBe Left(AppointmentNotFound()))
+  }

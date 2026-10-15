@@ -34,6 +34,7 @@ object AppointmentServiceImpl:
             .listAppointments(therapistId)
             .map(ListTherapistAppointmentsOutput.apply)
         }
+      end listTherapistAppointments
 
       override def createAppointment(
           therapistIds: List[TherapistId],
@@ -63,6 +64,7 @@ object AppointmentServiceImpl:
             case Left(error)        => IO.raiseError(UserFacingError(error))
           }
         yield (result)
+      end createAppointment
 
       override def deleteAppointment(
           appointmentId: AppointmentId
@@ -73,6 +75,7 @@ object AppointmentServiceImpl:
           case Left(error)     => IO.raiseError(UserFacingError(error))
           case Right(_)        => IO.unit
         }
+      end deleteAppointment
 
       // The update sets the type, the participants and the time: the new
       // participants must exist and be free in the new range
@@ -117,6 +120,69 @@ object AppointmentServiceImpl:
                 }
             yield (result)
         }
+      end updateAppointment
+
+      override def createPrestation(
+          appointmentId: AppointmentId,
+          label: String,
+          quantity: Int,
+          unitPrice: Float
+      ): IO[CreatePrestationOutput] =
+        val prestationId = PrestationId(UUID.randomUUID())
+        val command = CreatePrestationCommand(
+          appointmentId,
+          prestationId,
+          label,
+          unitPrice,
+          quantity
+        )
+        handler.handle(appointmentId.value.toString, command).flatMap {
+          case Right(appt) =>
+            IO.pure(CreatePrestationOutput(appt.get))
+          case Left(NOT_FOUND) => IO.raiseError(AppointmentNotFound())
+          case Left(PRESTATION_NOT_FOUND) =>
+            IO.raiseError(PrestationNotFound())
+          case Left(INVALID_PRESTATION) => IO.raiseError(InvalidPrestation())
+          case Left(error)              => IO.raiseError(UserFacingError(error))
+        }
+      end createPrestation
+
+      override def updatePrestationStatus(
+          appointmentId: AppointmentId,
+          prestationId: PrestationId,
+          status: PrestationStatus
+      ): IO[UpdatePrestationStatusOutput] =
+        val command = UpdatePrestationStatusCommand(
+          appointmentId,
+          prestationId,
+          status
+        )
+        handler.handle(appointmentId.value.toString, command).flatMap {
+          case Right(appt) =>
+            IO.pure(UpdatePrestationStatusOutput(appt.get))
+          case Left(NOT_FOUND) => IO.raiseError(AppointmentNotFound())
+          case Left(PRESTATION_NOT_FOUND) =>
+            IO.raiseError(PrestationNotFound())
+          case Left(INVALID_STATUS_CHANGE) =>
+            IO.raiseError(InvalidStatusChange())
+          case Left(error) => IO.raiseError(UserFacingError(error))
+        }
+      end updatePrestationStatus
+
+      override def deletePrestation(
+          appointmentId: AppointmentId,
+          prestationId: PrestationId
+      ): IO[Unit] =
+        val command = DeletePrestationCommand(appointmentId, prestationId)
+        handler.handle(appointmentId.value.toString, command).flatMap {
+          case Right(_) =>
+            IO.unit
+          case Left(NOT_FOUND) => IO.raiseError(AppointmentNotFound())
+          case Left(PRESTATION_NOT_FOUND) =>
+            IO.raiseError(PrestationNotFound())
+          case Left(error) => IO.raiseError(UserFacingError(error))
+        }
+      end deletePrestation
 
       override def getAppointment(
           appointmentId: AppointmentId

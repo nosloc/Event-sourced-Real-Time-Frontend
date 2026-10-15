@@ -205,7 +205,8 @@ object Seed:
       List(therapist.therapistId),
       Nil,
       AppointmentType.INDIVIDUAL,
-      timeRange
+      timeRange,
+      List.empty[Prestation]
     )
 
   private val fixedAppointments: List[Appointment] = List(
@@ -324,7 +325,8 @@ object Seed:
             List(therapist.therapistId),
             Nil,
             AppointmentType.INDIVIDUAL,
-            TimeRange(timestamp(day, start), timestamp(day, end))
+            TimeRange(timestamp(day, start), timestamp(day, end)),
+            List.empty[Prestation]
           )
         )
       }

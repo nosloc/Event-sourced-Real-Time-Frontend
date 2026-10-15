@@ -68,7 +68,7 @@ class CommandHandlerSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
       yield (result, stored, shown)
 
     test.asserting { case (result, stored, shown) =>
-      val expected = Appointment(id, therapists, patients, kind, morning)
+      val expected = Appointment(id, therapists, patients, kind, morning, Nil)
       result shouldBe Right(Some(expected))
       stored shouldBe List(AppointmentCreated(id, therapists, patients, kind, morning))
       shown shouldBe Some(expected)
@@ -170,6 +170,47 @@ class CommandHandlerSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
         .foldLeft(Option.empty[Appointment])(appointmentModel.evolve)
 
       replayed shouldBe shown
-      replayed shouldBe Some(Appointment(id, therapists, patients, kind, afternoon))
+      replayed shouldBe Some(Appointment(id, therapists, patients, kind, afternoon, Nil))
+    }
+  }
+
+  it should "give a view equal to replaying the events of the prestations" in {
+    val id = newId()
+    val prestationId = PrestationId(UUID.randomUUID())
+    val test =
+      for
+        s <- setup
+        _ <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapists, patients, kind, morning))
+        _ <- s.handler.handle(tag(id), CreatePrestationCommand(id, prestationId, "Consultation", 120.0f, 1))
+        _ <- s.handler.handle(tag(id), UpdatePrestationStatusCommand(id, prestationId, PrestationStatus.BILLED))
+        stored <- s.store.load(tag(id))
+        shown <- s.viewer.getState(tag(id))
+      yield (stored, shown)
+
+    test.asserting { case (stored, shown) =>
+      val replayed = stored
+        .collect { case e: AppointmentEvent => e }
+        .foldLeft(Option.empty[Appointment])(appointmentModel.evolve)
+
+      stored should have size 3
+      replayed shouldBe shown
+      replayed.map(_.prestations.map(_.status)) shouldBe Some(List(PrestationStatus.BILLED))
+    }
+  }
+
+  it should "store nothing when a prestation command is refused" in {
+    val id = newId()
+    val prestationId = PrestationId(UUID.randomUUID())
+    val test =
+      for
+        s <- setup
+        _ <- s.handler.handle(tag(id), CreateAppointmentCommand(id, therapists, patients, kind, morning))
+        refused <- s.handler.handle(tag(id), UpdatePrestationStatusCommand(id, prestationId, PrestationStatus.BILLED))
+        stored <- s.store.load(tag(id))
+      yield (refused, stored)
+
+    test.asserting { case (refused, stored) =>
+      refused shouldBe Left(PRESTATION_NOT_FOUND)
+      stored should have size 1
     }
   }

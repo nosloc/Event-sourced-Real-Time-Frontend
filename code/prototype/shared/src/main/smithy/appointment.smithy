@@ -16,6 +16,9 @@ service AppointmentService {
         DeleteAppointment
         UpdateAppointment
         GetAppointment
+        CreatePrestation
+        DeletePrestation
+        UpdatePrestationStatus
     ]
     errors: [
         Unauthorized
@@ -82,7 +85,39 @@ operation GetAppointment {
     ]
 }
 
+@http(method: "POST", uri: "/api/appointments/{appointmentId}/prestations", code: 201)
+operation CreatePrestation {
+    input: CreatePrestationInput
+    output: CreatePrestationOutput
+    errors: [
+        AppointmentNotFound
+        InvalidPrestation
+    ]
+}
+
+@idempotent
+@http(method: "DELETE", uri: "/api/appointments/{appointmentId}/prestations/{prestationId}", code: 204)
+operation DeletePrestation {
+    input: DeletePrestationInput
+    errors: [
+        AppointmentNotFound
+        PrestationNotFound
+    ]
+}
+
+@idempotent
+@http(method: "PUT", uri: "/api/appointments/{appointmentId}/prestations/{prestationId}/status", code: 200)
+operation UpdatePrestationStatus {
+    input: UpdatePrestationStatusInput
+    output: UpdatePrestationStatusOutput
+    errors: [
+        AppointmentNotFound
+        PrestationNotFound
+        InvalidStatusChange
+    ]
+}
 // enums
+
 enum AppointmentType {
     NEW_PATIENT
     INDIVIDUAL
@@ -91,11 +126,21 @@ enum AppointmentType {
     GROUP
 }
 
+enum PrestationStatus {
+    TO_BILL
+    BILLED
+    PAID
+    CANCELLED
+}
+
 // Definitions
 @uuidFormat
 string AppointmentId
 
+@uuidFormat
+string PrestationId
 // Structures
+
 list Appointments {
     member: Appointment
 }
@@ -218,6 +263,66 @@ structure GetAppointmentOutput {
     appointment: Appointment
 }
 
+structure CreatePrestationInput {
+    @httpLabel
+    @required
+    appointmentId: AppointmentId
+
+    @required
+    label: String
+
+    @required
+    quantity: Integer
+
+    @required
+    unitPrice: Float
+}
+
+structure CreatePrestationOutput {
+    @required
+    appointment: Appointment
+}
+
+structure DeletePrestationInput {
+    @httpLabel
+    @required
+    appointmentId: AppointmentId
+
+    @httpLabel
+    @required
+    prestationId: PrestationId
+}
+
+structure UpdatePrestationStatusInput {
+    @httpLabel
+    @required
+    appointmentId: AppointmentId
+
+    @httpLabel
+    @required
+    prestationId: PrestationId
+
+    @required
+    status: PrestationStatus
+}
+
+structure UpdatePrestationStatusOutput {
+    @required
+    appointment: Appointment
+}
+
+@error("client")
+@httpError(404)
+structure PrestationNotFound {}
+
+@error("client")
+@httpError(400)
+structure InvalidPrestation {}
+
+@error("client")
+@httpError(409)
+structure InvalidStatusChange {}
+
 structure TimeRange {
     @required
     start: Timestamp
@@ -241,4 +346,31 @@ structure Appointment {
 
     @required
     timeRange: TimeRange
+
+    @required
+    prestations: Prestations
+}
+
+structure Prestation {
+    @required
+    appointmentId: AppointmentId
+
+    @required
+    prestationId: PrestationId
+
+    @required
+    label: String
+
+    @required
+    quantity: Integer
+
+    @required
+    unitPrice: Float
+
+    @required
+    status: PrestationStatus
+}
+
+list Prestations {
+    member: Prestation
 }

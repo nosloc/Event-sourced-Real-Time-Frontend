@@ -2,6 +2,7 @@ package prototype.server.core.appointment
 
 import prototype.server.eventStore.*
 import prototype.server.core.appointment.appointmentModel.*
+import prototype.api.*
 
 class AppointmentDecider
     extends Decider[
@@ -80,9 +81,77 @@ class AppointmentDecider
             )
           case None =>
             Left(NOT_FOUND)
+      case CreatePrestationCommand(
+            appointmentId,
+            prestationId,
+            label,
+            unitPrice,
+            quantity
+          ) =>
+        state match
+          case Some(_) =>
+            if label.isBlank || unitPrice < 0 || unitPrice.isNaN || unitPrice.isInfinite || quantity <= 0
+            then Left(INVALID_PRESTATION)
+            else
+              Right(
+                List(
+                  PrestationCreated(
+                    appointmentId,
+                    prestationId,
+                    label,
+                    unitPrice,
+                    quantity
+                  )
+                )
+              )
+          case None =>
+            Left(NOT_FOUND)
+      case UpdatePrestationStatusCommand(
+            appointmentId,
+            prestationId,
+            status
+          ) =>
+        state match
+          case Some(appt) =>
+            val prestationOpt =
+              appt.prestations.find(_.prestationId == prestationId)
+            prestationOpt match
+              case Some(prestation) =>
+                if verifyStatusChange(prestation.status, status) then
+
+                  Right(
+                    List(
+                      PrestationStatusUpdated(
+                        appointmentId,
+                        prestationId,
+                        status
+                      )
+                    )
+                  )
+                else Left(INVALID_STATUS_CHANGE)
+              case None => Left(PRESTATION_NOT_FOUND)
+          case None =>
+            Left(NOT_FOUND)
+      case DeletePrestationCommand(appointmentId, prestationId) =>
+        state match
+          case Some(appt) =>
+            if appt.prestations.exists(_.prestationId == prestationId) then
+              Right(
+                List(
+                  PrestationDeleted(
+                    appointmentId,
+                    prestationId
+                  )
+                )
+              )
+            else Left(PRESTATION_NOT_FOUND)
+          case None =>
+            Left(NOT_FOUND)
+
   end decide
 
   def evolve(
       state: AppointmentState,
       event: AppointmentEvent
   ) = appointmentModel.evolve(state, event)
+  end evolve

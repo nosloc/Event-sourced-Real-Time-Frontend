@@ -37,7 +37,7 @@ class AppointmentDeciderSpec extends AnyFlatSpec with Matchers:
   ) = CreateAppointmentCommand(id, ths, pts, kind, r)
 
   private val existing: AppointmentState =
-    Some(Appointment(id, therapists, patients, kind, morning))
+    Some(Appointment(id, therapists, patients, kind, morning, Nil))
 
   private val noAppointment: AppointmentState = None
 
@@ -168,7 +168,7 @@ class AppointmentDeciderSpec extends AnyFlatSpec with Matchers:
       .map(_.foldLeft(noAppointment)(decider.evolve))
 
     afterCreate shouldBe Right(
-      Some(Appointment(id, therapists, patients, kind, morning))
+      Some(Appointment(id, therapists, patients, kind, morning, Nil))
     )
 
     val afterUpdate = afterCreate.flatMap(state =>
@@ -178,10 +178,150 @@ class AppointmentDeciderSpec extends AnyFlatSpec with Matchers:
     )
 
     afterUpdate shouldBe Right(
-      Some(Appointment(id, therapists, patients, kind, afternoon))
+      Some(Appointment(id, therapists, patients, kind, afternoon, Nil))
     )
   }
 
   "the decider" should "start from no appointment" in {
     decider.initialState shouldBe None
+  }
+
+  // --- prestations --------------------------------------------------------
+
+  private val prestationId =
+    PrestationId(UUID.fromString("5a3c9a7e-0d1f-4c58-8f0e-6c0a3d9b2a11"))
+  private val otherPrestationId =
+    PrestationId(UUID.fromString("7b1d2c3e-4f50-4a61-9b72-8c93a4b5c6d7"))
+
+  private def prestation(
+      prestationId: PrestationId,
+      status: PrestationStatus
+  ): Prestation =
+    Prestation(id, prestationId, "Consultation", 1, 120.0f, status)
+
+  // The existing appointment, holding one prestation in the given status
+  private def withPrestation(status: PrestationStatus): AppointmentState =
+    existing.map(_.copy(prestations = List(prestation(prestationId, status))))
+
+  private def addPrestation(
+      label: String = "Consultation",
+      quantity: Int = 1,
+      unitPrice: Float = 120.0f,
+      state: AppointmentState = existing
+  ) =
+    decider.decide(
+      state,
+      CreatePrestationCommand(id, prestationId, label, unitPrice, quantity)
+    )
+
+  "decide, for a create prestation command," should "produce PrestationCreated when the appointment exists" in {
+    addPrestation(label = "Consultation", quantity = 2, unitPrice = 85.5f) shouldBe
+      Right(List(PrestationCreated(id, prestationId, "Consultation", 85.5f, 2)))
+  }
+
+  it should "reject it with NOT_FOUND when the appointment does not exist" in {
+    addPrestation(state = noAppointment) shouldBe Left(NOT_FOUND)
+  }
+
+  it should "accept a price of zero" in {
+    addPrestation(unitPrice = 0.0f).isRight shouldBe true
+  }
+
+  it should "reject an empty label" in {
+    addPrestation(label = "") shouldBe Left(INVALID_PRESTATION)
+  }
+
+  it should "reject a label of spaces only" in {
+    addPrestation(label = "   ") shouldBe Left(INVALID_PRESTATION)
+  }
+
+  it should "reject a quantity of zero" in {
+    addPrestation(quantity = 0) shouldBe Left(INVALID_PRESTATION)
+  }
+
+  it should "reject a negative quantity" in {
+    addPrestation(quantity = -1) shouldBe Left(INVALID_PRESTATION)
+  }
+
+  it should "reject a negative price" in {
+    addPrestation(unitPrice = -0.5f) shouldBe Left(INVALID_PRESTATION)
+  }
+
+  it should "reject a price that is not a number" in {
+    addPrestation(unitPrice = Float.NaN) shouldBe Left(INVALID_PRESTATION)
+  }
+
+  "decide, for an update prestation status command," should "produce PrestationStatusUpdated for an allowed change" in {
+    decider.decide(
+      withPrestation(PrestationStatus.TO_BILL),
+      UpdatePrestationStatusCommand(id, prestationId, PrestationStatus.BILLED)
+    ) shouldBe Right(
+      List(PrestationStatusUpdated(id, prestationId, PrestationStatus.BILLED))
+    )
+  }
+
+  it should "reject a change that is not allowed with INVALID_STATUS_CHANGE" in {
+    decider.decide(
+      withPrestation(PrestationStatus.TO_BILL),
+      UpdatePrestationStatusCommand(id, prestationId, PrestationStatus.PAID)
+    ) shouldBe Left(INVALID_STATUS_CHANGE)
+  }
+
+  it should "reject any change from a final status" in {
+    for
+      from <- List(PrestationStatus.PAID, PrestationStatus.CANCELLED)
+      to <- PrestationStatus.values
+    do
+      decider.decide(
+        withPrestation(from),
+        UpdatePrestationStatusCommand(id, prestationId, to)
+      ) shouldBe Left(INVALID_STATUS_CHANGE)
+  }
+
+  it should "agree with verifyStatusChange for every pair of statuses" in {
+    for
+      from <- PrestationStatus.values
+      to <- PrestationStatus.values
+    do
+      val result = decider.decide(
+        withPrestation(from),
+        UpdatePrestationStatusCommand(id, prestationId, to)
+      )
+      result.isRight shouldBe verifyStatusChange(from, to)
+  }
+
+  it should "reject it with PRESTATION_NOT_FOUND for an unknown prestation" in {
+    decider.decide(
+      withPrestation(PrestationStatus.TO_BILL),
+      UpdatePrestationStatusCommand(id, otherPrestationId, PrestationStatus.BILLED)
+    ) shouldBe Left(PRESTATION_NOT_FOUND)
+  }
+
+  it should "reject it with NOT_FOUND when the appointment does not exist" in {
+    decider.decide(
+      noAppointment,
+      UpdatePrestationStatusCommand(id, prestationId, PrestationStatus.BILLED)
+    ) shouldBe Left(NOT_FOUND)
+  }
+
+  "decide, for a delete prestation command," should "produce PrestationDeleted whatever the status" in {
+    for status <- PrestationStatus.values do
+      decider.decide(
+        withPrestation(status),
+        DeletePrestationCommand(id, prestationId)
+      ) shouldBe Right(List(PrestationDeleted(id, prestationId)))
+  }
+
+  it should "reject it with PRESTATION_NOT_FOUND for an unknown prestation" in {
+    decider.decide(
+      withPrestation(PrestationStatus.TO_BILL),
+      DeletePrestationCommand(id, otherPrestationId)
+    ) shouldBe Left(PRESTATION_NOT_FOUND)
+  }
+
+  it should "reject it with NOT_FOUND when the appointment does not exist" in {
+    decider.decide(
+      noAppointment,
+      DeletePrestationCommand(id, prestationId)
+    ) shouldBe Left(NOT_FOUND)
   }

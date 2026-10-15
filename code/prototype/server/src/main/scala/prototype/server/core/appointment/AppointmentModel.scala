@@ -22,6 +22,22 @@ object appointmentModel:
   ) extends AppointmentCommand
   case class DeleteAppointmentCommand(appointmentId: AppointmentId)
       extends AppointmentCommand
+  case class CreatePrestationCommand(
+      appointmentId: AppointmentId,
+      prestationId: PrestationId,
+      label: String,
+      unitPrice: Float,
+      quantity: Int
+  ) extends AppointmentCommand
+  case class UpdatePrestationStatusCommand(
+      appointmentId: AppointmentId,
+      prestationId: PrestationId,
+      status: PrestationStatus
+  ) extends AppointmentCommand
+  case class DeletePrestationCommand(
+      appointmentId: AppointmentId,
+      prestationId: PrestationId
+  ) extends AppointmentCommand
 
   sealed trait AppointmentEvent extends Event
   case class AppointmentCreated(
@@ -40,11 +56,30 @@ object appointmentModel:
   ) extends AppointmentEvent
   case class AppointmentDeleted(appointmentId: AppointmentId)
       extends AppointmentEvent
+  case class PrestationCreated(
+      appointmentId: AppointmentId,
+      prestationId: PrestationId,
+      label: String,
+      unitPrice: Float,
+      quantity: Int
+  ) extends AppointmentEvent
+  case class PrestationStatusUpdated(
+      appointmentId: AppointmentId,
+      prestationId: PrestationId,
+      status: PrestationStatus
+  ) extends AppointmentEvent
+  case class PrestationDeleted(
+      appointmentId: AppointmentId,
+      prestationId: PrestationId
+  ) extends AppointmentEvent
 
   sealed trait AppointmentError extends ErrorCode
   case object INVALID_TIME_RANGE extends AppointmentError
   case object NO_THERAPIST extends AppointmentError
   case object ALREADY_EXISTS extends AppointmentError
+  case object PRESTATION_NOT_FOUND extends AppointmentError
+  case object INVALID_STATUS_CHANGE extends AppointmentError
+  case object INVALID_PRESTATION extends AppointmentError
   case object NOT_FOUND extends AppointmentError
 
   type AppointmentState = Option[Appointment]
@@ -58,6 +93,17 @@ object appointmentModel:
 
   def isValidRange(timeRange: TimeRange): Boolean =
     timeRange.end.toInstant.isAfter(timeRange.start.toInstant)
+
+  def verifyStatusChange(
+      currentStatus: PrestationStatus,
+      newStatus: PrestationStatus
+  ): Boolean =
+    (currentStatus, newStatus) match
+      case (PrestationStatus.TO_BILL, PrestationStatus.BILLED)    => true
+      case (PrestationStatus.BILLED, PrestationStatus.PAID)       => true
+      case (PrestationStatus.BILLED, PrestationStatus.CANCELLED)  => true
+      case (PrestationStatus.TO_BILL, PrestationStatus.CANCELLED) => true
+      case _                                                      => false
 
   // We put the evolve function here since it is the same for the decider and the viewer. Otherwise, we could have put it in the decider and the viewer separately.
   def evolve(
@@ -78,7 +124,8 @@ object appointmentModel:
             therapistIds,
             patientIds,
             apptType,
-            timeRange
+            timeRange,
+            List.empty[Prestation]
           )
         )
       case AppointmentUpdated(
@@ -97,3 +144,42 @@ object appointmentModel:
           )
         )
       case AppointmentDeleted(_) => None
+      case PrestationCreated(
+            appointmentId,
+            prestationId,
+            label,
+            unitPrice,
+            quantity
+          ) =>
+        state.map(s =>
+          s.copy(
+            prestations = s.prestations :+ Prestation(
+              s.appointmentId,
+              prestationId,
+              label,
+              quantity,
+              unitPrice,
+              PrestationStatus.TO_BILL
+            )
+          )
+        )
+      case PrestationStatusUpdated(
+            appointmentId,
+            prestationId,
+            status
+          ) =>
+        state.map(s =>
+          s.copy(
+            prestations = s.prestations.map { p =>
+              if p.prestationId == prestationId then p.copy(status = status)
+              else p
+            }
+          )
+        )
+      case PrestationDeleted(appointmentId, prestationId) =>
+        state.map(s =>
+          s.copy(
+            prestations =
+              s.prestations.filterNot(_.prestationId == prestationId)
+          )
+        )
