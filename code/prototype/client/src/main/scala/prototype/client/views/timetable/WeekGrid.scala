@@ -10,7 +10,7 @@ object WeekGrid:
   def apply(
       appointmentsS: Signal[WeekAppointments],
       errorS: Signal[Option[Throwable]],
-      loadingS: Signal[Boolean],
+      showSkeletonS: Signal[Boolean],
       currentTimeS: Signal[Double],
       weekDaysS: Signal[List[Date]],
       selectedAppointmentVar: Var[Option[Appointment]],
@@ -34,11 +34,11 @@ object WeekGrid:
       },
       div(
         cls := "skeleton skeleton--grid",
-        hidden <-- loadingS.map(!_)
+        hidden <-- showSkeletonS.map(!_)
       ),
       div(
         cls := "timetable__scroll",
-        hidden <-- loadingS,
+        hidden <-- showSkeletonS,
         table(
           cls := "timetable__table",
           renderTableHeader(weekDaysS, today),
@@ -93,9 +93,9 @@ object WeekGrid:
               ul(
                 children <-- daySignal
                   .map(_.orderedAppointments)
-                  .split(_.appointment.appointmentId) { (_, initialAppt, _) =>
+                  .split(_.appointment.appointmentId) { (_, _, apptS) =>
                     AppointmentBlock(
-                      initialAppt.appointment,
+                      apptS.map(_.appointment),
                       selectedAppointmentVar
                     )
                   },

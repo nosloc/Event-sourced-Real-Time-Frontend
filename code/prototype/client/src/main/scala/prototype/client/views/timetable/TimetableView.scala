@@ -48,8 +48,17 @@ object TimetableView:
           )
       )
 
+    val nonFlickeringAppointments: Var[Option[List[Appointment]]] = Var(None)
+
+    // The placeholder only shows when there is nothing to display yet: the
+    // first load, or a new therapist. A reload keeps the grid on screen.
+    val showSkeletonS: Signal[Boolean] =
+      allAppointments.loadingS
+        .combineWith(nonFlickeringAppointments.signal)
+        .map((loading, kept) => loading && kept.isEmpty)
+
     val appointmentsForCurrentWeekS: Signal[WeekAppointments] =
-      allAppointments.successS
+      nonFlickeringAppointments.signal
         .combineWith(weekDaysS)
         .map { case (appointments, weekDays) =>
           val appointmentsWithDate = appointments
@@ -90,6 +99,11 @@ object TimetableView:
       )
 
     div(
+      nonFlickeringAppointmentsUpdate(
+        nonFlickeringAppointments,
+        allAppointments,
+        selectedTherapistVar
+      ),
       cls := "timetable",
       div(
         cls := "timetable__head",
@@ -103,7 +117,7 @@ object TimetableView:
       WeekGrid(
         appointmentsForCurrentWeekS,
         allAppointments.errorS,
-        allAppointments.loadingS,
+        showSkeletonS,
         currentTimeS,
         weekDaysS,
         selectedAppointmentVar,
@@ -134,3 +148,24 @@ object TimetableView:
       now.getDate().toInt + (dayIndex - sinceMonday)
     )
   end getDayOfCurrentWeek
+
+  private def nonFlickeringAppointmentsUpdate(
+      unflickeredAppointments: Var[Option[List[Appointment]]],
+      allAppointments: ApiCall[List[Appointment]],
+      selectedTherapistVar: Var[String]
+  ): Mod[HtmlElement] =
+    List(
+      allAppointments.stateS --> {
+        case Api.Success(appointments) =>
+          unflickeredAppointments.set(Some(appointments))
+        case Api.Error(_) =>
+          unflickeredAppointments.set(None)
+        case Api.Loading =>
+          // Do nothing, keep the previous value to avoid flickering
+          ()
+      },
+      selectedTherapistVar.distinct --> { _ =>
+        // When the therapist changes, clear the appointments to avoid showing the previous therapist's appointments
+        unflickeredAppointments.set(None)
+      }
+    )
