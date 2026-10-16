@@ -15,6 +15,7 @@ object Routes:
       therapistServiceImpl: TherapistService[IO],
       appointmentServiceImpl: AppointmentService[IO],
       patientServiceImpl: PatientService[IO],
+      dashboardServiceImpl: DashboardService[IO],
       authServiceImpl: AuthService[IO]
   ): Resource[IO, HttpRoutes[IO]] =
     for
@@ -42,6 +43,12 @@ object Routes:
         )
         .middleware(middleware)
         .resource
+      dashboards <- SimpleRestJsonBuilder
+        .routes(
+          dashboardServiceImpl
+        )
+        .middleware(middleware)
+        .resource
       auth <- SimpleRestJsonBuilder
         .routes(
           authServiceImpl
@@ -49,4 +56,4 @@ object Routes:
         .middleware(middleware)
         .resource
 
-    yield companies <+> therapists <+> appointments <+> staticRoutes <+> auth <+> patients
+    yield companies <+> therapists <+> appointments <+> staticRoutes <+> auth <+> patients <+> dashboards

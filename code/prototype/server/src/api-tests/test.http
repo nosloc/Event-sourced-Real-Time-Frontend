@@ -119,3 +119,29 @@ Authorization: Bearer {{token}}
 # expected: 200 + the list of patients
 GET http://127.0.0.1:9000/api/patients
 Authorization: Bearer {{token}}
+
+###
+# ---- Dashboards (replace <company id> with an id from GET /api/companies) ----
+# expected: 200 + the directory figures of the company
+GET http://127.0.0.1:9000/api/companies/1ce778ab-5911-434e-a769-5e2098d717a7/dashboards/directory
+Authorization: Bearer {{token}}
+
+###
+# expected: 200 + the activity figures of the week that contains the date
+GET http://127.0.0.1:9000/api/companies/1ce778ab-5911-434e-a769-5e2098d717a7/dashboards/activity?unit=WEEK&date=2026-10-12
+Authorization: Bearer {{token}}
+
+###
+# expected: 200 + the activity figures of the month that contains the date
+GET http://127.0.0.1:9000/api/companies/1ce778ab-5911-434e-a769-5e2098d717a7/dashboards/activity?unit=MONTH&date=2026-10-12
+Authorization: Bearer {{token}}
+
+###
+# expected: 200 + the billing figures of the company
+GET http://127.0.0.1:9000/api/companies/1ce778ab-5911-434e-a769-5e2098d717a7/dashboards/billing
+Authorization: Bearer {{token}}
+
+###
+# expected: 404 (unknown company)
+GET http://127.0.0.1:9000/api/companies/00000000-0000-4000-8000-000000000000/dashboards/directory
+Authorization: Bearer {{token}}
