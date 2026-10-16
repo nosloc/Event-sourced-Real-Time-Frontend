@@ -40,13 +40,17 @@ object PopoverPicker:
     *   the rows, they may arrive later (empty list until loaded)
     * @param fallbackLabel
     *   what the closed button shows while the selected value is not in `items`
+    * @param locked
+    *   shows the picker as it looks, but it cannot be opened or changed (for a
+    *   value that is fixed, like the status of a prestation being created)
     */
   def apply[V](
       id: String,
       label: String,
       items: Signal[List[Item[V]]],
       selectedVar: Var[V],
-      fallbackLabel: V => String = (v: V) => v.toString
+      fallbackLabel: V => String = (v: V) => v.toString,
+      locked: Boolean = false
   ): HtmlElement =
     val listId = s"picker-list-$id"
     val anchor = s"--picker-$id"
@@ -65,27 +69,31 @@ object PopoverPicker:
         typ := "button",
         cls := "picker__button",
         anchorName := anchor,
-        popoverTarget := listId,
+        Option.when(!locked)(popoverTarget := listId),
+        disabled := locked,
         span(cls := "picker__label", label),
         span(cls := "picker__value", child.text <-- buttonLabelS)
       ),
-      div(
-        idAttr := listId,
-        cls := "picker__list",
-        positionAnchor := anchor,
-        popover := "auto",
-        children <-- items.map(_.map { item =>
-          button(
-            typ := "button",
-            cls := "picker__item",
-            cls("picker__item--selected") <-- selectedVar.signal
-              .map(_ == item.value),
-            popoverTarget := listId,
-            popoverTargetAction := "hide",
-            onClick.mapTo(item.value) --> selectedVar.writer,
-            span(cls := "picker__name", item.name),
-            item.hint.map(h => span(cls := "picker__id", s"($h)"))
-          )
-        })
+      // a locked picker has nothing to open
+      Option.when(!locked)(
+        div(
+          idAttr := listId,
+          cls := "picker__list",
+          positionAnchor := anchor,
+          popover := "auto",
+          children <-- items.map(_.map { item =>
+            button(
+              typ := "button",
+              cls := "picker__item",
+              cls("picker__item--selected") <-- selectedVar.signal
+                .map(_ == item.value),
+              popoverTarget := listId,
+              popoverTargetAction := "hide",
+              onClick.mapTo(item.value) --> selectedVar.writer,
+              span(cls := "picker__name", item.name),
+              item.hint.map(h => span(cls := "picker__id", s"($h)"))
+            )
+          })
+        )
       )
     )

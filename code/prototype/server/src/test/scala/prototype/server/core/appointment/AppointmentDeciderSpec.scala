@@ -5,6 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import prototype.api.*
 import prototype.server.core.appointment.appointmentModel.*
+import prototype.StatusTransitions.verifyStatusChange
 import smithy4s.time.Timestamp
 
 /** `decide` turns a command into events (or a rejection) given the current
@@ -249,6 +250,11 @@ class AppointmentDeciderSpec extends AnyFlatSpec with Matchers:
 
   it should "reject a price that is not a number" in {
     addPrestation(unitPrice = Float.NaN) shouldBe Left(INVALID_PRESTATION)
+  }
+
+  it should "reject an infinite price" in {
+    addPrestation(unitPrice = Float.PositiveInfinity) shouldBe
+      Left(INVALID_PRESTATION)
   }
 
   "decide, for an update prestation status command," should "produce PrestationStatusUpdated for an allowed change" in {

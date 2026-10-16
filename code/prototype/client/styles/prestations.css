@@ -1,0 +1,177 @@
+/* ------------------------------------------------------------------ */
+/* Prestations window (inside the appointment modal)                    */
+/* Classes set by the view: prestations, prestations__scroll,           */
+/* prestations__table, prestations__add, prestations__row-actions,      */
+/* num, btn--small, btn--icon, btn--danger.                             */
+/* ------------------------------------------------------------------ */
+
+/* The table needs more room than the details: widen the dialog that holds it */
+.modal__dialog:has(.prestations) {
+  width: min(760px, 100%);
+}
+
+/* Only on a narrow window does the table scroll sideways, inside its frame */
+.prestations__scroll {
+  overflow-x: auto;
+  margin-bottom: var(--space-4);
+}
+
+.prestations__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 14px;
+}
+
+/* Fixed column widths: the label takes what is left, so the add row fits */
+.prestations__table th:nth-child(2),
+.prestations__table td:nth-child(2) {
+  width: 72px;
+}
+
+.prestations__table th:nth-child(3),
+.prestations__table td:nth-child(3) {
+  width: 104px;
+}
+
+.prestations__table th:nth-child(4),
+.prestations__table td:nth-child(4) {
+  width: 88px;
+}
+
+.prestations__table th:nth-child(5),
+.prestations__table td:nth-child(5) {
+  width: 172px;
+}
+
+.prestations__table th:nth-child(6),
+.prestations__table td:nth-child(6) {
+  width: 88px;
+}
+
+.prestations__table th,
+.prestations__table td {
+  padding: var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prestations__table thead th {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.prestations__table .num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* The new line: a tinted row with inputs that fill their cell */
+.prestations__add td {
+  background: var(--accent-soft);
+}
+
+.prestations__add input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+}
+
+.prestations__add input[type='number'] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.prestations__add input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Icon buttons side by side in one cell. The cell stays a table cell, so the
+   row lines run unbroken. */
+.prestations__table td.prestations__row-actions {
+  text-align: right;
+  overflow: visible;
+}
+
+.prestations__row-actions .btn + .btn {
+  margin-left: var(--space-1);
+}
+
+/* The buttons under the table sit side by side with a gap */
+.prestations > .btn {
+  margin-right: var(--space-2);
+}
+
+.btn--small {
+  padding: var(--space-1) var(--space-2);
+  font-size: 13px;
+}
+
+.btn--icon.btn--small {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+}
+
+.btn .icon {
+  display: block;
+  flex: none;
+}
+
+/* Delete: neutral until hovered, then the error colour */
+.btn--danger:hover:not(:disabled) {
+  border-color: var(--error);
+  background: var(--error-soft);
+  color: var(--error);
+}
+
+.prestations__empty {
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Status dropdown and, once something is picked, a validate button, side
+   by side: the dropdown stretches, the button stays its size. The cell itself
+   stays a table cell (so the row lines run unbroken and it is centred like the
+   others); the flex layout is on the box inside it. */
+.prestations__status {
+  overflow: visible;
+}
+
+.prestations__status-box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.prestations__status-box .picker {
+  flex: 1;
+  min-width: 0;
+  /* .modal__dialog .picker (picker.css) adds a bottom margin for form rows;
+     in a centred row it would push the button up by half of it */
+  margin-bottom: 0;
+}
+
+/* A plain icon button is 32px tall (see .btn--icon.btn--small); match that so
+   the dropdown is not taller than the row's other buttons */
+.prestations__status-box .picker__button {
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: var(--space-1) var(--space-2);
+}
+
+.prestations__status-box .btn--icon {
+  flex: none;
+}

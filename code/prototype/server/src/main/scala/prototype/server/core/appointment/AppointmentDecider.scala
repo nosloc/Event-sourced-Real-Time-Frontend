@@ -3,6 +3,7 @@ package prototype.server.core.appointment
 import prototype.server.eventStore.*
 import prototype.server.core.appointment.appointmentModel.*
 import prototype.api.*
+import prototype.StatusTransitions.verifyStatusChange
 
 class AppointmentDecider
     extends Decider[

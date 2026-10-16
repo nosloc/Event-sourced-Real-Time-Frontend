@@ -18,34 +18,52 @@ object AppointmentModal:
       .map {
         _.map(appt => {
           val editingVar: Var[Boolean] = Var(false)
-          val titleS: Signal[String] = editingVar.signal.map {
-            case true  => "Edit Appointment"
-            case false => "Appointment details"
-          }
+          val showPrestationsVar: Var[Boolean] = Var(false)
+          val prestationsVar: Var[List[Prestation]] = Var(appt.prestations)
+          val titleS: Signal[String] =
+            editingVar.signal.combineWith(showPrestationsVar).map {
+              case (_, true)  => "Appointment's prestations"
+              case (true, _)  => "Edit Appointment"
+              case (false, _) => "Appointment details"
+            }
           Modal(
             titleS = titleS,
-            onClose = () => selectedAppointmentVar.set(None)
+            onClose = () => {
+              if prestationsVar.now() != appt.prestations then
+                reloadVar.update(_ + 1)
+              selectedAppointmentVar.set(None)
+            }
           )(
-            child <-- editingVar.signal.map(isEditing =>
-              if !isEditing then
-                renderRows(
-                  selectedAppointmentVar,
-                  reloadVar,
-                  appt,
-                  editingVar,
-                  therapistListS,
-                  patientListS
-                )
-              else
-                renderEditForm(
-                  selectedAppointmentVar,
-                  reloadVar,
-                  editingVar,
-                  appt,
-                  therapistListS,
-                  patientListS
-                )
-            )
+            child <-- editingVar.signal
+              .combineWith(showPrestationsVar.signal)
+              .map((isEditing, showPrestations) =>
+                if !isEditing then
+                  if showPrestations then
+                    PrestationsView(
+                      appt.appointmentId,
+                      prestationsVar,
+                      showPrestationsVar
+                    )
+                  else
+                    renderRows(
+                      selectedAppointmentVar,
+                      reloadVar,
+                      appt,
+                      editingVar,
+                      showPrestationsVar,
+                      therapistListS,
+                      patientListS
+                    )
+                else
+                  renderEditForm(
+                    selectedAppointmentVar,
+                    reloadVar,
+                    editingVar,
+                    appt,
+                    therapistListS,
+                    patientListS
+                  )
+              )
           )
         })
       }
@@ -56,6 +74,7 @@ object AppointmentModal:
       reloadVar: Var[Int],
       appt: Appointment,
       editingVar: Var[Boolean],
+      showPrestationsVar: Var[Boolean],
       therapistListS: Signal[List[Therapist]],
       patientListS: Signal[List[Patient]]
   ): HtmlElement =
@@ -102,7 +121,13 @@ object AppointmentModal:
         ),
         emptyText = "None"
       ),
-      renderModalActions(appt, selectedAppointmentVar, reloadVar, editingVar)
+      renderModalActions(
+        appt,
+        selectedAppointmentVar,
+        reloadVar,
+        editingVar,
+        showPrestationsVar
+      )
     )
   end renderRows
 
@@ -138,7 +163,8 @@ object AppointmentModal:
       appointment: Appointment,
       selectedAppointmentVar: Var[Option[Appointment]],
       reloadVar: Var[Int],
-      editingVar: Var[Boolean]
+      editingVar: Var[Boolean],
+      prestationsVar: Var[Boolean]
   ): HtmlElement =
     val loadingVar: Var[Boolean] = Var(false)
     val errorVar: Var[Option[String]] = Var(None)
@@ -147,6 +173,11 @@ object AppointmentModal:
       cls := "modal__actions",
       child.maybe <-- errorVar.signal.map(
         _.map(msg => div(cls := "banner banner--error", msg))
+      ),
+      button(
+        cls := "btn",
+        "Prestations",
+        onClick --> { _ => prestationsVar.set(true) }
       ),
       button(
         cls := "btn",

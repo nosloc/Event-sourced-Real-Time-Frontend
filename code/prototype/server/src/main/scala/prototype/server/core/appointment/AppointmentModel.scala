@@ -94,17 +94,6 @@ object appointmentModel:
   def isValidRange(timeRange: TimeRange): Boolean =
     timeRange.end.toInstant.isAfter(timeRange.start.toInstant)
 
-  def verifyStatusChange(
-      currentStatus: PrestationStatus,
-      newStatus: PrestationStatus
-  ): Boolean =
-    (currentStatus, newStatus) match
-      case (PrestationStatus.TO_BILL, PrestationStatus.BILLED)    => true
-      case (PrestationStatus.BILLED, PrestationStatus.PAID)       => true
-      case (PrestationStatus.BILLED, PrestationStatus.CANCELLED)  => true
-      case (PrestationStatus.TO_BILL, PrestationStatus.CANCELLED) => true
-      case _                                                      => false
-
   // We put the evolve function here since it is the same for the decider and the viewer. Otherwise, we could have put it in the decider and the viewer separately.
   def evolve(
       state: AppointmentState,

@@ -25,6 +25,20 @@
   background: var(--accent-soft);
 }
 
+/* A locked picker looks the same but does not react */
+.picker__button:disabled {
+  cursor: default;
+}
+
+.picker__button:disabled:hover {
+  border-color: var(--line-input);
+  background: var(--panel);
+}
+
+.picker__button:disabled::after {
+  opacity: 0.4;
+}
+
 .picker__button:focus-visible,
 .picker__item:focus-visible {
   outline: 2px solid var(--accent);

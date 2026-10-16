@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import prototype.api.PrestationStatus
 import prototype.api.PrestationStatus.*
-import prototype.server.core.appointment.appointmentModel.verifyStatusChange
+import prototype.StatusTransitions.verifyStatusChange
 
 /** The status of a prestation moves forward only: TO_BILL can become BILLED or
   * CANCELLED, BILLED can become PAID or CANCELLED, and PAID and CANCELLED are
