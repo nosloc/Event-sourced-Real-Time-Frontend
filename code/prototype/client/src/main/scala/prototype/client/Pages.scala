@@ -5,5 +5,6 @@ object Pages:
   case object LoginPage extends Page("Login")
   case object HomePage extends Page("Home")
   case object TimetablePage extends Page("Timetable")
+  case object AdminPage extends Page("Admin")
   case object NotFoundPage extends Page("Not Found")
 end Pages

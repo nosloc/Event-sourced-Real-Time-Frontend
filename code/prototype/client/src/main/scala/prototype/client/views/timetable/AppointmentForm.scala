@@ -7,7 +7,7 @@ import prototype.client.Api.ApiCall
 import prototype.client.Api
 import scala.scalajs.js.Date
 import smithy4s.time.Timestamp
-import prototype.client.views.components.{PopoverPicker, PopoverMultiPicker}
+import prototype.client.views.components.{FormRow, PopoverPicker, PopoverMultiPicker}
 
 object AppointmentForm:
   // Used to represent the form state on save
@@ -214,19 +214,6 @@ object AppointmentForm:
     )
   end apply
 
-  private def controlledInput(
-      inputType: String,
-      valueVar: Var[String]
-  ): HtmlElement =
-    input(
-      typ := inputType,
-      controlled(
-        value <-- valueVar.signal,
-        onInput.mapToValue --> valueVar.writer
-      )
-    )
-  end controlledInput
-
   private def renderRow(
       labelText: String,
       inputType: String,
@@ -235,16 +222,11 @@ object AppointmentForm:
       error: AppointmentFormState => Option[String]
   ): HtmlElement =
     // Errors only show after the first submit (see displayError)
-    val errorS = stateVar.signal.map(_.displayError(error))
-    div(
-      cls := "form__row",
-      cls("form__row--error") <-- errorS.map(_.nonEmpty),
-      label(
-        cls := "form__label",
-        span(labelText),
-        controlledInput(inputType, valueVar)
-      ),
-      child.maybe <-- errorS.map(_.map(msg => div(cls := "form__error", msg)))
+    FormRow.input(
+      labelText,
+      inputType,
+      valueVar,
+      stateVar.signal.map(_.displayError(error))
     )
   end renderRow
 

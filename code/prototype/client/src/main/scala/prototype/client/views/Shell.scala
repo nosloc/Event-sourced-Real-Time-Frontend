@@ -5,6 +5,7 @@ import prototype.client.Pages.Page
 import prototype.client.AppRouter
 import prototype.client.Pages.HomePage
 import prototype.client.Pages.TimetablePage
+import prototype.client.Pages.AdminPage
 import prototype.client.Session
 import prototype.client.Api
 import prototype.client.Api.ApiCall
@@ -41,7 +42,8 @@ object Shell:
     navTag(
       cls("topbar__nav"),
       renderLink("Home", HomePage),
-      renderLink("Timetable", TimetablePage)
+      renderLink("Timetable", TimetablePage),
+      renderLink("Admin", AdminPage)
     )
 
   private def renderLink(label: String, page: Page): HtmlElement =

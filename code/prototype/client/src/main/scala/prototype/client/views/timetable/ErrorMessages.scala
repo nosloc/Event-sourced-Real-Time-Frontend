@@ -26,6 +26,13 @@ object ErrorMessages:
         "A prestation needs a label, a quantity of at least 1 and a price of 0 or more."
       case InvalidStatusChange() => "This status change is not allowed."
       case PrestationNotFound()  => "The prestation was not found."
+      case CompanyAlreadyExists() =>
+        "A company with this name already exists."
+      case TherapistAlreadyExists() =>
+        "This trigram is already used by another therapist."
+      case PatientAlreadyExists() =>
+        "A patient with the same name and date of birth already exists."
+      case CompanyNotFound()     => "The company was not found."
       case InvalidInput(message) => message
 
       case _ => s"An unexpected error occurred: ${error.getMessage}"

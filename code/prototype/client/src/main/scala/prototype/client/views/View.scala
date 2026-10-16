@@ -2,6 +2,7 @@ package prototype.client.views
 
 import com.raquo.laminar.api.L.*
 import prototype.client.Pages.*
+import prototype.client.views.admin.AdminView
 import prototype.client.views.timetable.*
 
 import prototype.client.{AppRouter, Session}
@@ -10,13 +11,13 @@ object View:
 
   // The router's page and who is logged in. This is the only place that turns
   // "maybe a user" into a plain username: the views below receive a String.
-  // Pages that need a user: HomePage and TimetablePage.
+  // Pages that need a user: HomePage, TimetablePage and AdminPage.
   private val pageAndUserS: Signal[(Page, Option[String])] =
     AppRouter.currentPageSignal.combineWith(Session.currentUserS)
 
   private val effectivePageS: Signal[Page] =
     pageAndUserS.map {
-      case (HomePage | TimetablePage, None) => LoginPage
+      case (HomePage | TimetablePage | AdminPage, None) => LoginPage
       case (page, _)                        => page
     }
 
@@ -31,8 +32,12 @@ object View:
       .handleCase[PageAndUser, String, HtmlElement] {
         case (TimetablePage, Some(username)) => username
       }((username, _) => Shell(TimetableView(username), username))
+      .handleCase[PageAndUser, String, HtmlElement] {
+        case (AdminPage, Some(username)) => username
+      }((username, _) => Shell(AdminView(), username))
       .handleCase[PageAndUser, Unit, HtmlElement] {
-        case (LoginPage, _) | (HomePage | TimetablePage, None) => ()
+        case (LoginPage, _) | (HomePage | TimetablePage | AdminPage, None) =>
+          ()
       }((_, _) => LoginView())
       .handleCase[PageAndUser, Unit, HtmlElement] { case (NotFoundPage, _) =>
         ()

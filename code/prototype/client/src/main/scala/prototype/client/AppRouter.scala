@@ -10,12 +10,14 @@ object AppRouter
         case Pages.LoginPage     => "login"
         case Pages.HomePage      => "home"
         case Pages.TimetablePage => "timetable"
+        case Pages.AdminPage     => "admin"
         case Pages.NotFoundPage  => "notfound"
       },
       deserializePage = {
         case "login"     => Pages.LoginPage
         case "home"      => Pages.HomePage
         case "timetable" => Pages.TimetablePage
+        case "admin"     => Pages.AdminPage
         case _           => Pages.NotFoundPage
       },
       routeFallback = _ => Pages.NotFoundPage
