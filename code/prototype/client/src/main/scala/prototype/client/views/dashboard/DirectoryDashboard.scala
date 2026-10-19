@@ -9,6 +9,7 @@ import prototype.client.Api.ApiCall
 import prototype.client.Api
 import prototype.client.views.components.StatBox
 import prototype.client.views.components.chartJS.*
+import prototype.client.views.timetable.ErrorMessages
 
 object DirectoryDashboard:
   def apply(selectedCompanyS: Signal[Option[UUID]]): HtmlElement =
@@ -37,10 +38,7 @@ object DirectoryDashboard:
             "Loading directory dashboard..."
           )
         case (Api.Error(error), _) =>
-          div(
-            cls := "dash__error",
-            s"Error loading directory dashboard: ${error.getMessage}"
-          )
+          div(cls := "dash__error", ErrorMessages.errorToMessage(error))
         case (Api.Success(data), _) =>
           renderDirectoryDashboard(data)
       }

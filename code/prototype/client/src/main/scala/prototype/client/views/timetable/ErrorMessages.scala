@@ -1,5 +1,6 @@
 package prototype.client.views.timetable
 
+import org.scalajs.dom
 import prototype.api.*
 
 /** An error found by the client itself before anything is sent (for example a
@@ -35,4 +36,10 @@ object ErrorMessages:
       case CompanyNotFound()     => "The company was not found."
       case InvalidInput(message) => message
 
-      case _ => s"An unexpected error occurred: ${error.getMessage}"
+      case _ =>
+        // The user gets a short text; the developer gets the whole error (what
+        // it is, and its stack) in the browser console. Every error shown on
+        // screen goes through here, so this is the one place to log it.
+        dom.console.error(s"Unexpected error: $error")
+        error.printStackTrace()
+        "Something went wrong. Please try again."
