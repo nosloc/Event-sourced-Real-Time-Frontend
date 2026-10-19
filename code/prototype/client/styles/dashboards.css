@@ -1,0 +1,293 @@
+/* ------------------------------------------------------------------ */
+/* Dashboards page                                                      */
+/* ------------------------------------------------------------------ */
+.dashboards__layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+  margin-top: var(--space-4);
+}
+
+/* The list of dashboards on the left */
+.dashboards__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-2);
+  list-style: none;
+}
+
+/* the buttons sit in li elements: let each one fill its row */
+.dashboards__list > li {
+  display: flex;
+}
+
+.dashboards__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.dashboards__item:hover {
+  background: var(--ground);
+}
+
+.dashboards__item--active,
+.dashboards__item--active:hover {
+  background: var(--accent-active);
+  color: var(--on-accent);
+}
+
+.dashboards__item-label {
+  font-weight: 600;
+}
+
+.dashboards__item-blurb {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dashboards__item--active .dashboards__item-blurb {
+  color: var(--on-accent);
+  opacity: 0.85;
+}
+
+/* Title and company drop-down above the chosen dashboard */
+.dashboards__main {
+  min-width: 0;
+}
+
+.dashboards__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.dashboards__title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.select {
+  min-width: 200px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Inside a dashboard (the content of the right-hand side)              */
+/* ------------------------------------------------------------------ */
+.dash {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* The controls above the figures: unit picker, arrows and the period shown */
+.dash__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dash__period {
+  min-width: 11em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* A row of figures: .stat boxes */
+.dash__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+}
+
+.stat__label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stat__value {
+  color: var(--accent-strong);
+  font-size: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cards side by side, stacked when narrow */
+.dash__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.dash__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.dash__card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* A name on the left, a figure on the right, a bar under them */
+.dash__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+}
+
+.dash__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash__value {
+  color: var(--accent-strong);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A small table inside a card: .dash__scroll > table.dash__table */
+.dash__scroll {
+  overflow-x: auto;
+}
+
+.dash__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.dash__table th,
+.dash__table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dash__table thead th {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dash__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Figures in a column: right-aligned, same width digits */
+.dash__table .dash__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Put a width in percent on the fill: style := "width: 40%" */
+.dash__bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+
+.dash__bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.dash__empty {
+  padding: var(--space-6) var(--space-4);
+  color: var(--muted);
+  font-style: italic;
+  text-align: center;
+}
+
+.dash__error {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-control);
+  background: var(--error-soft);
+  color: var(--error);
+}
+
+@media (max-width: 759px) {
+  .dashboards__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* the list turns into a row of buttons above the dashboard */
+  .dashboards__list {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .dashboards__item {
+    flex: 1 0 auto;
+  }
+
+  .dashboards__item-blurb {
+    display: none;
+  }
+}

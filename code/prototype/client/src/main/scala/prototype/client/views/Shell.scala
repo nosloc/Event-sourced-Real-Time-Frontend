@@ -3,9 +3,12 @@ package prototype.client.views
 import com.raquo.laminar.api.L.*
 import prototype.client.Pages.Page
 import prototype.client.AppRouter
-import prototype.client.Pages.HomePage
-import prototype.client.Pages.TimetablePage
-import prototype.client.Pages.AdminPage
+import prototype.client.Pages.{
+  HomePage,
+  TimetablePage,
+  AdminPage,
+  DashboardPage
+}
 import prototype.client.Session
 import prototype.client.Api
 import prototype.client.Api.ApiCall
@@ -43,6 +46,7 @@ object Shell:
       cls("topbar__nav"),
       renderLink("Home", HomePage),
       renderLink("Timetable", TimetablePage),
+      renderLink("Dashboard", DashboardPage),
       renderLink("Admin", AdminPage)
     )
 

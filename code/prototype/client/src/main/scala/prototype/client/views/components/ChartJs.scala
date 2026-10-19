@@ -52,3 +52,14 @@ object chartJS:
 
   private def copyConfig(config: ChartConfig): ChartConfig =
     js.Object.assign(js.Dynamic.literal(), config).asInstanceOf[ChartConfig]
+
+  // For charts of counts: the y axis starts at 0 and has whole numbers only
+  def integerAxisOptions(): js.Object =
+    js.Dynamic.literal(
+      scales = js.Dynamic.literal(
+        y = js.Dynamic.literal(
+          beginAtZero = true,
+          ticks = js.Dynamic.literal(precision = 0)
+        )
+      )
+    )

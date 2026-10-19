@@ -3,6 +3,7 @@ package prototype.client.views
 import com.raquo.laminar.api.L.*
 import prototype.client.Pages.*
 import prototype.client.views.admin.AdminView
+import prototype.client.views.dashboard.DashboardView
 import prototype.client.views.timetable.*
 
 import prototype.client.{AppRouter, Session}
@@ -17,8 +18,9 @@ object View:
 
   private val effectivePageS: Signal[Page] =
     pageAndUserS.map {
-      case (HomePage | TimetablePage | AdminPage, None) => LoginPage
-      case (page, _)                        => page
+      case (HomePage | TimetablePage | AdminPage | DashboardPage, None) =>
+        LoginPage
+      case (page, _) => page
     }
 
   // handleCase needs its types spelled out: input pair, extracted value, view
@@ -35,8 +37,12 @@ object View:
       .handleCase[PageAndUser, String, HtmlElement] {
         case (AdminPage, Some(username)) => username
       }((username, _) => Shell(AdminView(), username))
+      .handleCase[PageAndUser, String, HtmlElement] {
+        case (DashboardPage, Some(username)) => username
+      }((username, _) => Shell(DashboardView(), username))
       .handleCase[PageAndUser, Unit, HtmlElement] {
-        case (LoginPage, _) | (HomePage | TimetablePage | AdminPage, None) =>
+        case (LoginPage, _) |
+            (HomePage | TimetablePage | AdminPage | DashboardPage, None) =>
           ()
       }((_, _) => LoginView())
       .handleCase[PageAndUser, Unit, HtmlElement] { case (NotFoundPage, _) =>

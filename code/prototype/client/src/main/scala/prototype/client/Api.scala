@@ -84,6 +84,14 @@ object Api:
       .make
       .fold(throw _, identity)
 
+  val dashboards: DashboardService[IO] =
+    SimpleRestJsonBuilder(DashboardService)
+      .client(FetchClientBuilder[IO].create)
+      .uri(origin)
+      .middleware(authMiddleware)
+      .make
+      .fold(throw _, identity)
+
   val auth: AuthService[IO] =
     SimpleRestJsonBuilder(AuthService)
       .client(FetchClientBuilder[IO].create)
