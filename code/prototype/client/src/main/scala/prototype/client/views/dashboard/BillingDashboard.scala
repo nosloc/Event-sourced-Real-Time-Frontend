@@ -71,8 +71,7 @@ object BillingDashboard:
   end renderBillingDashboard
 
   private def renderOldestToBill(items: List[ToBillItem]): HtmlElement =
-    if items.isEmpty then
-      p(cls := "dash__empty", "Nothing left to bill.")
+    if items.isEmpty then p(cls := "dash__empty", "Nothing left to bill.")
     else
       div(
         cls := "dash__scroll",
@@ -110,14 +109,10 @@ object BillingDashboard:
       .asInstanceOf[String]
     s"CHF $formatted"
 
-  // "INITIAL_CONSULTATION" -> "Initial consultation"
   private def readable(name: String): String =
     name.replace("_", " ").toLowerCase.capitalize
 
   // Running totals from the first of the 52 weeks, so every line only goes up.
-  // The lines are stacked on the status before them: what is paid, what is paid
-  // or billed, and what is paid, billed or still to bill. The gap between two
-  // lines is the amount in that status.
   private def weeklyChartConfig(weekly: List[WeeklyAmount]): ChartConfig =
     val paid = runningTotal(weekly.map(_.paid.toDouble))
     val paidOrBilled =
@@ -136,7 +131,6 @@ object BillingDashboard:
         )
   end weeklyChartConfig
 
-  // [1, 2, 3] -> [1, 3, 6]
   private def runningTotal(values: List[Double]): List[Double] =
     values.scanLeft(0.0)(_ + _).tail
 
