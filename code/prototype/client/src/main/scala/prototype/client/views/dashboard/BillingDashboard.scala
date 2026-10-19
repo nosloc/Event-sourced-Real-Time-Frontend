@@ -64,7 +64,7 @@ object BillingDashboard:
       ),
       div(
         cls := "dash__card panel",
-        h3(cls := "dash__card-title", "Weekly Amounts, Last 52 Weeks"),
+        h3(cls := "dash__card-title", "Cumulative Amounts, Last 52 Weeks"),
         chartCanvas(Val(weeklyChartConfig(data.weekly)))
       )
     )
@@ -114,13 +114,16 @@ object BillingDashboard:
   private def readable(name: String): String =
     name.replace("_", " ").toLowerCase.capitalize
 
-  // Each week is stacked on the previous status: what is paid, what is paid or
-  // billed, and what is paid, billed or still to bill. The gap between two
+  // Running totals from the first of the 52 weeks, so every line only goes up.
+  // The lines are stacked on the status before them: what is paid, what is paid
+  // or billed, and what is paid, billed or still to bill. The gap between two
   // lines is the amount in that status.
   private def weeklyChartConfig(weekly: List[WeeklyAmount]): ChartConfig =
-    val paid = weekly.map(_.paid.toDouble)
-    val paidOrBilled = weekly.map(w => (w.paid + w.billed).toDouble)
-    val everything = weekly.map(w => (w.paid + w.billed + w.toBill).toDouble)
+    val paid = runningTotal(weekly.map(_.paid.toDouble))
+    val paidOrBilled =
+      runningTotal(weekly.map(w => (w.paid + w.billed).toDouble))
+    val everything =
+      runningTotal(weekly.map(w => (w.paid + w.billed + w.toBill).toDouble))
     new ChartConfig:
       val `type` = "line"
       override val options = weeklyChartOptions()
@@ -132,6 +135,10 @@ object BillingDashboard:
           lineDataset("Paid + billed + to bill", everything, "#d9a21b")
         )
   end weeklyChartConfig
+
+  // [1, 2, 3] -> [1, 3, 6]
+  private def runningTotal(values: List[Double]): List[Double] =
+    values.scanLeft(0.0)(_ + _).tail
 
   private def lineDataset(
       name: String,
