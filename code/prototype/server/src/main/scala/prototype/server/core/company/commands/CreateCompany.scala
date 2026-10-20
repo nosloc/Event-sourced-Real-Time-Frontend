@@ -48,7 +48,7 @@ object CreateCompany:
         case (true, command) =>
           COMPANY_ALREADY_EXISTS(command.id)
         case (_, command) if command.name.trim.isEmpty =>
-          COMPANY_ALREADY_EXISTS(command.id)
+          COMPANY_NAME_EMPTY(command.id)
         case (_, command) if !isAddressValid(command.address) =>
           COMPANY_ADDRESS_INVALID(command.id)
 
