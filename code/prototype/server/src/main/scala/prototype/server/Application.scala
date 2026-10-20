@@ -51,7 +51,7 @@ object App extends IOApp.Simple:
       // Persistent4s
       database <- PostgresModule.make[IO, PrototypeEvent](
         PrototypeEvent.eventCodec,
-        "prototype.postgres"
+        "postgres"
       )
       companies = CompanyRepository.make(database.sessions)
       companyService = CompanyServiceImpl(companies)(using

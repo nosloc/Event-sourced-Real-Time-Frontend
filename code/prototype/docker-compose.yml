@@ -30,12 +30,13 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    # volumes:
+    volumes:
+      - ./server/src/main/resources/db/init-views.sql:/docker-entrypoint-initdb.d/init-views.sql
     #   - ./postgres-data:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: prototype
       POSTGRES_PASSWORD: prototype
-      POSTGRES_DB: prototype_events
+      POSTGRES_DB: prototype
     ports:
       - "5442:5432"
     healthcheck:
