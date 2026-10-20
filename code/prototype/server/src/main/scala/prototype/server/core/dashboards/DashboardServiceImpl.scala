@@ -1,18 +1,19 @@
 package prototype.server.core.dashboards
 
-import prototype.api.*
 import cats.effect.*
 import cats.implicits.*
-import smithy4s.time.LocalDate
-import prototype.server.core.company.CompanyServiceImpl
-import prototype.server.core.therapist.TherapistServiceImpl
+
+import prototype.api.*
 import prototype.server.core.appointment.AppointmentServiceImpl
+import prototype.server.core.therapist.TherapistServiceImpl
+
+import smithy4s.time.LocalDate
 
 trait DashboardServiceImpl extends DashboardService[IO]
 
 object DashboardServiceImpl:
   def apply(
-      companyService: CompanyServiceImpl,
+      companyService: CompanyService[IO],
       therapistService: TherapistServiceImpl,
       appointmentService: AppointmentServiceImpl
   ): IO[DashboardServiceImpl] =

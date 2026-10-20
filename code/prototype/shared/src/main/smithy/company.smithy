@@ -81,7 +81,7 @@ structure CreateCompanyInput {
 
 structure CreateCompanyOutput {
     @required
-    company: Company
+    companyId: CompanyId
 }
 
 @error("client")

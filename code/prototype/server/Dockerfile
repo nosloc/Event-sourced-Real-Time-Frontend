@@ -10,6 +10,6 @@ RUN --mount=type=cache,target=/root/.cache/coursier \
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /app/server/target/universal/stage ./
-ENV SERVER_HOST=0.0.0.0
+ENV HTTP_HOST=0.0.0.0
 EXPOSE 9000
 CMD ["bin/server"]

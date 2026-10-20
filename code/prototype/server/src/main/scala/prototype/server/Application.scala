@@ -1,46 +1,71 @@
 package prototype.server
 
 import cats.effect.*
-import org.http4s.*
-import org.http4s.dsl.io.*
-import com.comcast.ip4s.*
-import prototype.api.*
-import org.http4s.ember.server.EmberServerBuilder
 
 import prototype.Greeting
+import prototype.api.*
 import prototype.server.auth.*
+import prototype.server.config.AppConfig
+import prototype.server.config.syntax.loadIO
+import prototype.server.core.PrototypeEvent
 import prototype.server.core.appointment.*
-import prototype.server.core.company.*
-import prototype.server.core.therapist.*
-import prototype.server.core.patient.*
+import prototype.server.core.company.api.CompanyServiceImpl
+import prototype.server.core.company.persistence.{
+  CompanyProjection,
+  CompanyRepository
+}
 import prototype.server.core.dashboards.*
+import prototype.server.core.patient.*
+import prototype.server.core.therapist.*
 import prototype.server.eventStore.*
 
-object Server extends IOApp.Simple:
+import persistent4s.postgres.PostgresModule
+
+import org.http4s.*
+import org.http4s.dsl.io.*
+import org.http4s.ember.server.EmberServerBuilder
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
+import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
+import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
+import pureconfig.ConfigSource
+
+given Tracer[IO] = Tracer.Implicits.noop
+given Meter[IO] = Meter.Implicits.noop
+private given TracerProvider[IO] = TracerProvider.noop[IO]
+private given MeterProvider[IO] = MeterProvider.noop[IO]
+
+object App extends IOApp.Simple:
+
+  private given Logger[IO] = Slf4jLogger.getLogger[IO]
 
   private val greetingRoute = HttpRoutes
     .of[IO] { case GET -> Root / "api" / "hello" =>
       Ok(Greeting.greet("World !"))
     }
 
-  // Bind host: loopback for local dev, overridden (0.0.0.0) inside the container
-  private val bindHost: IO[Host] =
-    IO(sys.env.get("SERVER_HOST")).flatMap:
-      case None      => IO.pure(host"127.0.0.1")
-      case Some(raw) =>
-        IO.fromOption(Host.fromString(raw))(
-          new IllegalArgumentException(s"Invalid SERVER_HOST: $raw")
-        )
-
-  private val server =
+  private val program =
     for
-      bindHost <- Resource.eval(bindHost)
+      config <- ConfigSource.default.loadIO[AppConfig]
+
+      // Persistent4s
+      database <- PostgresModule.make[IO, PrototypeEvent](
+        PrototypeEvent.eventCodec,
+        "prototype.postgres"
+      )
+      companies = CompanyRepository.make(database.sessions)
+      companyService = CompanyServiceImpl(companies)(using
+        database.commandRuntime
+      )
+      _ <- database.leaderElectedProjectionRuntime.startAll(registered =>
+        registered.run(CompanyProjection(companies))
+      )
+      // In Memory Event Store
       eventStore <- InMemoryEventStore.create.toResource
-      companyServiceImpl <- CompanyServiceImpl(eventStore).toResource
       patientServiceImpl <- PatientServiceImpl(eventStore).toResource
       therapistServiceImpl <- TherapistServiceImpl(
         eventStore,
-        companyServiceImpl
+        companyService
       ).toResource
       appointmentServiceImpl <- AppointmentServiceImpl(
         eventStore,
@@ -48,18 +73,16 @@ object Server extends IOApp.Simple:
         patientServiceImpl
       ).toResource
       dashboardServiceImpl <- DashboardServiceImpl(
-        companyServiceImpl,
+        companyService,
         therapistServiceImpl,
         appointmentServiceImpl
       ).toResource
-      seed <- Resource.eval(
-        Seed(
-          appointmentServiceImpl,
-          companyServiceImpl,
-          therapistServiceImpl,
-          patientServiceImpl
-        )
-      )
+      seed <- Seed(
+        appointmentServiceImpl,
+        companyService,
+        therapistServiceImpl,
+        patientServiceImpl
+      ).toResource
       _ <- seed.generateEvents().toResource
       tokens <- Resource.eval(Ref.of[IO, Map[Token, TherapistId]](Map.empty))
       authServiceImpl = new AuthServiceImpl(tokens, therapistServiceImpl)
@@ -68,7 +91,7 @@ object Server extends IOApp.Simple:
       routes <- Routes.all(
         greetingRoute,
         middleware,
-        companyServiceImpl,
+        companyService,
         therapistServiceImpl,
         appointmentServiceImpl,
         patientServiceImpl,
@@ -77,10 +100,10 @@ object Server extends IOApp.Simple:
       )
       server <- EmberServerBuilder
         .default[IO]
-        .withHost(bindHost)
-        .withPort(port"9000")
+        .withHost(config.ember.host)
+        .withPort(config.ember.port)
         .withHttpApp(ErrorLogging(routes.orNotFound))
         .build
     yield server
 
-  def run: IO[Unit] = server.useForever
+  def run: IO[Unit] = program.useForever

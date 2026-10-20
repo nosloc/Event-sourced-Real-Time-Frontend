@@ -2,22 +2,24 @@ package prototype.server.core.dashboards
 
 import cats.effect.*
 import cats.effect.testing.scalatest.AsyncIOSpec
-import org.scalatest.flatspec.AsyncFlatSpec
-import org.scalatest.matchers.should.Matchers
+
 import prototype.api.*
 import prototype.server.core.appointment.AppointmentServiceImpl
-import prototype.server.core.company.CompanyServiceImpl
+import prototype.server.core.company.InMemoryCompanyService
+import prototype.server.core.dashboards.DashboardFixtures.{date, timestamp}
 import prototype.server.core.patient.PatientServiceImpl
 import prototype.server.core.therapist.TherapistServiceImpl
 import prototype.server.eventStore.InMemoryEventStore
-import prototype.server.core.dashboards.DashboardFixtures.{date, timestamp}
+
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
 import smithy4s.time.LocalDate
 
-/** The dashboards as a client of the service sees them: the company,
-  * therapist, patient and appointment services are all real, on one in-memory
-  * store. What matters here is how the data is gathered (which therapists and
-  * appointments belong to the company), not the counting, which has its own
-  * specs.
+/** The dashboards as a client of the service sees them: the therapist, patient
+  * and appointment services are real, on one in-memory store, and the company
+  * service is an in-memory one. What matters here is how the data is gathered
+  * (which therapists and appointments belong to the company), not the
+  * counting, which has its own specs.
   */
 class DashboardServiceSpec
     extends AsyncFlatSpec
@@ -28,7 +30,7 @@ class DashboardServiceSpec
   private val born = LocalDate(1990, 1, 1)
 
   private final class World(
-      val companies: CompanyServiceImpl,
+      val companies: CompanyService[IO],
       val therapists: TherapistServiceImpl,
       val patients: PatientServiceImpl,
       val appointments: AppointmentServiceImpl,
@@ -39,7 +41,7 @@ class DashboardServiceSpec
   private val newWorld: IO[World] =
     for
       store <- InMemoryEventStore.create
-      companies <- CompanyServiceImpl(store)
+      companies <- InMemoryCompanyService()
       patients <- PatientServiceImpl(store)
       therapists <- TherapistServiceImpl(store, companies)
       appointments <- AppointmentServiceImpl(store, therapists, patients)
@@ -47,7 +49,7 @@ class DashboardServiceSpec
     yield World(companies, therapists, patients, appointments, dashboards)
 
   private def addCompany(w: World, name: String): IO[CompanyId] =
-    w.companies.createCompany(name, address).map(_.company.companyId)
+    w.companies.createCompany(name, address).map(_.companyId)
 
   private def addTherapist(w: World, trigram: String, company: CompanyId): IO[TherapistId] =
     w.therapists

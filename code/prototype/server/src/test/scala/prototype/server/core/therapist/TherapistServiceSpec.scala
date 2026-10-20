@@ -2,15 +2,17 @@ package prototype.server.core.therapist
 
 import cats.effect.*
 import cats.effect.testing.scalatest.AsyncIOSpec
-import org.scalatest.flatspec.AsyncFlatSpec
-import org.scalatest.matchers.should.Matchers
+
 import prototype.api.*
-import prototype.server.core.company.CompanyServiceImpl
+import prototype.server.core.company.InMemoryCompanyService
 import prototype.server.eventStore.InMemoryEventStore
 
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
+
 /** The therapist service end to end. A therapist must belong to a company that
-  * exists, so the real company service is used (one store for both, as in the
-  * server) and a company is created first.
+  * exists, so an in-memory company service is used and a company is created
+  * first.
   */
 class TherapistServiceSpec
     extends AsyncFlatSpec
@@ -31,13 +33,13 @@ class TherapistServiceSpec
   private val setup: IO[Setup] =
     for
       store <- InMemoryEventStore.create
-      companies <- CompanyServiceImpl(store)
+      companies <- InMemoryCompanyService()
       therapists <- TherapistServiceImpl(store, companies)
       company <- companies.createCompany(
         "Example Clinic",
         Address("Example Street", "1", "Exampleville", "VD")
       )
-    yield new Setup(companies, therapists, company.company.companyId)
+    yield new Setup(companies, therapists, company.companyId)
 
   "createTherapist" should "return the therapist with the given details" in {
     val test =

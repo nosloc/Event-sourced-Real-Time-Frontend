@@ -1,7 +1,5 @@
 package prototype.server
 
-import java.time.DayOfWeek.*
-import java.time.temporal.TemporalAdjusters
 import java.time.{
   Duration,
   LocalDate,
@@ -10,15 +8,23 @@ import java.time.{
   ZoneId,
   ZonedDateTime
 }
-import smithy4s.time.{LocalDate as SmithyLocalDate}
+import java.time.DayOfWeek.*
+import java.time.temporal.TemporalAdjusters
 import java.util.UUID
+
+import scala.concurrent.duration.*
 
 import cats.effect.IO
 import cats.effect.std.Random
 import cats.syntax.all.*
+
 import prototype.api.*
-import smithy4s.time.Timestamp
 import prototype.server.core.appointment.AppointmentServiceImpl
+
+import smithy4s.time.{
+  LocalDate as SmithyLocalDate,
+  Timestamp
+}
 
 /** Fictional dummy data loaded at boot. Build it once at startup with `Seed()`,
   * which also generates tst's random appointments, then read its values.
@@ -37,29 +43,31 @@ final class Seed private (
   val seedPatients: List[(String, String, SmithyLocalDate)] = Seed.seedPatients
 
   /** Creates everything through the services, in dependency order: companies
-    * first (their ids are generated), then the therapists in those companies,
-    * then the appointments.
+    * first (their ids are generated), then the therapists, each in a random
+    * company, then the appointments.
     */
   def generateEvents(): IO[Unit] =
     for
-      created <- companies.traverse { company =>
-        companyService
-          .createCompany(company.name, company.address)
-          .map(_.company)
-      }
-      // The seed companies are matched with the created ones by name
-      companyIdByName = created.map(c => c.name -> c.companyId).toMap
+      random <- Random.scalaUtilRandom[IO]
+      // Companies are stored in Postgres and survive a restart of the server:
+      // reuse them instead of creating them again
+      existing <- companyService.listCompanies().map(_.companies)
+      companyIds <-
+        if existing.nonEmpty then IO.pure(existing.map(_.companyId))
+        else createCompanies()
       _ <- therapists.traverse_ { seedTherapist =>
-        // The real therapist can only be built now that its company exists
-        val therapist =
-          seedTherapist.toTherapist(companyIdByName(seedTherapist.company.name))
-        therapistService.createTherapist(
-          therapist.firstName,
-          therapist.lastName,
-          therapist.therapistId,
-          therapist.companyId,
-          therapist.role
-        )
+        // Each therapist goes to a random company
+        random.nextIntBounded(companyIds.size).map(companyIds).flatMap {
+          companyId =>
+            val therapist = seedTherapist.toTherapist(companyId)
+            therapistService.createTherapist(
+              therapist.firstName,
+              therapist.lastName,
+              therapist.therapistId,
+              therapist.companyId,
+              therapist.role
+            )
+        }
       }
       _ <- appointments.traverse_ { appointment =>
         appointmentService.createAppointment(
@@ -74,6 +82,29 @@ final class Seed private (
       }
     yield ()
   end generateEvents
+
+  private def createCompanies(): IO[List[CompanyId]] =
+    for
+      ids <- companies.traverse { company =>
+        companyService
+          .createCompany(company.name, company.address)
+          .map(_.companyId)
+      }
+      _ <- waitUntilVisible(ids).timeout(10.seconds)
+    yield ids
+
+  /** Companies are read from a projection that is updated shortly after the
+    * command. Creating a therapist checks that its company exists, so wait
+    * until the new companies can be read.
+    */
+  private def waitUntilVisible(ids: List[CompanyId]): IO[Unit] =
+    companyService
+      .listCompanies()
+      .map(_.companies.map(_.companyId).toSet)
+      .flatMap { visible =>
+        if ids.forall(visible.contains) then IO.unit
+        else IO.sleep(100.millis) *> waitUntilVisible(ids)
+      }
 
 /** Ids are defined once and reused, so the lists always reference each other
   * consistently.
@@ -139,15 +170,14 @@ object Seed:
 
   // Therapists
 
-  /** The static information of a seed therapist. Its `company` is only a
-    * template: the real company is created at boot with a generated id, so the
-    * real `Therapist` is built with `toTherapist` once that id is known.
+  /** The static information of a seed therapist. Its company is chosen at
+    * random at boot, so the real `Therapist` is built with `toTherapist` once
+    * that company id is known.
     */
   final case class SeedTherapist(
       therapistId: TherapistId,
       firstName: String,
       lastName: String,
-      company: Company,
       role: Role
   ):
     def toTherapist(companyId: CompanyId): Therapist =
@@ -157,38 +187,20 @@ object Seed:
       trigram: String,
       firstName: String,
       lastName: String,
-      company: Company,
       role: Role
   ): SeedTherapist =
-    SeedTherapist(TherapistId(trigram), firstName, lastName, company, role)
+    SeedTherapist(TherapistId(trigram), firstName, lastName, role)
 
-  val arb =
-    therapist("arb", "Alexandre", "Robert", exampleClinic, Role.PSYCHOLOGIST)
-  val mdp = therapist(
-    "mdp",
-    "Marie",
-    "Dupont",
-    demoHealthCenter,
-    Role.NEUROPSYCHOLOGIST
-  )
-  val jma =
-    therapist("jma", "Jean", "Martin", exampleClinic, Role.GENERAL_PRACTITIONER)
-  val sda =
-    therapist("sda", "Sophie", "Durand", demoHealthCenter, Role.PSYCHOLOGIST)
-  val lbo = therapist("lbo", "Lucas", "Bonvin", exampleClinic, Role.PHYSICIAN)
-  val fgr =
-    therapist("fgr", "Fanny", "Grandjean", demoHealthCenter, Role.PSYCHOLOGIST)
-  val nle =
-    therapist("nle", "Nicolas", "Leuba", exampleClinic, Role.NEUROPSYCHOLOGIST)
-  val tpe = therapist(
-    "tpe",
-    "Tania",
-    "Perret",
-    demoHealthCenter,
-    Role.GENERAL_PRACTITIONER
-  )
+  val arb = therapist("arb", "Alexandre", "Robert", Role.PSYCHOLOGIST)
+  val mdp = therapist("mdp", "Marie", "Dupont", Role.NEUROPSYCHOLOGIST)
+  val jma = therapist("jma", "Jean", "Martin", Role.GENERAL_PRACTITIONER)
+  val sda = therapist("sda", "Sophie", "Durand", Role.PSYCHOLOGIST)
+  val lbo = therapist("lbo", "Lucas", "Bonvin", Role.PHYSICIAN)
+  val fgr = therapist("fgr", "Fanny", "Grandjean", Role.PSYCHOLOGIST)
+  val nle = therapist("nle", "Nicolas", "Leuba", Role.NEUROPSYCHOLOGIST)
+  val tpe = therapist("tpe", "Tania", "Perret", Role.GENERAL_PRACTITIONER)
   // Test user, whose appointments are generated at boot (see apply)
-  val tst = therapist("tst", "Test", "User", exampleClinic, Role.PSYCHOLOGIST)
+  val tst = therapist("tst", "Test", "User", Role.PSYCHOLOGIST)
 
   private val therapists: List[SeedTherapist] =
     List(arb, mdp, jma, sda, lbo, fgr, nle, tpe, tst)

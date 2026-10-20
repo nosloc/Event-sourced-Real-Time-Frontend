@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: server/Dockerfile
     environment:
-      SERVER_HOST: 0.0.0.0
+      HTTP_HOST: 0.0.0.0
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
     depends_on:
