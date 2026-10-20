@@ -2,6 +2,9 @@ import org.scalajs.linker.interface.ModuleSplitStyle
 
 ThisBuild / scalaVersion := "3.8.4"
 
+// Scalafix's semantic rules (OrganizeImports) read the compiler's SemanticDB output
+ThisBuild / semanticdbEnabled := true
+
 lazy val root =
   project
     .in(file("."))

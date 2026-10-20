@@ -5,3 +5,5 @@ addSbtPlugin(
   "com.disneystreaming.smithy4s" % "smithy4s-sbt-codegen" % "0.19.13"
 )
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.10.4")
+// Scalafix: rewrites imports and checks a few rules (see .scalafix.conf)
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.9")
