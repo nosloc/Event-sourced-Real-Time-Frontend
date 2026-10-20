@@ -47,7 +47,12 @@ lazy val server =
         "ch.qos.logback" % "logback-classic" % Versions.Logback,
         // Tests: ScalaTest, and support for tests that return an IO
         "org.scalatest" %% "scalatest" % Versions.ScalaTest % Test,
-        "org.typelevel" %% "cats-effect-testing-scalatest" % Versions.CatsEffectTesting % Test
+        "org.typelevel" %% "cats-effect-testing-scalatest" % Versions.CatsEffectTesting % Test,
+
+        // Persistent4s: Event sourcing on top of Postgres,
+        "io.github.persistent4s" %% "persistent4s-core" % Versions.Persistent4s,
+        "io.github.persistent4s" %% "persistent4s-circe" % Versions.Persistent4s,
+        "io.github.persistent4s" %% "persistent4s-postgres" % Versions.Persistent4s
       )
     )
     .dependsOn(shared.jvm)

@@ -18,6 +18,8 @@ object Versions {
 
   val Logback = "1.6.5"
 
+  val Persistent4s = "0.4.0-RC4"
+
   // -- Tests (server) --
 
   val ScalaTest = "3.2.19"

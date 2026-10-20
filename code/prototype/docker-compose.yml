@@ -5,9 +5,14 @@ services:
       dockerfile: server/Dockerfile
     environment:
       SERVER_HOST: 0.0.0.0
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       # TCP-only: succeeds once port 9000 accepts connections
-      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/127.0.0.1/9000'"]
+      test: [ "CMD-SHELL", "timeout 2 bash -c '</dev/tcp/127.0.0.1/9000'" ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -22,3 +27,22 @@ services:
     depends_on:
       server:
         condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    # volumes:
+    #   - ./postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: prototype
+      POSTGRES_PASSWORD: prototype
+      POSTGRES_DB: prototype_events
+    ports:
+      - "5442:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U prototype -d prototype_events" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+# volumes:
+#   postgres-data:
