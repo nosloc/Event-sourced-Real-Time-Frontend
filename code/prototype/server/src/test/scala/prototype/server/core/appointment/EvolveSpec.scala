@@ -1,10 +1,12 @@
 package prototype.server.core.appointment
 
 import java.util.UUID
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+
 import prototype.api.*
 import prototype.server.core.appointment.appointmentModel.*
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import smithy4s.time.Timestamp
 
 /** `evolve` applies one event to a state. It never rejects anything: the

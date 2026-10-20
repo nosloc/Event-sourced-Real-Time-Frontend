@@ -1,6 +1,7 @@
 package prototype.server.auth
 
 import cats.effect.*
+
 import prototype.api.*
 
 class AuthServiceImpl(

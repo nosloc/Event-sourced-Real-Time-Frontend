@@ -1,8 +1,8 @@
 package prototype.server.core.appointment
 
 import prototype.api.*
-import prototype.server.eventStore.*
 import prototype.server.ErrorCode
+import prototype.server.eventStore.*
 
 object appointmentModel:
   sealed trait AppointmentCommand extends Command

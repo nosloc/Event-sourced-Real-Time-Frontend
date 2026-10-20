@@ -1,11 +1,13 @@
 package prototype.server.core.appointment
 
 import java.util.UUID
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+
+import prototype.StatusTransitions.verifyStatusChange
 import prototype.api.*
 import prototype.server.core.appointment.appointmentModel.*
-import prototype.StatusTransitions.verifyStatusChange
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import smithy4s.time.Timestamp
 
 /** `decide` turns a command into events (or a rejection) given the current

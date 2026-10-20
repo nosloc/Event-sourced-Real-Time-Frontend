@@ -1,8 +1,8 @@
 package prototype.server.core.patient
 
+import prototype.api.*
 import prototype.server.core.patient.patientModel.*
 import prototype.server.eventStore.*
-import prototype.api.*
 
 class PatientDecider
     extends Decider[

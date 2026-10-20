@@ -1,9 +1,11 @@
 package prototype.server.core.dashboards
 
-import prototype.api.*
-import smithy4s.time.LocalDate
-import java.time.{DayOfWeek, Instant, ZoneId, LocalDate as JavaLocalDate}
+import java.time.{DayOfWeek, Instant, LocalDate as JavaLocalDate, ZoneId}
 import java.time.temporal.TemporalAdjusters
+
+import prototype.api.*
+
+import smithy4s.time.LocalDate
 
 object ActivityDashboard:
   // Weeks, months and days are cut in one fixed zone, like in the billing

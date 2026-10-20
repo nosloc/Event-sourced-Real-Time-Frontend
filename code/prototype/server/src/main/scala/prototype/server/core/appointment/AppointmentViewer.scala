@@ -1,9 +1,10 @@
 package prototype.server.core.appointment
 
 import cats.effect.*
-import prototype.server.eventStore.Viewer
-import prototype.server.core.appointment.appointmentModel.*
+
 import prototype.api.{Appointment, PatientId, TherapistId}
+import prototype.server.core.appointment.appointmentModel.*
+import prototype.server.eventStore.Viewer
 
 trait AppointmentRepository:
   def listAppointments(therapistId: TherapistId): IO[List[Appointment]]

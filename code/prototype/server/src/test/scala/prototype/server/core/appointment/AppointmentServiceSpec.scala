@@ -1,14 +1,17 @@
 package prototype.server.core.appointment
 
 import java.util.UUID
+
 import cats.effect.*
 import cats.effect.testing.scalatest.AsyncIOSpec
-import org.scalatest.flatspec.AsyncFlatSpec
-import org.scalatest.matchers.should.Matchers
+
 import prototype.api.*
 import prototype.server.core.patient.PatientServiceImpl
 import prototype.server.core.therapist.TherapistServiceImpl
 import prototype.server.eventStore.InMemoryEventStore
+
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
 import smithy4s.time.{LocalDate, Timestamp}
 
 /** The appointment rules as a client of the service sees them, end to end:

@@ -1,9 +1,10 @@
 package prototype.server.core.dashboards
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 import prototype.api.*
 import prototype.server.core.dashboards.DashboardFixtures.*
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /** The directory figures of a company: pure counting over its therapists and
   * appointments, with the clock passed in.

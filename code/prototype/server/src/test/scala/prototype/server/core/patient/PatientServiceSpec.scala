@@ -1,12 +1,15 @@
 package prototype.server.core.patient
 
 import java.util.UUID
+
 import cats.effect.*
 import cats.effect.testing.scalatest.AsyncIOSpec
-import org.scalatest.flatspec.AsyncFlatSpec
-import org.scalatest.matchers.should.Matchers
+
 import prototype.api.*
 import prototype.server.eventStore.InMemoryEventStore
+
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
 import smithy4s.time.LocalDate
 
 /** The patient service end to end, with the real decider, viewer and store. */

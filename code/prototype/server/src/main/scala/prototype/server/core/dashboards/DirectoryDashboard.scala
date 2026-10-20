@@ -1,8 +1,9 @@
 package prototype.server.core.dashboards
 
-import prototype.api.*
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+
+import prototype.api.*
 
 object DirectoryDashboard:
   def apply(

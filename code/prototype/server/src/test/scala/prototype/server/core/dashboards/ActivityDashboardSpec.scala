@@ -1,9 +1,10 @@
 package prototype.server.core.dashboards
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 import prototype.api.*
 import prototype.server.core.dashboards.DashboardFixtures.*
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /** The activity figures for a week or a month: which appointments fall in the
   * period, who is busiest, and the evolution over the last periods.

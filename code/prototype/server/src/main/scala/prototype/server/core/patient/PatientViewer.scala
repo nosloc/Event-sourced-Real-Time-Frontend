@@ -1,9 +1,11 @@
 package prototype.server.core.patient
 
 import cats.effect.*
-import prototype.server.eventStore.*
+
 import prototype.api.*
 import prototype.server.core.patient.patientModel.*
+import prototype.server.eventStore.*
+
 import smithy4s.time.LocalDate
 
 trait PatientRepository:

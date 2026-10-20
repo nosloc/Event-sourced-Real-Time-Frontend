@@ -1,13 +1,16 @@
 package prototype.server.eventStore
 
 import java.util.UUID
+
 import cats.effect.*
-import org.scalatest.flatspec.AsyncFlatSpec
-import org.scalatest.matchers.should.Matchers
 import cats.effect.testing.scalatest.AsyncIOSpec
+
 import prototype.api.*
 import prototype.server.core.appointment.*
 import prototype.server.core.appointment.appointmentModel.*
+
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
 import smithy4s.time.Timestamp
 
 /** The command handler is the contract between the decider, the store and the

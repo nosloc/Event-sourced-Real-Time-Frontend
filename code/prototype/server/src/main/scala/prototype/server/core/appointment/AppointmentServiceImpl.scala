@@ -1,13 +1,15 @@
 package prototype.server.core.appointment
 
-import cats.effect.*
-import prototype.api.*
-import prototype.server.eventStore.*
-import prototype.server.core.appointment.appointmentModel.*
 import java.util.UUID
+
+import cats.effect.*
+
+import prototype.api.*
 import prototype.server.UserFacingError
-import prototype.server.core.therapist.TherapistServiceImpl
+import prototype.server.core.appointment.appointmentModel.*
 import prototype.server.core.patient.PatientServiceImpl
+import prototype.server.core.therapist.TherapistServiceImpl
+import prototype.server.eventStore.*
 
 trait AppointmentServiceImpl extends AppointmentService[IO]
 

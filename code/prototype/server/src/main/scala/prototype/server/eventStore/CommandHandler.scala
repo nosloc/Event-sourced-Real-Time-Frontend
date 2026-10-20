@@ -1,8 +1,9 @@
 package prototype.server.eventStore
 
+import scala.reflect.ClassTag
+
 import cats.effect.*
 import cats.implicits.*
-import scala.reflect.ClassTag
 
 /** A command handler is the event-sourced layer that handles commands and
   * communicates with the event store.

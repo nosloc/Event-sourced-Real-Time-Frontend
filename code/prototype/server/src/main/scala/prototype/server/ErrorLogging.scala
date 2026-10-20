@@ -2,7 +2,9 @@ package prototype.server
 
 import cats.data.Kleisli
 import cats.effect.*
+
 import fs2.Stream
+
 import org.http4s.*
 import org.http4s.server.middleware.ErrorAction
 import org.typelevel.ci.*

@@ -1,9 +1,10 @@
 package prototype.server.core.therapist
 
 import cats.effect.*
+
 import prototype.api.*
-import prototype.server.eventStore.*
 import prototype.server.core.therapist.therapistModel.*
+import prototype.server.eventStore.*
 
 trait TherapistServiceImpl extends TherapistService[IO]:
   def getTherapists(therapistIds: List[TherapistId]): IO[List[Therapist]]

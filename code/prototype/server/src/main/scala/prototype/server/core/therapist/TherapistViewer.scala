@@ -1,9 +1,10 @@
 package prototype.server.core.therapist
 
 import cats.effect.*
-import prototype.server.eventStore.*
+
 import prototype.api.*
 import prototype.server.core.therapist.therapistModel.*
+import prototype.server.eventStore.*
 
 trait TherapistRepository:
   def getAllTherapists(): IO[List[Therapist]]

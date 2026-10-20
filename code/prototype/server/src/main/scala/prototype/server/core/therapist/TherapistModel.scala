@@ -1,8 +1,8 @@
 package prototype.server.core.therapist
 
 import prototype.api.*
-import prototype.server.eventStore.*
 import prototype.server.ErrorCode
+import prototype.server.eventStore.*
 
 object therapistModel:
   sealed trait TherapistCommand extends Command

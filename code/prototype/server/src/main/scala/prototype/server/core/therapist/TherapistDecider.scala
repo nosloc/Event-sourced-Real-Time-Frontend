@@ -1,8 +1,8 @@
 package prototype.server.core.therapist
 
+import prototype.api.*
 import prototype.server.core.therapist.therapistModel.*
 import prototype.server.eventStore.*
-import prototype.api.*
 
 class TherapistDecider
     extends Decider[

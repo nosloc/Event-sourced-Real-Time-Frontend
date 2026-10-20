@@ -1,11 +1,14 @@
 package prototype.server.core.patient
 
-import cats.effect.*
-import prototype.api.*
-import prototype.server.eventStore.*
-import prototype.server.core.patient.patientModel.*
-import smithy4s.time.LocalDate
 import java.util.UUID
+
+import cats.effect.*
+
+import prototype.api.*
+import prototype.server.core.patient.patientModel.*
+import prototype.server.eventStore.*
+
+import smithy4s.time.LocalDate
 
 trait PatientServiceImpl extends PatientService[IO]:
   def getPatients(patientIds: List[PatientId]): IO[List[Patient]]

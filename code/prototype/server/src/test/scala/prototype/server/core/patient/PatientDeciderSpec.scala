@@ -1,10 +1,12 @@
 package prototype.server.core.patient
 
 import java.util.UUID
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+
 import prototype.api.*
 import prototype.server.core.patient.patientModel.*
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import smithy4s.time.LocalDate
 
 /** A patient has a single command (create). The server generates the id, so

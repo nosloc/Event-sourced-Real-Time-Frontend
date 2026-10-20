@@ -1,13 +1,17 @@
 package prototype.server.auth
 
 import cats.effect.*
+
 import prototype.api.*
-import smithy4s.http4s.ServerEndpointMiddleware
-import smithy4s.Hints
-import org.http4s.HttpApp
+
+import org.http4s.{
+  AuthScheme,
+  Credentials,
+  HttpApp
+}
 import org.http4s.headers.Authorization
-import org.http4s.Credentials
-import org.http4s.AuthScheme
+import smithy4s.Hints
+import smithy4s.http4s.ServerEndpointMiddleware
 
 class AuthMiddleware(authChecker: AuthChecker)
     extends ServerEndpointMiddleware.Simple[IO]:

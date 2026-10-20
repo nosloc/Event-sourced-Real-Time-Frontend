@@ -1,9 +1,10 @@
 package prototype.server.core.appointment
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 import prototype.api.TimeRange
 import prototype.server.core.appointment.appointmentModel.*
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import smithy4s.time.Timestamp
 
 /** Tests of the two pure rules on time ranges. Pure functions need no setup, so

@@ -1,10 +1,12 @@
 package prototype.server.core.therapist
 
 import java.util.UUID
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+
 import prototype.api.*
 import prototype.server.core.therapist.therapistModel.*
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /** A therapist has a single command (create). The caller chooses the id (a
   * trigram), so unlike appointments and companies a duplicate is a real case.

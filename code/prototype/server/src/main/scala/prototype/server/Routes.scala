@@ -2,10 +2,12 @@ package prototype.server
 
 import cats.effect.*
 import cats.implicits.*
-import org.http4s.HttpRoutes
+
 import prototype.api.*
-import smithy4s.http4s.SimpleRestJsonBuilder
 import prototype.server.auth.AuthMiddleware
+
+import org.http4s.HttpRoutes
+import smithy4s.http4s.SimpleRestJsonBuilder
 
 object Routes:
   def all(

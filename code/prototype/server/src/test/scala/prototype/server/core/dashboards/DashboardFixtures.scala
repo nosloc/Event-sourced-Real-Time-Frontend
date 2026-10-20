@@ -1,8 +1,10 @@
 package prototype.server.core.dashboards
 
-import java.time.{Instant, ZoneId, LocalDate as JavaLocalDate}
+import java.time.{Instant, LocalDate as JavaLocalDate, ZoneId}
 import java.util.UUID
+
 import prototype.api.*
+
 import smithy4s.time.{LocalDate, Timestamp}
 
 /** Small builders for the dashboard specs. Days are written as "2026-10-12"

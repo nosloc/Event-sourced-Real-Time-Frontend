@@ -1,8 +1,9 @@
 package prototype.server.core.patient
 
 import prototype.api.*
-import prototype.server.eventStore.*
 import prototype.server.ErrorCode
+import prototype.server.eventStore.*
+
 import smithy4s.time.LocalDate
 
 object patientModel:

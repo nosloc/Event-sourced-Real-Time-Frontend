@@ -1,10 +1,11 @@
 package prototype.server.core.dashboards
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 import prototype.api.*
 import prototype.api.PrestationStatus.*
 import prototype.server.core.dashboards.DashboardFixtures.*
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /** The billing figures of a company: amounts per status, the oldest
   * appointments still to bill, and the weekly amounts of the last year.
