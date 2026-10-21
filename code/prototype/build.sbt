@@ -51,6 +51,8 @@ lazy val server =
         // Tests: ScalaTest, and support for tests that return an IO
         "org.scalatest" %% "scalatest" % Versions.ScalaTest % Test,
         "org.typelevel" %% "cats-effect-testing-scalatest" % Versions.CatsEffectTesting % Test,
+        // A throwaway Postgres in Docker for the tests that need a real database
+        "org.testcontainers" % "postgresql" % Versions.Testcontainers % Test,
 
         // Persistent4s: Event sourcing on top of Postgres,
         "io.github.persistent4s" %% "persistent4s-core" % Versions.Persistent4s,

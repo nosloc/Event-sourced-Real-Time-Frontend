@@ -44,14 +44,32 @@ object App extends IOApp.Simple:
       Ok(Greeting.greet("World !"))
     }
 
+  final case class Services(
+      companies: CompanyService[IO],
+      routes: HttpRoutes[IO]
+  )
+
   private val program =
     for
       config <- ConfigSource.default.loadIO[AppConfig]
+      services <- makeWithConfig(config, withSeed = true)
+      server <- EmberServerBuilder
+        .default[IO]
+        .withHost(config.ember.host)
+        .withPort(config.ember.port)
+        .withHttpApp(ErrorLogging(services.routes.orNotFound))
+        .build
+    yield server
 
+  def makeWithConfig(
+      config: AppConfig,
+      withSeed: Boolean = false
+  ): Resource[IO, Services] =
+    for
       // Persistent4s
-      database <- PostgresModule.make[IO, PrototypeEvent](
-        PrototypeEvent.eventCodec,
-        "postgres"
+      database <- PostgresModule.makeWithConfig[IO, PrototypeEvent](
+        config.postgres,
+        PrototypeEvent.eventCodec
       )
       companies = CompanyRepository.make(database.sessions)
       companyService = CompanyServiceImpl(companies)(using
@@ -60,7 +78,7 @@ object App extends IOApp.Simple:
       _ <- database.leaderElectedProjectionRuntime.startAll(registered =>
         registered.run(CompanyProjection(companies))
       )
-      // In Memory Event Store
+      // In Memory Event Store for non migrated services yet
       eventStore <- InMemoryEventStore.create.toResource
       patientServiceImpl <- PatientServiceImpl(eventStore).toResource
       therapistServiceImpl <- TherapistServiceImpl(
@@ -83,7 +101,9 @@ object App extends IOApp.Simple:
         therapistServiceImpl,
         patientServiceImpl
       ).toResource
-      _ <- seed.generateEvents().toResource
+      _ <-
+        if withSeed then seed.generateEvents().toResource
+        else Resource.unit[IO]
       tokens <- Resource.eval(Ref.of[IO, Map[Token, TherapistId]](Map.empty))
       authServiceImpl = new AuthServiceImpl(tokens, therapistServiceImpl)
       authChecker = AuthChecker(tokens)
@@ -98,12 +118,6 @@ object App extends IOApp.Simple:
         dashboardServiceImpl,
         authServiceImpl
       )
-      server <- EmberServerBuilder
-        .default[IO]
-        .withHost(config.ember.host)
-        .withPort(config.ember.port)
-        .withHttpApp(ErrorLogging(routes.orNotFound))
-        .build
-    yield server
+    yield Services(companyService, routes)
 
   def run: IO[Unit] = program.useForever
