@@ -14,9 +14,14 @@ import prototype.server.core.company.persistence.{
   CompanyProjection,
   CompanyRepository
 }
+import com.comcast.ip4s.*
 import prototype.server.core.dashboards.*
 import prototype.server.core.patient.*
-import prototype.server.core.therapist.*
+import prototype.server.core.therapist.api.TherapistServiceImpl
+import prototype.server.core.therapist.persistence.{
+  TherapistProjection,
+  TherapistRepository
+}
 import prototype.server.eventStore.*
 
 import persistent4s.postgres.PostgresModule
@@ -29,6 +34,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import pureconfig.ConfigSource
+import persistent4s.monitoring.MonitoringServer
 
 given Tracer[IO] = Tracer.Implicits.noop
 given Meter[IO] = Meter.Implicits.noop
@@ -46,6 +52,7 @@ object App extends IOApp.Simple:
 
   final case class Services(
       companies: CompanyService[IO],
+      therapists: TherapistService[IO],
       routes: HttpRoutes[IO]
   )
 
@@ -71,20 +78,26 @@ object App extends IOApp.Simple:
         config.postgres,
         PrototypeEvent.eventCodec
       )
+      _ <- MonitoringServer.make(
+        database.checkpoint,
+        database.sendNotification,
+        port"9595"
+      )
       companies = CompanyRepository.make(database.sessions)
       companyService = CompanyServiceImpl(companies)(using
         database.commandRuntime
       )
-      _ <- database.leaderElectedProjectionRuntime.startAll(registered =>
-        registered.run(CompanyProjection(companies))
+      therapists = TherapistRepository.make(database.sessions)
+      therapistServiceImpl = TherapistServiceImpl(therapists)(using
+        database.commandRuntime
       )
+      _ <- database.leaderElectedProjectionRuntime.startAll { registered =>
+        registered.run(CompanyProjection(companies))
+        registered.run(TherapistProjection(therapists))
+      }
       // In Memory Event Store for non migrated services yet
       eventStore <- InMemoryEventStore.create.toResource
       patientServiceImpl <- PatientServiceImpl(eventStore).toResource
-      therapistServiceImpl <- TherapistServiceImpl(
-        eventStore,
-        companyService
-      ).toResource
       appointmentServiceImpl <- AppointmentServiceImpl(
         eventStore,
         therapistServiceImpl,
@@ -118,6 +131,6 @@ object App extends IOApp.Simple:
         dashboardServiceImpl,
         authServiceImpl
       )
-    yield Services(companyService, routes)
+    yield Services(companyService, therapistServiceImpl, routes)
 
   def run: IO[Unit] = program.useForever

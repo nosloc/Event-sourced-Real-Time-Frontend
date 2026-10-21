@@ -6,3 +6,11 @@ CREATE TABLE IF NOT EXISTS companies (
   address_city   TEXT NOT NULL,
   address_state  TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS therapists (
+  therapist_id TEXT PRIMARY KEY,
+  first_name   TEXT NOT NULL,
+  last_name    TEXT NOT NULL,
+  company_id   UUID NOT NULL,
+  role         TEXT NOT NULL
+);

@@ -57,7 +57,8 @@ lazy val server =
         // Persistent4s: Event sourcing on top of Postgres,
         "io.github.persistent4s" %% "persistent4s-core" % Versions.Persistent4s,
         "io.github.persistent4s" %% "persistent4s-circe" % Versions.Persistent4s,
-        "io.github.persistent4s" %% "persistent4s-postgres" % Versions.Persistent4s
+        "io.github.persistent4s" %% "persistent4s-postgres" % Versions.Persistent4s,
+        "io.github.persistent4s" %% "persistent4s-monitoring" % Versions.Persistent4s
       )
     )
     .dependsOn(shared.jvm)

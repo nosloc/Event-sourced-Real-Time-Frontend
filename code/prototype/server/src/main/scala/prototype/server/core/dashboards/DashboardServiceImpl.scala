@@ -5,7 +5,7 @@ import cats.implicits.*
 
 import prototype.api.*
 import prototype.server.core.appointment.AppointmentServiceImpl
-import prototype.server.core.therapist.TherapistServiceImpl
+import prototype.server.core.therapist.api.TherapistServiceImpl
 
 import smithy4s.time.LocalDate
 

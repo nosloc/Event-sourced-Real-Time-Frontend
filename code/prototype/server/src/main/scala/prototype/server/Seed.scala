@@ -55,6 +55,30 @@ final class Seed private (
       companyIds <-
         if existing.nonEmpty then IO.pure(existing.map(_.companyId))
         else createCompanies()
+      // Therapists are stored in Postgres too: creating them again would fail
+      existingTherapists <- therapistService.listTherapists().map(_.therapists)
+      _ <-
+        if existingTherapists.nonEmpty then IO.unit
+        else createTherapists(random, companyIds)
+      _ <- appointments.traverse_ { appointment =>
+        appointmentService.createAppointment(
+          appointment.therapistIds,
+          appointment.patientIds,
+          appointment.appointmentType,
+          appointment.timeRange
+        )
+      }
+      _ <- seedPatients.traverse_ { (firstName, lastName, birthDate) =>
+        patientService.createPatient(firstName, lastName, birthDate)
+      }
+    yield ()
+  end generateEvents
+
+  private def createTherapists(
+      random: Random[IO],
+      companyIds: List[CompanyId]
+  ): IO[Unit] =
+    for
       _ <- therapists.traverse_ { seedTherapist =>
         // Each therapist goes to a random company
         random.nextIntBounded(companyIds.size).map(companyIds).flatMap {
@@ -69,19 +93,21 @@ final class Seed private (
             )
         }
       }
-      _ <- appointments.traverse_ { appointment =>
-        appointmentService.createAppointment(
-          appointment.therapistIds,
-          appointment.patientIds,
-          appointment.appointmentType,
-          appointment.timeRange
-        )
-      }
-      _ <- seedPatients.traverse_ { (firstName, lastName, birthDate) =>
-        patientService.createPatient(firstName, lastName, birthDate)
-      }
+      _ <- waitUntilTherapistsVisible(therapists.map(_.therapistId))
+        .timeout(10.seconds)
     yield ()
-  end generateEvents
+
+  /** Like the companies, the therapists are read from a projection. Creating an
+    * appointment checks that its therapists can be read, so wait for them.
+    */
+  private def waitUntilTherapistsVisible(ids: List[TherapistId]): IO[Unit] =
+    therapistService
+      .listTherapists()
+      .map(_.therapists.map(_.therapistId).toSet)
+      .flatMap { visible =>
+        if ids.forall(visible.contains) then IO.unit
+        else IO.sleep(100.millis) *> waitUntilTherapistsVisible(ids)
+      }
 
   private def createCompanies(): IO[List[CompanyId]] =
     for
