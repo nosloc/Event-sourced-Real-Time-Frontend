@@ -1,6 +1,7 @@
 package prototype.server.core
 
 import prototype.server.core.company.domain.CompanyEvent
+import prototype.server.core.patient.domain.PatientEvent
 import prototype.server.core.therapist.domain.TherapistEvent
 
 import persistent4s.{Event, EventCodec}
@@ -14,5 +15,6 @@ object PrototypeEvent:
     CirceEventCodec
       .builder[PrototypeEvent]
       .add[CompanyEvent]
+      .add[PatientEvent]
       .add[TherapistEvent]
       .build

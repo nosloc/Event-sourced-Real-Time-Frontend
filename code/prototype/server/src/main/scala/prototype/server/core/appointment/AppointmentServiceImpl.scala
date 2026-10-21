@@ -7,17 +7,17 @@ import cats.effect.*
 import prototype.api.*
 import prototype.server.UserFacingError
 import prototype.server.core.appointment.appointmentModel.*
-import prototype.server.core.patient.PatientServiceImpl
+import prototype.server.core.patient.api.PatientServiceInternal
+import prototype.server.core.therapist.api.TherapistServiceInternal
 import prototype.server.eventStore.*
-import prototype.server.core.therapist.api.TherapistServiceImpl
 
 trait AppointmentServiceImpl extends AppointmentService[IO]
 
 object AppointmentServiceImpl:
   def apply(
       eventStore: EventStore,
-      therapistService: TherapistServiceImpl,
-      patientService: PatientServiceImpl
+      therapistService: TherapistServiceInternal,
+      patientService: PatientServiceInternal
   ): IO[AppointmentServiceImpl] =
     for
       view <- Ref.of[IO, Map[String, Appointment]](Map.empty)

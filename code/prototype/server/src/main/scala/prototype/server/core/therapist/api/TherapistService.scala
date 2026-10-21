@@ -17,14 +17,13 @@ import persistent4s.CommandRuntime
 
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
-trait TherapistServiceInternal:
+trait TherapistServiceInternal extends TherapistService[IO]:
   def getTherapists(therapistIds: List[TherapistId]): IO[List[Therapist]]
 
 class TherapistServiceImpl(
     therapists: TherapistRepository
 )(using CommandRuntime[IO, PrototypeEvent])
-    extends TherapistService[IO]
-    with TherapistServiceInternal:
+    extends TherapistServiceInternal:
 
   private val logger = Slf4jLogger.getLogger[IO]
 

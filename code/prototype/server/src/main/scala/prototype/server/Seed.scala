@@ -68,9 +68,15 @@ final class Seed private (
           appointment.timeRange
         )
       }
-      _ <- seedPatients.traverse_ { (firstName, lastName, birthDate) =>
-        patientService.createPatient(firstName, lastName, birthDate)
-      }
+      // Patients are stored in Postgres too, and a second patient with the
+      // same name and birth date is refused
+      existingPatients <- patientService.listPatients().map(_.patients)
+      _ <-
+        if existingPatients.nonEmpty then IO.unit
+        else
+          seedPatients.traverse_ { (firstName, lastName, birthDate) =>
+            patientService.createPatient(firstName, lastName, birthDate)
+          }
     yield ()
   end generateEvents
 

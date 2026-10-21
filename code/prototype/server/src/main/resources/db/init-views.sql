@@ -14,3 +14,10 @@ CREATE TABLE IF NOT EXISTS therapists (
   company_id   UUID NOT NULL,
   role         TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS patients (
+  patient_id    UUID PRIMARY KEY,
+  first_name    TEXT NOT NULL,
+  last_name     TEXT NOT NULL,
+  date_of_birth DATE NOT NULL
+);

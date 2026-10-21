@@ -5,7 +5,6 @@ import cats.implicits.*
 
 import prototype.api.*
 import prototype.server.core.appointment.AppointmentServiceImpl
-import prototype.server.core.therapist.api.TherapistServiceImpl
 
 import smithy4s.time.LocalDate
 
@@ -14,7 +13,7 @@ trait DashboardServiceImpl extends DashboardService[IO]
 object DashboardServiceImpl:
   def apply(
       companyService: CompanyService[IO],
-      therapistService: TherapistServiceImpl,
+      therapistService: TherapistService[IO],
       appointmentService: AppointmentServiceImpl
   ): IO[DashboardServiceImpl] =
     IO.pure(new DashboardServiceImpl {
