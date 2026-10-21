@@ -4,6 +4,7 @@ import com.raquo.laminar.api.L.*
 import prototype.client.views.timetable.TimetableModel.*
 import scala.scalajs.js.Date
 import prototype.api.*
+import prototype.client.ErrorMessages.errorToMessage
 
 object WeekGrid:
 
@@ -27,7 +28,7 @@ object WeekGrid:
           Some(
             div(
               cls := "banner banner--error",
-              s"Error loading appointments: ${error.getMessage}"
+              s"${errorToMessage(error)} (timetable appointments)"
             )
           )
         case None => None

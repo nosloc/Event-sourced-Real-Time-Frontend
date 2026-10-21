@@ -6,7 +6,7 @@ import prototype.api.*
 import prototype.client.Api.ApiCall
 import prototype.client.Api
 import prototype.client.views.components.{FormRow, PopoverPicker}
-import prototype.client.views.timetable.ErrorMessages
+import prototype.client.ErrorMessages
 
 object TherapistForm:
   // Used to represent the form state on save

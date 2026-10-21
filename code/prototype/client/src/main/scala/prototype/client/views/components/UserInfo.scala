@@ -4,6 +4,7 @@ import prototype.api.*
 import com.raquo.laminar.api.L.*
 import prototype.client.Api.ApiCall
 import prototype.client.Api
+import prototype.client.ErrorMessages.errorToMessage
 
 object UserInfo:
   def apply(
@@ -29,7 +30,7 @@ object UserInfo:
         case Api.Error(error) =>
           div(
             cls := "banner banner--error",
-            s"Error loading user info: ${error.getMessage}"
+            s"${errorToMessage(error)} (user info)"
           )
       }
     )

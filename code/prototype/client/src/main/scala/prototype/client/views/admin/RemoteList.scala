@@ -4,7 +4,7 @@ import cats.effect.IO
 import com.raquo.laminar.api.L.*
 import prototype.client.Api
 import prototype.client.Api.ApiCall
-import prototype.client.views.timetable.ErrorMessages
+import prototype.client.ErrorMessages
 
 /** A list fetched from the server that keeps the last rows on screen while it
   * reloads, so a table never blinks. `itemsVar` is None only before the first

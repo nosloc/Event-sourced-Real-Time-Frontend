@@ -11,7 +11,7 @@ import prototype.client.Api
 import prototype.client.Api.ApiCall
 import prototype.client.views.components.*
 import prototype.client.views.components.chartJS.*
-import prototype.client.views.timetable.ErrorMessages
+import prototype.client.ErrorMessages
 
 object ActivityDashboard:
 

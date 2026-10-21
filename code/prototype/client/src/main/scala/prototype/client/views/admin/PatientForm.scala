@@ -5,7 +5,7 @@ import cats.effect.*
 import prototype.client.Api.ApiCall
 import prototype.client.Api
 import prototype.client.views.components.FormRow
-import prototype.client.views.timetable.ErrorMessages
+import prototype.client.ErrorMessages
 import smithy4s.time.LocalDate
 import scala.util.Try
 
@@ -101,9 +101,7 @@ object PatientForm:
         FormRow.input(
           "Last name",
           "text",
-          stateVar.zoomLazy(_.lastName)((state, v) =>
-            state.copy(lastName = v)
-          ),
+          stateVar.zoomLazy(_.lastName)((state, v) => state.copy(lastName = v)),
           errorS(_.lastNameError)
         )
       ),

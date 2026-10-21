@@ -7,6 +7,7 @@ import prototype.client.Api.ApiCall
 import prototype.client.views.components.Icons
 import prototype.client.views.components.PopoverPicker
 import prototype.StatusTransitions.verifyStatusChange
+import prototype.client.{ErrorMessages, InvalidInput}
 
 /** The prestations of one appointment: a table (label, quantity, unit price,
   * total, status, actions), an add row and a back button. Shown in place of the
@@ -107,61 +108,61 @@ object PrestationsView:
         div(
           cls := "prestations__status-box",
           PopoverPicker(
-          id = s"status-${prestation.prestationId}",
-          label = "",
-          items = currentStatusVar.signal.map(current =>
-            PrestationStatus.values
-              .filter(p => verifyStatusChange(current, p) || p == current)
-              .map { s =>
-                val itemLabel =
-                  s.toString.replace("_", " ").toLowerCase().capitalize
-                PopoverPicker.Item(
-                  name = itemLabel,
-                  value = s,
-                  buttonLabel = Some(itemLabel)
-                )
-              }
-              .toList
+            id = s"status-${prestation.prestationId}",
+            label = "",
+            items = currentStatusVar.signal.map(current =>
+              PrestationStatus.values
+                .filter(p => verifyStatusChange(current, p) || p == current)
+                .map { s =>
+                  val itemLabel =
+                    s.toString.replace("_", " ").toLowerCase().capitalize
+                  PopoverPicker.Item(
+                    name = itemLabel,
+                    value = s,
+                    buttonLabel = Some(itemLabel)
+                  )
+                }
+                .toList
+            ),
+            selectedVar = selectedStatusVar,
+            fallbackLabel = _.toString
           ),
-          selectedVar = selectedStatusVar,
-          fallbackLabel = _.toString
-        ),
-        child.maybe <-- hasPendingChangeS.map(
-          Option.when(_)(
-            button(
-              cls := "btn btn--small btn--icon btn--primary",
-              aria.label := "Validate status change",
-              title := "Validate status change",
-              Icons.check,
-              onClick
-                .compose(
-                  _.sample(selectedStatusVar.signal)
-                    .flatMapSwitch { newStatus =>
-                      ApiCall
-                        .fromIOCallSimple(
-                          Api.appointments.updatePrestationStatus(
-                            apptId,
-                            prestation.prestationId,
-                            newStatus
+          child.maybe <-- hasPendingChangeS.map(
+            Option.when(_)(
+              button(
+                cls := "btn btn--small btn--icon btn--primary",
+                aria.label := "Validate status change",
+                title := "Validate status change",
+                Icons.check,
+                onClick
+                  .compose(
+                    _.sample(selectedStatusVar.signal)
+                      .flatMapSwitch { newStatus =>
+                        ApiCall
+                          .fromIOCallSimple(
+                            Api.appointments.updatePrestationStatus(
+                              apptId,
+                              prestation.prestationId,
+                              newStatus
+                            )
                           )
-                        )
-                        .stateS
-                    }
-                ) --> {
-                case Api.Loading =>
-                  errorVar.set(None)
-                case Api.Success(res) =>
-                  errorVar.set(None)
-                  prestationsVar.set(res.appointment.prestations)
-                  res.appointment.prestations
-                    .find(_.prestationId == prestation.prestationId)
-                    .foreach(p => currentStatusVar.set(p.status))
-                case Api.Error(error) =>
-                  errorVar.set(Some(ErrorMessages.errorToMessage(error)))
-              }
+                          .stateS
+                      }
+                  ) --> {
+                  case Api.Loading =>
+                    errorVar.set(None)
+                  case Api.Success(res) =>
+                    errorVar.set(None)
+                    prestationsVar.set(res.appointment.prestations)
+                    res.appointment.prestations
+                      .find(_.prestationId == prestation.prestationId)
+                      .foreach(p => currentStatusVar.set(p.status))
+                  case Api.Error(error) =>
+                    errorVar.set(Some(ErrorMessages.errorToMessage(error)))
+                }
+              )
             )
           )
-        )
         )
       ),
       td(
@@ -292,7 +293,9 @@ object PrestationsView:
                         case (_, None, _) =>
                           Signal.fromValue(
                             Api.Error(
-                              InvalidInput("The quantity must be a whole number.")
+                              InvalidInput(
+                                "The quantity must be a whole number."
+                              )
                             )
                           )
                         case (_, _, None) =>

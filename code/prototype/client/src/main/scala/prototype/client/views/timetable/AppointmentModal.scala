@@ -6,6 +6,7 @@ import prototype.client.Api.ApiCall
 import prototype.client.Api
 import prototype.client.views.components.Modal
 import prototype.client.views.timetable.AppointmentForm.AppointmentFormState
+import prototype.client.ErrorMessages
 
 object AppointmentModal:
   def apply(

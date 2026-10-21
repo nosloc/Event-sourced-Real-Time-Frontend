@@ -7,7 +7,12 @@ import prototype.client.Api.ApiCall
 import prototype.client.Api
 import scala.scalajs.js.Date
 import smithy4s.time.Timestamp
-import prototype.client.views.components.{FormRow, PopoverPicker, PopoverMultiPicker}
+import prototype.client.views.components.{
+  FormRow,
+  PopoverPicker,
+  PopoverMultiPicker
+}
+import prototype.client.ErrorMessages
 
 object AppointmentForm:
   // Used to represent the form state on save

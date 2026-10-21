@@ -6,7 +6,7 @@ import prototype.api.Address
 import prototype.client.Api.ApiCall
 import prototype.client.Api
 import prototype.client.views.components.FormRow
-import prototype.client.views.timetable.ErrorMessages
+import prototype.client.ErrorMessages
 
 object CompanyForm:
   // Used to represent the form state on save
@@ -78,7 +78,13 @@ object CompanyForm:
           loadingVar.set(false)
           errorVar.set(Some(ErrorMessages.errorToMessage(error)))
       },
-      renderRow("Name", stateVar, _.name, (s, v) => s.copy(name = v), _.nameError),
+      renderRow(
+        "Name",
+        stateVar,
+        _.name,
+        (s, v) => s.copy(name = v),
+        _.nameError
+      ),
       // Street and number side by side, then city and state
       div(
         cls := "form__pair",
@@ -99,7 +105,13 @@ object CompanyForm:
       ),
       div(
         cls := "form__pair",
-        renderRow("City", stateVar, _.city, (s, v) => s.copy(city = v), _.cityError),
+        renderRow(
+          "City",
+          stateVar,
+          _.city,
+          (s, v) => s.copy(city = v),
+          _.cityError
+        ),
         renderRow(
           "State",
           stateVar,

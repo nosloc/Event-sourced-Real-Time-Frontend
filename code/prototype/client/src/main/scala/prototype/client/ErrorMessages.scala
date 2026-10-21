@@ -1,4 +1,4 @@
-package prototype.client.views.timetable
+package prototype.client
 
 import org.scalajs.dom
 import prototype.api.*
@@ -25,8 +25,8 @@ object ErrorMessages:
         s"Patient not found: ${ids.map(_.value).mkString(",")}."
       case InvalidPrestation() =>
         "A prestation needs a label, a quantity of at least 1 and a price of 0 or more."
-      case InvalidStatusChange() => "This status change is not allowed."
-      case PrestationNotFound()  => "The prestation was not found."
+      case InvalidStatusChange()  => "This status change is not allowed."
+      case PrestationNotFound()   => "The prestation was not found."
       case CompanyAlreadyExists() =>
         "A company with this name already exists."
       case TherapistAlreadyExists() =>
