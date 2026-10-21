@@ -3,8 +3,13 @@ package prototype.server.support
 import java.time.Instant
 import java.util.UUID
 
-import persistent4s.{EventEnvelope, EventMetadata, EventTypeName}
-import persistent4s.{Event, Tag}
+import persistent4s.{
+  Event,
+  EventEnvelope,
+  EventMetadata,
+  EventTypeName,
+  Tag
+}
 
 object EventEnvelopes:
 
