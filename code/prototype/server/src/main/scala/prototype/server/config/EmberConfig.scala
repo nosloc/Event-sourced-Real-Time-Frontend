@@ -3,7 +3,6 @@ package prototype.server.config
 import com.comcast.ip4s.{Host, Port}
 import pureconfig.ConfigReader
 import pureconfig.error.CannotConvert
-import pureconfig.generic.derivation.default.*
 
 final case class EmberConfig(host: Host, port: Port, appHost: Host)
     derives ConfigReader
