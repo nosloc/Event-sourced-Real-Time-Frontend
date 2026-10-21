@@ -5,6 +5,8 @@ import cats.effect.*
 import prototype.api.*
 import prototype.server.core.PrototypeEvent
 import prototype.server.core.company.commands.CreateCompany
+import prototype.server.core.company.domain.CompanyError
+import prototype.server.core.company.domain.CompanyError.*
 import prototype.server.core.company.persistence.{
   CompanyRepository,
   CompanyState
@@ -39,9 +41,12 @@ class CompanyServiceImpl(
   ): IO[CreateCompanyOutput] =
     for
       id <- IO.randomUUID
-      _ <- CreateCompany.Handler.run[IO](
+      _ <- CreateCompany.Handler.runOrRaise[IO](
         CreateCompany(id, name, address)
-      )
+      ) {
+        case COMPANY_ALREADY_EXISTS(_) => CompanyAlreadyExists()
+        case other: CompanyError       => other
+      }
       _ <- logger.info(s"Created company $name with id $id\n")
     yield CreateCompanyOutput(CompanyId(id))
 
