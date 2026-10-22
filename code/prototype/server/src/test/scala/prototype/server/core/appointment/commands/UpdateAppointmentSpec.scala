@@ -136,6 +136,29 @@ class UpdateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
     test.asserting(_ shouldBe Right(Nil))
   }
 
+  it should "accept removing every patient" in {
+    val test =
+      for
+        world <- HandlerWorld.make
+        _ <- created(world, create(1, List("abc"), List(patient1, patient2), range(10, 11)))
+        result <- updated(world, update(1, List("abc"), Nil, range(10, 11)))
+      yield result
+    test.asserting(_.map(_.map(_.payload)) shouldBe Right(
+      List(AppointmentUpdated(appointmentId(1), List("abc"), Nil, "INDIVIDUAL", millis(10), millis(11)))
+    ))
+  }
+
+  it should "refuse a patient it adds who is booked elsewhere at that time" in {
+    val test =
+      for
+        world <- HandlerWorld.make
+        _ <- created(world, create(1, List("abc"), List(patient1), range(10, 11)))
+        _ <- created(world, create(2, List("xyz"), List(patient2), range(10, 11)))
+        result <- updated(world, update(2, List("xyz"), List(patient2, patient1), range(10, 11)))
+      yield result
+    test.asserting(_ shouldBe Left(PATIENT_BUSY(List(patient1))))
+  }
+
   private val refused = List(
     ("an unknown appointment", update(9, List("abc"), Nil, range(10, 11)), APPOINTMENT_NOT_FOUND(appointmentId(9))),
     ("no therapist", update(1, Nil, Nil, range(10, 11)), NO_THERAPIST(appointmentId(1))),

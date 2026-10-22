@@ -1,30 +1,21 @@
-// DISABLED 2026-10-21 (Therapist and Patient moved to P4S): to fix later. The
-// appointment and dashboard services now depend on the internal traits
-// (TherapistServiceInternal, PatientServiceInternal); this file was adapted to
-// them but is left off for now. Tracked in `todo`.
-/*
 package prototype.server.core.dashboards
 
 import cats.effect.*
 import cats.effect.testing.scalatest.AsyncIOSpec
 
 import prototype.api.*
-import prototype.server.core.appointment.AppointmentServiceImpl
+import prototype.server.core.appointment.InMemoryAppointmentService
 import prototype.server.core.company.InMemoryCompanyService
-import prototype.server.core.dashboards.DashboardFixtures.{date, timestamp}
-import prototype.server.core.patient.InMemoryPatientService
+import prototype.server.core.dashboards.DashboardFixtures.{date, patient, timestamp}
 import prototype.server.core.therapist.InMemoryTherapistService
-import prototype.server.eventStore.InMemoryEventStore
 
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
-import smithy4s.time.LocalDate
 
-/** The dashboards as a client of the service sees them: the patient and
-  * appointment services are real, on one in-memory store, and the company and
-  * therapist services are in-memory ones. What matters here is how the data is gathered
-  * (which therapists and appointments belong to the company), not the
-  * counting, which has its own specs.
+/** The dashboards as a client of the service sees them, on in-memory company,
+  * therapist and appointment services (no database). What matters here is how
+  * the data is gathered (which therapists and appointments belong to the
+  * company), not the counting, which has its own specs.
   */
 class DashboardServiceSpec
     extends AsyncFlatSpec
@@ -32,26 +23,22 @@ class DashboardServiceSpec
     with Matchers:
 
   private val address = Address("Rue du Lac", "12", "Lausanne", "VD")
-  private val born = LocalDate(1990, 1, 1)
 
   private final class World(
       val companies: CompanyService[IO],
       val therapists: InMemoryTherapistService,
-      val patients: InMemoryPatientService,
-      val appointments: AppointmentServiceImpl,
+      val appointments: InMemoryAppointmentService,
       val dashboards: DashboardServiceImpl
   )
 
-  // A fresh set of services (and store) per test
+  // A fresh set of services per test
   private val newWorld: IO[World] =
     for
-      store <- InMemoryEventStore.create
       companies <- InMemoryCompanyService()
-      patients <- InMemoryPatientService()
       therapists <- InMemoryTherapistService(companies)
-      appointments <- AppointmentServiceImpl(store, therapists, patients)
+      appointments <- InMemoryAppointmentService(therapists)
       dashboards <- DashboardServiceImpl(companies, therapists, appointments)
-    yield World(companies, therapists, patients, appointments, dashboards)
+    yield World(companies, therapists, appointments, dashboards)
 
   private def addCompany(w: World, name: String): IO[CompanyId] =
     w.companies.createCompany(name, address).map(_.companyId)
@@ -60,9 +47,6 @@ class DashboardServiceSpec
     w.therapists
       .createTherapist("First", "Last", TherapistId(trigram), company, Role.PSYCHOLOGIST)
       .map(_.therapist.therapistId)
-
-  private def addPatient(w: World, lastName: String): IO[PatientId] =
-    w.patients.createPatient("First", lastName, born).map(_.patientId)
 
   private def addAppointment(
       w: World,
@@ -104,8 +88,8 @@ class DashboardServiceSpec
       arb <- addTherapist(w, "arb", mine)
       mdp <- addTherapist(w, "mdp", mine)
       out <- addTherapist(w, "out", other)
-      ann <- addPatient(w, "Ann")
-      bob <- addPatient(w, "Bob")
+      ann = patient(1)
+      bob = patient(2)
       _ <- addAppointment(w, List(arb), List(ann), "2026-10-12", 9)
       _ <- addAppointment(w, List(mdp), List(bob), "2026-10-12", 9)
       _ <- addAppointment(w, List(out), List(bob), "2026-10-13", 9)
@@ -122,7 +106,7 @@ class DashboardServiceSpec
       mine <- addCompany(w, "Mine")
       arb <- addTherapist(w, "arb", mine)
       mdp <- addTherapist(w, "mdp", mine)
-      ann <- addPatient(w, "Ann")
+      ann = patient(1)
       _ <- addAppointment(w, List(arb, mdp), List(ann), "2026-10-12", 9)
       result <- w.dashboards.getDirectoryDashboard(mine)
     yield
@@ -137,7 +121,7 @@ class DashboardServiceSpec
       b <- addCompany(w, "B")
       arb <- addTherapist(w, "arb", a)
       mdp <- addTherapist(w, "mdp", b)
-      ann <- addPatient(w, "Ann")
+      ann = patient(1)
       _ <- addAppointment(w, List(arb, mdp), List(ann), "2026-10-12", 9)
       forA <- w.dashboards.getDirectoryDashboard(a)
       forB <- w.dashboards.getDirectoryDashboard(b)
@@ -151,7 +135,7 @@ class DashboardServiceSpec
       w <- newWorld
       mine <- addCompany(w, "Mine")
       arb <- addTherapist(w, "arb", mine)
-      ann <- addPatient(w, "Ann")
+      ann = patient(1)
       _ <- addAppointment(w, List(arb), List(ann), "2026-10-13", 9)
       _ <- addAppointment(w, List(arb), List(ann), "2026-10-14", 9)
       _ <- addAppointment(w, List(arb), List(ann), "2026-10-21", 9)
@@ -170,7 +154,7 @@ class DashboardServiceSpec
       arb <- addTherapist(w, "arb", mine)
       mdp <- addTherapist(w, "mdp", mine)
       out <- addTherapist(w, "out", other)
-      ann <- addPatient(w, "Ann")
+      ann = patient(1)
       shared <- addAppointment(w, List(arb, mdp), List(ann), "2026-10-12", 9)
       foreign <- addAppointment(w, List(out), List(ann), "2026-10-12", 11)
       _ <- w.appointments.createPrestation(shared.appointmentId, "Consultation", 2, 50f)
@@ -186,4 +170,3 @@ class DashboardServiceSpec
         AmountPerStatus(toBill = 100f, billed = 30f, paid = 0f, cancelled = 0f)
       result.oldestToBill.map(_.appointmentId) shouldBe List(shared.appointmentId)
   }
-*/

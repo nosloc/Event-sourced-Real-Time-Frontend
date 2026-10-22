@@ -87,6 +87,30 @@ class CreateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
     test.asserting(_.isRight shouldBe true)
   }
 
+  it should "accept an appointment with no patient" in {
+    HandlerWorld.make
+      .flatMap(run(_, create(1, List("abc"), Nil, range(10, 11))))
+      .asserting(_.isRight shouldBe true)
+  }
+
+  it should "accept the same person listed twice" in {
+    HandlerWorld.make
+      .flatMap(run(_, create(1, List("abc", "abc"), List(patient1, patient1), range(10, 11))))
+      .asserting(_.isRight shouldBe true)
+  }
+
+  // The range is checked before the busy people: an empty range clashes with
+  // nothing, so naming busy people would mislead
+  it should "report an invalid range, not a busy therapist, when both apply" in {
+    val test =
+      for
+        world <- HandlerWorld.make
+        _ <- run(world, create(1, List("abc"), Nil, range(10, 12)))
+        second <- run(world, create(2, List("abc"), Nil, range(11, 11)))
+      yield second
+    test.asserting(_ shouldBe Left(INVALID_TIME_RANGE(appointmentId(2))))
+  }
+
   private val refused = List(
     ("no therapist", create(1, Nil, Nil, range(10, 11)), NO_THERAPIST(appointmentId(1))),
     (

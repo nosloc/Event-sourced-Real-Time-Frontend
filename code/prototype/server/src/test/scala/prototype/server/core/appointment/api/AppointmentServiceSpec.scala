@@ -152,6 +152,39 @@ class AppointmentServiceSpec extends AsyncFlatSpec
     }
   }
 
+  it should "give each prestation its own id, and show them when the appointment is listed" in {
+    withApp { (app, _) =>
+      for
+        created <- create(app, List(abc), Nil, range(10, 11))
+        id = created.appointmentId
+        _ <- app.appointments.createPrestation(id, "Consultation", 1, 120f)
+        _ <- app.appointments.createPrestation(id, "Consultation", 1, 120f)
+        _ <- TestApp.eventually(app.therapists.getTherapist(abc).attempt)(_.isRight)
+        listed <- app.appointments.listTherapistAppointments(abc).map(_.appointments)
+      yield listed
+    }.asserting { listed =>
+      val prestations = listed.flatMap(_.prestations)
+      prestations.map(_.label) shouldBe List("Consultation", "Consultation")
+      prestations.map(_.prestationId).distinct should have size 2
+    }
+  }
+
+  it should "refuse every change to an unknown appointment with AppointmentNotFound" in {
+    val unknown = AppointmentId(appointmentId(97))
+    withApp { (app, _) =>
+      List(
+        app.appointments
+          .updateAppointment(unknown, AppointmentType.INDIVIDUAL, List(abc), Nil, range(10, 11))
+          .void,
+        app.appointments.createPrestation(unknown, "Consultation", 1, 120f).void,
+        app.appointments
+          .updatePrestationStatus(unknown, PrestationId(prestationId(1)), PrestationStatus.BILLED)
+          .void,
+        app.appointments.deletePrestation(unknown, PrestationId(prestationId(1)))
+      ).traverse(_.attempt)
+    }.asserting(_ shouldBe List.fill(4)(Left(AppointmentNotFound())))
+  }
+
   it should "list a therapist's appointments in time order, and know unknown therapists" in {
     withApp { (app, _) =>
       for
