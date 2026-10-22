@@ -19,7 +19,6 @@ import cats.effect.std.Random
 import cats.syntax.all.*
 
 import prototype.api.*
-import prototype.server.core.appointment.AppointmentServiceImpl
 
 import smithy4s.time.{
   LocalDate as SmithyLocalDate,
@@ -60,14 +59,23 @@ final class Seed private (
       _ <-
         if existingTherapists.nonEmpty then IO.unit
         else createTherapists(random, companyIds)
-      _ <- appointments.traverse_ { appointment =>
-        appointmentService.createAppointment(
-          appointment.therapistIds,
-          appointment.patientIds,
-          appointment.appointmentType,
-          appointment.timeRange
-        )
-      }
+      // Appointments are stored in Postgres too: creating them again would
+      // clash with themselves (the therapists would be busy). tst always gets
+      // some, so none for tst means none were created yet.
+      existingAppointments <- appointmentService
+        .listTherapistAppointments(Seed.tst.therapistId)
+        .map(_.appointments)
+      _ <-
+        if existingAppointments.nonEmpty then IO.unit
+        else
+          appointments.traverse_ { appointment =>
+            appointmentService.createAppointment(
+              appointment.therapistIds,
+              appointment.patientIds,
+              appointment.appointmentType,
+              appointment.timeRange
+            )
+          }
       // Patients are stored in Postgres too, and a second patient with the
       // same name and birth date is refused
       existingPatients <- patientService.listPatients().map(_.patients)
@@ -152,7 +160,7 @@ object Seed:
     * (around 30 in total), relative to the boot date.
     */
   def apply(
-      appointmentService: AppointmentServiceImpl,
+      appointmentService: AppointmentService[IO],
       companyService: CompanyService[IO],
       therapistService: TherapistService[IO],
       patientService: PatientService[IO]

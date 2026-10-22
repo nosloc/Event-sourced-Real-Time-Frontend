@@ -8,7 +8,11 @@ import prototype.server.auth.*
 import prototype.server.config.AppConfig
 import prototype.server.config.syntax.loadIO
 import prototype.server.core.PrototypeEvent
-import prototype.server.core.appointment.*
+import prototype.server.core.appointment.api.AppointmentServiceImpl
+import prototype.server.core.appointment.persistence.{
+  AppointmentProjection,
+  AppointmentRepository
+}
 import prototype.server.core.company.api.CompanyServiceImpl
 import prototype.server.core.company.persistence.{
   CompanyProjection,
@@ -25,7 +29,6 @@ import prototype.server.core.therapist.persistence.{
   TherapistProjection,
   TherapistRepository
 }
-import prototype.server.eventStore.*
 
 import persistent4s.monitoring.MonitoringServer
 import persistent4s.postgres.PostgresModule
@@ -58,6 +61,7 @@ object App extends IOApp.Simple:
       companies: CompanyService[IO],
       therapists: TherapistService[IO],
       patients: PatientService[IO],
+      appointments: AppointmentService[IO],
       routes: HttpRoutes[IO]
   )
 
@@ -100,18 +104,24 @@ object App extends IOApp.Simple:
       therapistServiceImpl = TherapistServiceImpl(therapists)(using
         database.commandRuntime
       )
+      appointments = AppointmentRepository.make(database.sessions)
+      // The appointment commands wait for their projection: it publishes on
+      // this topic after each commit (SyncCommandHandler)
+      appointmentUpdates <- AppointmentProjection.updates.toResource
+      appointmentServiceImpl = AppointmentServiceImpl(
+        appointments,
+        appointmentUpdates,
+        therapistServiceImpl
+      )(using database.commandRuntime)
       _ <- database.leaderElectedProjectionRuntime.startAll { registered =>
         registered.run(CompanyProjection(companies))
         registered.run(TherapistProjection(therapists))
         registered.run(PatientProjection(patients))
+        registered.run(
+          AppointmentProjection(appointments),
+          Some(appointmentUpdates)
+        )
       }
-      // In Memory Event Store for non migrated services yet
-      eventStore <- InMemoryEventStore.create.toResource
-      appointmentServiceImpl <- AppointmentServiceImpl(
-        eventStore,
-        therapistServiceImpl,
-        patientServiceImpl
-      ).toResource
       dashboardServiceImpl <- DashboardServiceImpl(
         companyService,
         therapistServiceImpl,
@@ -144,6 +154,7 @@ object App extends IOApp.Simple:
       companyService,
       therapistServiceImpl,
       patientServiceImpl,
+      appointmentServiceImpl,
       routes
     )
 

@@ -4,7 +4,6 @@ import cats.effect.*
 import cats.implicits.*
 
 import prototype.api.*
-import prototype.server.core.appointment.AppointmentServiceImpl
 
 import smithy4s.time.LocalDate
 
@@ -14,7 +13,7 @@ object DashboardServiceImpl:
   def apply(
       companyService: CompanyService[IO],
       therapistService: TherapistService[IO],
-      appointmentService: AppointmentServiceImpl
+      appointmentService: AppointmentService[IO]
   ): IO[DashboardServiceImpl] =
     IO.pure(new DashboardServiceImpl {
 

@@ -1,5 +1,6 @@
 package prototype.server.core
 
+import prototype.server.core.appointment.domain.AppointmentEvent
 import prototype.server.core.company.domain.CompanyEvent
 import prototype.server.core.patient.domain.PatientEvent
 import prototype.server.core.therapist.domain.TherapistEvent
@@ -14,6 +15,7 @@ object PrototypeEvent:
   val eventCodec: EventCodec[PrototypeEvent] =
     CirceEventCodec
       .builder[PrototypeEvent]
+      .add[AppointmentEvent]
       .add[CompanyEvent]
       .add[PatientEvent]
       .add[TherapistEvent]
