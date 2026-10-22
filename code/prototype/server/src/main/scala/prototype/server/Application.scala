@@ -68,7 +68,7 @@ object App extends IOApp.Simple:
   private val program =
     for
       config <- ConfigSource.default.loadIO[AppConfig]
-      services <- makeWithConfig(config, withSeed = true)
+      services <- makeWithConfig(config, withSeed = true, withMonitoring = true)
       server <- EmberServerBuilder
         .default[IO]
         .withHost(config.ember.host)
@@ -79,7 +79,8 @@ object App extends IOApp.Simple:
 
   def makeWithConfig(
       config: AppConfig,
-      withSeed: Boolean = false
+      withSeed: Boolean = false,
+      withMonitoring: Boolean = false
   ): Resource[IO, Services] =
     for
       // Persistent4s
@@ -87,11 +88,13 @@ object App extends IOApp.Simple:
         config.postgres,
         PrototypeEvent.eventCodec
       )
-      _ <- MonitoringServer.make(
-        database.checkpoint,
-        database.sendNotification,
-        port"9595"
-      )
+      // Its port is fixed: off in the tests, so they can run while a dev
+      // server is up
+      _ <-
+        if withMonitoring then
+          MonitoringServer
+            .make(database.checkpoint, database.sendNotification, port"9595")
+        else Resource.unit[IO]
       companies = CompanyRepository.make(database.sessions)
       companyService = CompanyServiceImpl(companies)(using
         database.commandRuntime

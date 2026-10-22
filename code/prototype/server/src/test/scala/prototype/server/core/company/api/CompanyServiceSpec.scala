@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 
 import prototype.api.*
-import prototype.server.support.{TestApp, TestPostgres}
+import prototype.server.support.{PostgresSuite, TestApp}
 
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -12,12 +12,15 @@ import org.scalatest.matchers.should.Matchers
 /** The company service on a real Postgres in Docker: command, event store,
   * projection and read model together. Docker must be running.
   */
-class CompanyServiceSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
+class CompanyServiceSpec extends AsyncFlatSpec
+    with AsyncIOSpec
+    with Matchers
+    with PostgresSuite:
 
   private val address = Address("Example Street", "1", "Exampleville", "VD")
 
   "The company service" should "return a created company once the projection has caught up" in {
-    TestPostgres.make.use { postgres =>
+    freshDatabase.use { postgres =>
       TestApp.make(postgres).use { app =>
         for
           created <- app.companies.createCompany("Example Clinic", address)
@@ -31,7 +34,7 @@ class CompanyServiceSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
   }
 
   it should "report an unknown company as not found" in {
-    TestPostgres.make.use { postgres =>
+    freshDatabase.use { postgres =>
       TestApp.make(postgres).use { app =>
         app.companies
           .getCompany(CompanyId(java.util.UUID.randomUUID()))
@@ -42,7 +45,7 @@ class CompanyServiceSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
   }
 
   it should "still have its companies after the application restarts" in {
-    TestPostgres.make.use { postgres =>
+    freshDatabase.use { postgres =>
       for
         created <- TestApp.make(postgres).use { app =>
           for
