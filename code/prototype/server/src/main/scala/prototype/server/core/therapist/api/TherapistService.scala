@@ -17,13 +17,10 @@ import persistent4s.CommandRuntime
 
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
-trait TherapistServiceInternal extends TherapistService[IO]:
-  def getTherapists(therapistIds: List[TherapistId]): IO[List[Therapist]]
-
 class TherapistServiceImpl(
     therapists: TherapistRepository
 )(using CommandRuntime[IO, PrototypeEvent])
-    extends TherapistServiceInternal:
+    extends TherapistService[IO]:
 
   private val logger = Slf4jLogger.getLogger[IO]
 
@@ -58,11 +55,6 @@ class TherapistServiceImpl(
       case Some(state) => fromState(state).map(GetTherapistOutput.apply)
       case None        => IO.raiseError(TherapistNotFound(therapistId))
     }
-
-  override def getTherapists(ids: List[TherapistId]): IO[List[Therapist]] =
-    therapists
-      .findMany(ids.distinct.map(_.value))
-      .flatMap(found => found.values.flatten.toList.traverse(fromState))
 
   // The therapist id (a trigram) is chosen by the caller. The handler also
   // checks that the company exists, by reading the company's own events.

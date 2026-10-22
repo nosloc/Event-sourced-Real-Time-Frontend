@@ -17,17 +17,10 @@ import persistent4s.CommandRuntime
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import smithy4s.time.LocalDate
 
-/** What the other services need from the patient service: the API plus several
-  * patients at once. Kept apart from the Postgres-backed class so their tests
-  * can stub it.
-  */
-trait PatientServiceInternal extends PatientService[IO]:
-  def getPatients(patientIds: List[PatientId]): IO[List[Patient]]
-
 class PatientServiceImpl(
     patients: PatientRepository
 )(using CommandRuntime[IO, PrototypeEvent])
-    extends PatientServiceInternal:
+    extends PatientService[IO]:
 
   private val logger = Slf4jLogger.getLogger[IO]
 
@@ -75,8 +68,3 @@ class PatientServiceImpl(
       case Some(state) => IO.pure(GetPatientOutput(fromState(state)))
       case None        => IO.raiseError(PatientNotFound(patientId))
     }
-
-  override def getPatients(ids: List[PatientId]): IO[List[Patient]] =
-    patients
-      .findMany(ids.distinct.map(_.value))
-      .map(found => found.values.flatten.toList.map(fromState))
