@@ -14,7 +14,9 @@ import persistent4s.{
   EventMetadata,
   EventStore,
   IndexConflictException,
-  PendingEvent
+  PendingEvent,
+  ProjectionRead,
+  ReadCursor
 }
 
 final class InMemoryEventStore[A <: Event] private (
@@ -52,6 +54,27 @@ final class InMemoryEventStore[A <: Event] private (
         )
       )
     maxEvents.fold(matching)(max => matching.take(max.toLong))
+
+  // Events become visible in position order here (one Ref, no concurrent
+  // transactions), so position order is a safe delivery order; every event is
+  // in commit group 0
+  override def readForProjection(
+      after: ReadCursor,
+      eventFilter: EventFilter,
+      maxEvents: Int
+  ): IO[ProjectionRead[A]] =
+    ProjectionRead.byPosition(
+      readFrom(after.globalPosition, eventFilter, Some(maxEvents))
+    )
+
+  // The nearest event at or before `globalPosition`, or the start
+  override def cursorAt(globalPosition: Long): IO[ReadCursor] =
+    events.get.map(
+      _.map(_.metadata.globalPosition)
+        .filter(_ <= globalPosition)
+        .lastOption
+        .fold(ReadCursor.Start)(ReadCursor(0L, _))
+    )
 
   private def revision(
       current: Vector[EventEnvelope[A]],
