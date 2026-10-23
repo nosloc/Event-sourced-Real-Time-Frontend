@@ -21,9 +21,9 @@ import persistent4s.CommandRuntime
   * company, so that someone can log in to an empty database. The demo data is
   * generated on request (`POST /api/demo-data`), never at boot.
   *
-  * Both are created through their command handlers with fixed ids, so the
-  * event store itself refuses a second one: a restart, even after a crash
-  * between the two, never depends on how far the projections have caught up.
+  * Both are created through their command handlers with fixed ids, so the event
+  * store itself refuses a second one: a restart, even after a crash between the
+  * two, never depends on how far the projections have caught up.
   */
 object DevAccount:
 

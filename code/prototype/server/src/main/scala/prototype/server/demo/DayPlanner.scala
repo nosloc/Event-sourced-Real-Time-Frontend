@@ -7,8 +7,8 @@ import cats.effect.IO
 import cats.effect.std.Random
 import cats.syntax.all.*
 
-/** Plans the appointments of one therapist's day: random, non-overlapping
-  * slots on a 15-minute grid between 08:00 and 18:00, in Swiss time.
+/** Plans the appointments of one therapist's day: random, non-overlapping slots
+  * on a 15-minute grid between 08:00 and 18:00, in Swiss time.
   */
 object DayPlanner:
 
