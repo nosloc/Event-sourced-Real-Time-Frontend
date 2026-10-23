@@ -130,14 +130,13 @@ object App extends IOApp.Simple:
         therapistServiceImpl,
         appointmentServiceImpl
       ).toResource
-      seed <- Seed(
-        appointmentServiceImpl,
-        companyService,
-        therapistServiceImpl,
-        patientServiceImpl
-      ).toResource
+      // Only the dev account is created at boot; the demo data is generated on
+      // request
       _ <-
-        if withSeed then seed.generateEvents().toResource
+        if withSeed then
+          DevAccount
+            .ensure(therapistServiceImpl)(using database.commandRuntime)
+            .toResource
         else Resource.unit[IO]
       tokens <- Resource.eval(Ref.of[IO, Map[Token, TherapistId]](Map.empty))
       authServiceImpl = new AuthServiceImpl(tokens, therapistServiceImpl)
