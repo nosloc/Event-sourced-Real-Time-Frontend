@@ -34,6 +34,10 @@ object DemoDataSizes:
   // Chance that a prestation ends CANCELLED instead of its age-based status
   val ShareCancelled: Double = 0.05
 
+  // Chance that a prestation ignores its age and ends in any other status
+  // (an old one still TO_BILL, a recent one already PAID, ...)
+  val ShareOffTheRule: Double = 0.15
+
   // A prestation stays TO_BILL for this many days after its appointment, then
   // is BILLED until this many days, then PAID
   val ToBillDays: Int = 7

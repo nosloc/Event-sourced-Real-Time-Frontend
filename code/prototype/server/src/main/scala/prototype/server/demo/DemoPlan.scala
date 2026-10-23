@@ -309,19 +309,31 @@ object DemoPlan:
       }
     yield prestations
 
-  // The final status follows the age of the appointment, unless it is
-  // cancelled; every step is one the status rule allows
+  // The final status mostly follows the age of the appointment; a few are
+  // cancelled, and a few others end in any other status, whatever their age.
+  // Every step is one the status rule allows. Only past appointments get
+  // prestations, so this never applies after today.
   private def statusSteps(
       random: Random[IO],
       ageInDays: Long
   ): IO[List[PrestationStatus]] =
     import PrestationStatus.*
+    val byAge =
+      if ageInDays <= DemoDataSizes.ToBillDays then TO_BILL
+      else if ageInDays <= DemoDataSizes.BilledDays then BILLED
+      else PAID
     for
+      offTheRule <- random.nextDouble.map(_ < DemoDataSizes.ShareOffTheRule)
       cancelled <- random.nextDouble.map(_ < DemoDataSizes.ShareCancelled)
+      other <- random.elementOf(PrestationStatus.values.filterNot(_ == byAge))
       billedFirst <- random.nextBoolean
-    yield
-      if cancelled then
+      finalStatus =
+        if offTheRule then other
+        else if cancelled then CANCELLED
+        else byAge
+    yield finalStatus match
+      case TO_BILL   => Nil
+      case BILLED    => List(BILLED)
+      case PAID      => List(BILLED, PAID)
+      case CANCELLED =>
         if billedFirst then List(BILLED, CANCELLED) else List(CANCELLED)
-      else if ageInDays <= DemoDataSizes.ToBillDays then Nil
-      else if ageInDays <= DemoDataSizes.BilledDays then List(BILLED)
-      else List(BILLED, PAID)
