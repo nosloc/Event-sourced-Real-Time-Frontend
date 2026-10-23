@@ -142,3 +142,46 @@
 .modal__dialog:has(.admin__details) {
   width: min(540px, 100%);
 }
+
+/* Page title with the demo data button on the same line */
+.admin__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+/* The error banner of a failed generation, between the title and the tabs */
+.admin > .banner {
+  margin-bottom: var(--space-3);
+}
+
+/* Demo data results */
+.demo-data__duration {
+  margin: 0 0 var(--space-3);
+  color: var(--muted);
+}
+
+.demo-data__counts {
+  display: grid;
+  /* Same first column in both lists, so their figures line up */
+  grid-template-columns: 8rem 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+.demo-data__counts dt {
+  color: var(--muted);
+}
+
+.demo-data__counts dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.demo-data__counts--minor dd {
+  font-weight: 500;
+}
