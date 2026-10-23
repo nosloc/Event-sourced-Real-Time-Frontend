@@ -7,7 +7,6 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 
 import prototype.api.*
 import prototype.server.App
-import prototype.server.core.patient.domain.PatientError.EMPTY_PATIENT_FIELDS
 import prototype.server.support.{PostgresSuite, TestApp}
 
 import org.scalatest.flatspec.AsyncFlatSpec
@@ -48,12 +47,11 @@ class PatientServiceSpec extends AsyncFlatSpec
         _ <- app.patients.createPatient("Camille", "Rochat", born)
         // The duplicate check reads the events: no need to wait for the projection
         again <- app.patients.createPatient("Camille", "Rochat", born).attempt
-        // Not mapped to an API error yet: reaches the client as a 500 (to fix)
         noName <- app.patients.createPatient("", "Favre", born).attempt
       yield (again, noName)
     }.asserting { case (again, noName) =>
       again shouldBe Left(PatientAlreadyExists())
-      noName shouldBe Left(EMPTY_PATIENT_FIELDS(List("firstName")))
+      noName shouldBe Left(InvalidPatient(List("firstName")))
     }
   }
 

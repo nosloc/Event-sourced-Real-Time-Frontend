@@ -5,7 +5,6 @@ import cats.effect.IO
 import prototype.api.*
 import prototype.server.core.PrototypeEvent
 import prototype.server.core.patient.commands.CreatePatient
-import prototype.server.core.patient.domain.PatientError
 import prototype.server.core.patient.domain.PatientError.*
 import prototype.server.core.patient.persistence.{
   PatientRepository,
@@ -49,8 +48,8 @@ class PatientServiceImpl(
           dateOfBirth.toJava
         )
       ) {
-        case PATIENT_ALREADY_EXISTS(_) => PatientAlreadyExists()
-        case other: PatientError       => other
+        case PATIENT_ALREADY_EXISTS(_)    => PatientAlreadyExists()
+        case EMPTY_PATIENT_FIELDS(fields) => InvalidPatient(fields)
       }
       _ <- logger.info(s"Created patient $id")
     yield CreatePatientOutput(PatientId(id))

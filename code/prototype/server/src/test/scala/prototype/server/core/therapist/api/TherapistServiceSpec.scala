@@ -5,7 +5,6 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 
 import prototype.api.*
 import prototype.server.App
-import prototype.server.core.therapist.domain.TherapistError.THERAPIST_NAME_EMPTY
 import prototype.server.support.{PostgresSuite, TestApp}
 
 import org.scalatest.flatspec.AsyncFlatSpec
@@ -58,7 +57,6 @@ class TherapistServiceSpec extends AsyncFlatSpec
         noCompany <- app.therapists
           .createTherapist("Bob", "Ray", xyz, CompanyId(java.util.UUID.randomUUID()), Role.PSYCHOLOGIST)
           .attempt
-        // Not mapped to an API error yet: reaches the client as a 500 (to fix)
         noName <- app.therapists
           .createTherapist(" ", "Ray", xyz, company, Role.PSYCHOLOGIST)
           .attempt
@@ -66,7 +64,7 @@ class TherapistServiceSpec extends AsyncFlatSpec
     }.asserting { case (taken, noCompany, noName) =>
       taken shouldBe Left(TherapistAlreadyExists())
       noCompany shouldBe Left(CompanyNotFound())
-      noName shouldBe Left(THERAPIST_NAME_EMPTY("xyz"))
+      noName shouldBe Left(InvalidTherapist())
     }
   }
 

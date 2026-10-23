@@ -6,7 +6,6 @@ import cats.syntax.all.*
 import prototype.api.*
 import prototype.server.core.PrototypeEvent
 import prototype.server.core.therapist.commands.CreateTherapist
-import prototype.server.core.therapist.domain.TherapistError
 import prototype.server.core.therapist.domain.TherapistError.*
 import prototype.server.core.therapist.persistence.{
   TherapistRepository,
@@ -77,7 +76,7 @@ class TherapistServiceImpl(
       ) {
         case THERAPIST_ALREADY_EXISTS(_)    => TherapistAlreadyExists()
         case THERAPIST_COMPANY_NOT_FOUND(_) => CompanyNotFound()
-        case other: TherapistError          => other
+        case THERAPIST_NAME_EMPTY(_)        => InvalidTherapist()
       }
       _ <- logger.info(
         s"Created therapist ${therapistId.value} for company ${companyId.value}"

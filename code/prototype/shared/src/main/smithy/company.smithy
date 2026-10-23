@@ -43,6 +43,7 @@ operation CreateCompany {
     output: CreateCompanyOutput
     errors: [
         CompanyAlreadyExists
+        InvalidCompany
     ]
 }
 
@@ -91,6 +92,11 @@ structure CompanyNotFound {}
 @error("client")
 @httpError(409)
 structure CompanyAlreadyExists {}
+
+// A blank name, or an address with a blank field
+@error("client")
+@httpError(400)
+structure InvalidCompany {}
 
 structure Address {
     @required

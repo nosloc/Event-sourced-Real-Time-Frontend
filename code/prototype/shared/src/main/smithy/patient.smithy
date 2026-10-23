@@ -28,6 +28,7 @@ operation CreatePatient {
     output: CreatePatientOutput
     errors: [
         PatientAlreadyExists
+        InvalidPatient
     ]
 }
 
@@ -67,6 +68,18 @@ structure CreatePatientOutput {
 @error("client")
 @httpError(409)
 structure PatientAlreadyExists {}
+
+// The fields left blank, by name (e.g. "firstName")
+@error("client")
+@httpError(400)
+structure InvalidPatient {
+    @required
+    fields: FieldNames
+}
+
+list FieldNames {
+    member: String
+}
 
 structure GetPatientInput {
     @httpLabel

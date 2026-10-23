@@ -42,6 +42,7 @@ operation CreateTherapist {
     errors: [
         CompanyNotFound
         TherapistAlreadyExists
+        InvalidTherapist
     ]
 }
 
@@ -100,6 +101,11 @@ structure TherapistNotFound {
 @error("client")
 @httpError(409)
 structure TherapistAlreadyExists {}
+
+// A blank first or last name
+@error("client")
+@httpError(400)
+structure InvalidTherapist {}
 
 @pattern("^[a-z]{3}$")
 string TherapistId

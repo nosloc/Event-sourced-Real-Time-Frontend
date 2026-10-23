@@ -33,7 +33,13 @@ object ErrorMessages:
         "This trigram is already used by another therapist."
       case PatientAlreadyExists() =>
         "A patient with the same name and date of birth already exists."
-      case CompanyNotFound()     => "The company was not found."
+      case CompanyNotFound() => "The company was not found."
+      case InvalidCompany()  =>
+        "A company needs a name and a complete address."
+      case InvalidTherapist() =>
+        "A therapist needs a first name and a last name."
+      case InvalidPatient(fields) =>
+        s"Missing: ${fields.map(fieldLabel).mkString(", ")}."
       case InvalidInput(message) => message
 
       case _ =>
@@ -43,3 +49,10 @@ object ErrorMessages:
         dom.console.error(s"Unexpected error: $error")
         error.printStackTrace()
         "Something went wrong. Please try again."
+
+  // The server names the fields as in the API; the user reads them in words
+  private def fieldLabel(field: String): String =
+    field match
+      case "firstName" => "first name"
+      case "lastName"  => "last name"
+      case other       => other
