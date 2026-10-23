@@ -58,7 +58,10 @@ lazy val server =
         "io.github.persistent4s" %% "persistent4s-core" % Versions.Persistent4s,
         "io.github.persistent4s" %% "persistent4s-circe" % Versions.Persistent4s,
         "io.github.persistent4s" %% "persistent4s-postgres" % Versions.Persistent4s,
-        "io.github.persistent4s" %% "persistent4s-monitoring" % Versions.Persistent4s
+        "io.github.persistent4s" %% "persistent4s-monitoring" % Versions.Persistent4s,
+
+        // Fake names and addresses for the demo data (a Java library, JVM only)
+        "net.datafaker" % "datafaker" % Versions.Datafaker
       )
     )
     .dependsOn(shared.jvm)

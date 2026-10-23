@@ -20,6 +20,8 @@ object Versions {
 
   val Persistent4s = "0.4.0-RC4"
 
+  val Datafaker = "2.7.0"
+
   // -- Tests (server) --
 
   val ScalaTest = "3.2.19"
