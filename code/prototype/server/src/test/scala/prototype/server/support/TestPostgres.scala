@@ -54,8 +54,8 @@ object TestPostgres:
         )
       )
 
-  /** A new database copied from the container's one (the read tables, no
-    * data), dropped when the resource is released. Nothing may connect to the
+  /** A new database copied from the container's one (the read tables, no data),
+    * dropped when the resource is released. Nothing may connect to the
     * container's database itself, or Postgres refuses to copy it.
     */
   def freshDatabase(container: PostgresConfig): Resource[IO, PostgresConfig] =
@@ -71,6 +71,9 @@ object TestPostgres:
       name <- Resource.eval(
         IO.randomUUID.map(id => "test_" + id.toString.replace("-", ""))
       )
+      // A database name cannot be a bind parameter, so it is spliced as text;
+      // it is generated just above, never taken from outside
+      // scalafix:off DisableSyntax.skunkRawInterpolation
       _ <- Resource.make(
         admin.use(
           _.execute(
@@ -79,6 +82,9 @@ object TestPostgres:
         )
       )(_ =>
         // FORCE closes the connections a test left open
-        admin.use(_.execute(sql"DROP DATABASE #$name WITH (FORCE)".command)).void
+        admin
+          .use(_.execute(sql"DROP DATABASE #$name WITH (FORCE)".command))
+          .void
       )
+    // scalafix:on DisableSyntax.skunkRawInterpolation
     yield container.copy(database = name)

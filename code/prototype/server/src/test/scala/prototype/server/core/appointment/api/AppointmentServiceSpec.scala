@@ -1,8 +1,8 @@
 package prototype.server.core.appointment.api
 
 import cats.effect.IO
-import cats.syntax.all.*
 import cats.effect.testing.scalatest.AsyncIOSpec
+import cats.syntax.all.*
 
 import prototype.api.*
 import prototype.server.App

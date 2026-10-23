@@ -8,8 +8,9 @@ import cats.syntax.all.*
 import prototype.api.PrestationStatus
 import prototype.server.core.appointment.domain.given
 
-import io.circe.Decoder as JsonDecoder
 import persistent4s.postgres.{PostgresAtomicRepository, PostgresRepositoryTable}
+
+import io.circe.Decoder as JsonDecoder
 import skunk.*
 import skunk.circe.codec.all.json
 import skunk.codec.all.*
@@ -64,7 +65,7 @@ object AppointmentRepository:
 
   // One row per appointment: its columns, then all of its prestations in one
   // column (an empty list when it has none)
-  private val selectWithPrestations = """
+  private val selectWithPrestations: Fragment[Void] = sql"""
     SELECT a.appointment_id, a.therapist_ids, a.patient_ids, a.appt_type,
            a.start_time, a.end_time,
            COALESCE(
@@ -103,17 +104,17 @@ object AppointmentRepository:
     }
 
   private val byIds: Query[Arr[UUID], AppointmentState] =
-    sql"""#$selectWithPrestations
+    sql"""$selectWithPrestations
       WHERE a.appointment_id = ANY($_uuid)
       GROUP BY a.appointment_id""".query(appointmentState)
 
   private val everyAppointment: Query[Void, AppointmentState] =
-    sql"""#$selectWithPrestations
+    sql"""$selectWithPrestations
       GROUP BY a.appointment_id""".query(appointmentState)
 
   // The library has no "array contains" filter, hence the query
   private val ofTherapist: Query[String, AppointmentState] =
-    sql"""#$selectWithPrestations
+    sql"""$selectWithPrestations
       WHERE $text = ANY(a.therapist_ids)
       GROUP BY a.appointment_id
       ORDER BY a.start_time, a.appointment_id""".query(appointmentState)

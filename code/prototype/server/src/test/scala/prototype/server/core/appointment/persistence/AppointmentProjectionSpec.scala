@@ -9,14 +9,15 @@ import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.support.EventEnvelopes
 
-import org.scalatest.flatspec.AsyncFlatSpec
-import org.scalatest.matchers.should.Matchers
 import persistent4s.{
   EventEnvelope,
   EventTypeName,
   ProjectionStateAlreadyExists,
   ProjectionStateNotFound
 }
+
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /** What the appointment projection does with each event, without a database.
   * The repository is built on a pool that fails when used, so a handler that

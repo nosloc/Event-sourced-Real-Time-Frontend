@@ -4,11 +4,12 @@ import cats.effect.{IO, Resource}
 
 import prototype.server.core.PrototypeEvent
 
+import persistent4s.postgres.{PostgresConfig, PostgresModule}
+
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
-import persistent4s.postgres.{PostgresConfig, PostgresModule}
 import skunk.Session
 
 /** The connection pool of the app's Postgres module, for the specs that test a

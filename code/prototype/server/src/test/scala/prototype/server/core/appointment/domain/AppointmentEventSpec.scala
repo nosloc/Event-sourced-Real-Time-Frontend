@@ -5,13 +5,14 @@ import java.util.UUID
 import prototype.api.PrestationStatus
 import prototype.server.core.PrototypeEvent
 
+import persistent4s.EventTypeName
+import persistent4s.circe.FutureEventVersion
+
 import io.circe.Json
 import io.circe.parser.parse
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import persistent4s.EventTypeName
-import persistent4s.circe.FutureEventVersion
 
 /** The JSON of the appointment events as they are saved. Saved events are kept
   * for ever, so this JSON is a contract: the `saved` payloads below must keep
