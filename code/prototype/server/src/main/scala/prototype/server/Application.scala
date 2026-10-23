@@ -29,6 +29,7 @@ import prototype.server.core.therapist.persistence.{
   TherapistProjection,
   TherapistRepository
 }
+import prototype.server.demo.{DemoDataGenerator, DemoDataServiceImpl}
 
 import persistent4s.monitoring.MonitoringServer
 import persistent4s.postgres.PostgresModule
@@ -138,6 +139,16 @@ object App extends IOApp.Simple:
             .ensure(therapistServiceImpl)(using database.commandRuntime)
             .toResource
         else Resource.unit[IO]
+      // Generates the demo data on request, through the command handlers;
+      // the repositories are only read, to wait for the projections
+      demoDataServiceImpl <- DemoDataServiceImpl
+        .make(
+          DemoDataGenerator(companies, therapists, patients, appointments)(using
+            database.commandRuntime
+          ),
+          therapistServiceImpl
+        )
+        .toResource
       tokens <- Resource.eval(Ref.of[IO, Map[Token, TherapistId]](Map.empty))
       authServiceImpl = new AuthServiceImpl(tokens, therapistServiceImpl)
       authChecker = AuthChecker(tokens)
@@ -150,6 +161,7 @@ object App extends IOApp.Simple:
         appointmentServiceImpl,
         patientServiceImpl,
         dashboardServiceImpl,
+        demoDataServiceImpl,
         authServiceImpl
       )
     yield Services(

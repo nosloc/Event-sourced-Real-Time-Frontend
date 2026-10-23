@@ -44,4 +44,4 @@ object DemoDataSizes:
   val BilledDays: Int = 28
 
   // Therapists whose appointments are written at the same time
-  val ParallelTherapists: Int = 6
+  val ParallelTherapists: Int = 1

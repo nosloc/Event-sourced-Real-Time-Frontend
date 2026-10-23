@@ -2,14 +2,16 @@ GET http://127.0.0.1:9000/api/hello
 ###
 GET http://127.0.0.1:9000/api/therapists
 ###
-GET http://127.0.0.1:9000/api/therapists/mdp
+GET http://127.0.0.1:9000/api/therapists/dev
 ###
 GET http://127.0.0.1:9000/api/companies
 Authorization: Bearer ac709fa8-aee3-4e87-b120-14c2c410873a
 ###
-GET http://127.0.0.1:9000/api/companies/070874c8-5296-452e-8c91-cfaf54385932
+# Dev Company: its id is fixed (DevAccount)
+GET http://127.0.0.1:9000/api/companies/af7d48a9-d8cf-324f-9b52-404fdb61eb25
+Authorization: Bearer ac709fa8-aee3-4e87-b120-14c2c410873a
 ###
-GET http://127.0.0.1:9000/api/therapists/mdp/appointments
+GET http://127.0.0.1:9000/api/therapists/dev/appointments
 Authorization: Bearer ac709fa8-aee3-4e87-b120-14c2c410873a
 ###
 # Expected now: 404 (unknown therapist; needs a token, see the section below)
@@ -19,7 +21,7 @@ POST http://127.0.0.1:9000/api/login
 Content-Type: application/json
 
 {
-  "username": "mdp"
+  "username": "dev"
 }
 ###
 POST http://127.0.0.1:9000/api/login
@@ -43,7 +45,7 @@ Content-Type: application/json
 
 { 
   "timeRange": { "start": 1791792000, "end": 1791799200 }, 
-  "therapistIds": ["mdp"],
+  "therapistIds": ["dev"],
   "patientIds": [],
   "appointmentType": "INDIVIDUAL"
 }
@@ -80,7 +82,7 @@ Content-Type: application/json
 { "name": "Test Clinic", "address": { "street": "Test Street", "number": "1", "city": "Testville", "state": "VD" } }
 
 ###
-@companyId = {{createCompany.response.body.$.company.companyId}}
+@companyId = {{createCompany.response.body.$.companyId}}
 
 # Expected: 201 + the created therapist (a second run returns 409, the trigram is taken)
 POST http://127.0.0.1:9000/api/therapists
@@ -144,4 +146,13 @@ Authorization: Bearer {{token}}
 ###
 # expected: 404 (unknown company)
 GET http://127.0.0.1:9000/api/companies/00000000-0000-4000-8000-000000000000/dashboards/directory
+Authorization: Bearer {{token}}
+
+###
+# ---- Demo data ----
+# Run it first, on a fresh database that only holds the dev account (the
+# requests above create a therapist, after which it answers 409).
+# Expected: 200 + the counts of what was generated and the duration; a second
+# call returns 409 DemoDataAlreadyGenerated
+POST http://127.0.0.1:9000/api/demo-data
 Authorization: Bearer {{token}}
