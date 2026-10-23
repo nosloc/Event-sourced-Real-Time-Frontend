@@ -99,16 +99,22 @@ final case class AppointmentsState(
       event.endTime
     )
 
-  // The event holds the full new values, so it does not need an earlier event
-  // of the same appointment in the history read
+  // The event holds only what changed, so it applies to the appointment as the
+  // history read knows it. A stream that never had the appointment ignores it:
+  // the people added by this update learn it from their own event.
   def afterUpdated(event: AppointmentUpdated): AppointmentsState =
-    withSlot(
-      event.id,
-      event.therapistIds,
-      event.patientIds,
-      event.apptType,
-      event.startTime,
-      event.endTime
+    copy(appointments =
+      appointments.updatedWith(event.id)(
+        _.map(slot =>
+          AppointmentSlot(
+            slot.therapistIds -- event.therapistsRemoved ++ event.therapistsAdded,
+            slot.patientIds -- event.patientsRemoved ++ event.patientsAdded,
+            event.apptType.getOrElse(slot.apptType),
+            event.startTime.getOrElse(slot.start),
+            event.endTime.getOrElse(slot.end)
+          )
+        )
+      )
     )
 
   // Remove the appointment from the state when it is deleted

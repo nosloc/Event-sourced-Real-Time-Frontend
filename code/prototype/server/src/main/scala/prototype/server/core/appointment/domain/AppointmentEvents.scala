@@ -29,17 +29,20 @@ final case class AppointmentCreated(
     endTime: Long
 ) extends AppointmentEvent derives Encoder, Decoder
 
-// Carries the full new values, not only what changed: the event is also read by
-// the streams of the therapists and patients it names, and a stream that never
-// saw the creation (someone added by this update) has nothing to apply a
-// partial change to.
+// What an update changed, and only that: a field is None when it kept its value,
+// and the lists name who joined and who left. The people who join are not told
+// by this event: each gets a TherapistAddedToAppointment or a
+// PatientAddedToAppointment with the whole appointment, since their stream holds
+// nothing to apply a change to.
 final case class AppointmentUpdated(
     id: UUID,
-    therapistIds: List[String],
-    patientIds: List[UUID],
-    apptType: String,
-    startTime: Long,
-    endTime: Long
+    therapistsAdded: List[String],
+    therapistsRemoved: List[String],
+    patientsAdded: List[UUID],
+    patientsRemoved: List[UUID],
+    apptType: Option[String],
+    startTime: Option[Long],
+    endTime: Option[Long]
 ) extends AppointmentEvent derives Encoder, Decoder
 
 final case class AppointmentDeleted(

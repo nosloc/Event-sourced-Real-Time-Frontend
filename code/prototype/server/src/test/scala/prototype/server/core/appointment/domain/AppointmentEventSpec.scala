@@ -44,10 +44,30 @@ class AppointmentEventSpec extends AnyFlatSpec with Matchers with EitherValues:
       EventTypeName.of[AppointmentCreated],
       Json.obj(people*)
     ),
+    // The update is saved as what changed (2026-10-23; earlier databases are not
+    // kept, so the full-values payload of before is gone on purpose)
     (
-      AppointmentUpdated(appointment, List("abc", "xyz"), List(patient), "INDIVIDUAL", 36000000L, 39600000L),
+      AppointmentUpdated(
+        appointment,
+        apptType = Some("COUPLE"),
+        startTime = None,
+        endTime = Some(43200000L),
+        therapistsAdded = List("qrs"),
+        therapistsRemoved = List("xyz"),
+        patientsAdded = Nil,
+        patientsRemoved = List(patient)
+      ),
       EventTypeName.of[AppointmentUpdated],
-      Json.obj(people*)
+      Json.obj(
+        "id" -> str(appointment.toString),
+        "apptType" -> str("COUPLE"),
+        "startTime" -> Json.Null,
+        "endTime" -> Json.fromLong(43200000L),
+        "therapistsAdded" -> Json.arr(str("qrs")),
+        "therapistsRemoved" -> Json.arr(str("xyz")),
+        "patientsAdded" -> Json.arr(),
+        "patientsRemoved" -> Json.arr(str(patient.toString))
+      )
     ),
     (
       AppointmentDeleted(appointment),

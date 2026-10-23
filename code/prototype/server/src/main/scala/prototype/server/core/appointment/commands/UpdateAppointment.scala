@@ -17,11 +17,12 @@ import prototype.server.core.therapist.domain.{
   TherapistScopes
 }
 
-import persistent4s.EventSourcedCommandHandler
+import persistent4s.{EventSourcedCommandHandler, Tag}
 
 /** Replaces the type, the participants and the time of an appointment: the
-  * values are the new ones, not a list of changes. Who left is worked out from
-  * what the appointment had.
+  * command holds the new values, so its scopes name everyone who will be in the
+  * appointment. What changed (who joins, who leaves, the new type or time) is
+  * worked out from what the appointment had, and only that is saved.
   */
 final case class UpdateAppointment(
     id: UUID,
@@ -160,27 +161,61 @@ object UpdateAppointment:
           )
         if unchanged then Nil
         else
-          // Who left comes from the state: their streams must see the update to
-          // know they are free, and the event itself only lists who stays
+          val addedTherapists =
+            (command.therapistIds.toSet -- old.therapistIds).toList.sorted
           val removedTherapists =
             (old.therapistIds -- command.therapistIds).toList.sorted
+          val addedPatients =
+            (command.patientIds.toSet -- old.patientIds).toList
+              .sortBy(_.toString)
           val removedPatients =
             (old.patientIds -- command.patientIds).toList.sortBy(_.toString)
-          // The removed ones must see they are out, and the added ones must
-          // learn about the appointment
-          val tags =
+
+          // The people who had the appointment: those who stay see the changes,
+          // those who leave see they are free. The people who join are left
+          // out, their stream has nothing to apply a change to
+          val patchTags =
             Set(AppointmentScopes.Appointment(command.id).toTag) ++
-              (command.therapistIds ++ removedTherapists)
-                .map(TherapistScopes.Therapist(_).toTag) ++
-              (command.patientIds ++ removedPatients)
-                .map(PatientScopes.Patient(_).toTag)
-          List(
-            tags -> AppointmentUpdated(
-              command.id,
-              command.therapistIds,
-              command.patientIds,
-              command.apptType,
-              start,
-              end
-            )
+              old.therapistIds.map(TherapistScopes.Therapist(_).toTag) ++
+              old.patientIds.map(PatientScopes.Patient(_).toTag)
+
+          val patch = AppointmentUpdated(
+            command.id,
+            therapistsAdded = addedTherapists,
+            therapistsRemoved = removedTherapists,
+            patientsAdded = addedPatients,
+            patientsRemoved = removedPatients,
+            apptType = Option.when(command.apptType != old.apptType)(
+              command.apptType
+            ),
+            startTime = Option.when(start != old.start)(start),
+            endTime = Option.when(end != old.end)(end)
           )
+
+          // Each person who joins gets the whole appointment, as it is after
+          // this update, in their own stream only
+          val joined: List[(Set[Tag], PrototypeEvent)] =
+            addedTherapists.map(therapist =>
+              Set(TherapistScopes.Therapist(therapist).toTag) ->
+                TherapistAddedToAppointment(
+                  therapist,
+                  command.id,
+                  command.therapistIds.distinct,
+                  command.patientIds.distinct,
+                  command.apptType,
+                  start,
+                  end
+                )
+            ) ++ addedPatients.map(patient =>
+              Set(PatientScopes.Patient(patient).toTag) ->
+                PatientAddedToAppointment(
+                  patient,
+                  command.id,
+                  command.therapistIds.distinct,
+                  command.patientIds.distinct,
+                  command.apptType,
+                  start,
+                  end
+                )
+            )
+          (patchTags -> patch) :: joined

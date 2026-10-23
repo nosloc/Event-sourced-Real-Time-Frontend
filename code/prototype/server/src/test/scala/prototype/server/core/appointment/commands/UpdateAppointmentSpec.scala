@@ -9,7 +9,10 @@ import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*
 import prototype.server.core.patient.domain.PatientScopes
-import prototype.server.core.therapist.domain.TherapistScopes
+import prototype.server.core.therapist.domain.{
+  TherapistAddedToAppointment,
+  TherapistScopes
+}
 import prototype.server.support.HandlerWorld
 import prototype.server.support.HandlerWorld.{patient1, patient2}
 
@@ -17,8 +20,9 @@ import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /** The `UpdateAppointment` handler. Besides its own rules, the update must reach
-  * every stream that a later creation reads: the people added must see the
-  * appointment, and the people removed must see that they are free.
+  * every stream that a later creation reads: the people added get the whole
+  * appointment in an event of their own, and the people removed see the update
+  * and know they are free.
   */
 class UpdateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
 
@@ -40,7 +44,7 @@ class UpdateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
   private def updated(world: HandlerWorld, command: UpdateAppointment) =
     world.runtime.execute(UpdateAppointment.Handler, command)
 
-  "UpdateAppointment" should "save the full new values, in the streams of the people who stay, join and leave" in {
+  "UpdateAppointment" should "save what changed, in the streams of the people who stay and leave, and the whole appointment for each person who joins" in {
     val test =
       for
         world <- HandlerWorld.make
@@ -51,19 +55,39 @@ class UpdateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
     test.asserting { result =>
       result.map(_.map(_.payload)) shouldBe Right(
         List(
-          AppointmentUpdated(appointmentId(1), List("abc", "qrs"), List(patient2), "COUPLE", millis(14), millis(15))
+          AppointmentUpdated(
+            appointmentId(1),
+            apptType = Some("COUPLE"),
+            startTime = Some(millis(14)),
+            endTime = Some(millis(15)),
+            therapistsAdded = List("qrs"),
+            therapistsRemoved = List("xyz"),
+            patientsAdded = Nil,
+            patientsRemoved = List(patient1)
+          ),
+          // The appointment as it is after the update
+          TherapistAddedToAppointment(
+            "qrs",
+            appointmentId(1),
+            List("abc", "qrs"),
+            List(patient2),
+            "COUPLE",
+            millis(14),
+            millis(15)
+          )
         )
       )
       result.map(_.map(_.metadata.tags)) shouldBe Right(
         List(
+          // Who stays and who leaves, not who joins
           Set(
             AppointmentScopes.Appointment(appointmentId(1)).toTag,
             TherapistScopes.Therapist("abc").toTag,
-            TherapistScopes.Therapist("qrs").toTag,
             TherapistScopes.Therapist("xyz").toTag,
             PatientScopes.Patient(patient1).toTag,
             PatientScopes.Patient(patient2).toTag
-          )
+          ),
+          Set(TherapistScopes.Therapist("qrs").toTag)
         )
       )
     }
@@ -105,6 +129,47 @@ class UpdateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
     test.asserting(_ shouldBe (true, Left(THERAPIST_BUSY(List("abc")))))
   }
 
+  // Someone added only has their "added" event, then the later updates
+  it should "move the busy time of someone it added, when a later update moves the appointment" in {
+    val test =
+      for
+        world <- HandlerWorld.make
+        _ <- created(world, create(1, List("abc"), Nil, range(10, 11)))
+        _ <- updated(world, update(1, List("abc", "xyz"), Nil, range(10, 11)))
+        _ <- updated(world, update(1, List("abc", "xyz"), Nil, range(14, 15)))
+        oldTime <- created(world, create(2, List("xyz"), Nil, range(10, 11)))
+        newTime <- created(world, create(3, List("xyz"), Nil, TimeRange(at(14, 30), at(15, 30))))
+      yield (oldTime.isRight, newTime)
+    test.asserting(_ shouldBe (true, Left(THERAPIST_BUSY(List("xyz")))))
+  }
+
+  it should "make someone it adds busy at the new time, when the same update moves the appointment" in {
+    val test =
+      for
+        world <- HandlerWorld.make
+        _ <- created(world, create(1, List("abc"), Nil, range(10, 11)))
+        _ <- updated(world, update(1, List("abc"), List(patient1), range(14, 15)))
+        oldTime <- created(world, create(2, List("xyz"), List(patient1), range(10, 11)))
+        newTime <- created(world, create(3, List("xyz"), List(patient1), TimeRange(at(14, 30), at(15, 30))))
+      yield (oldTime.isRight, newTime)
+    test.asserting(_ shouldBe (true, Left(PATIENT_BUSY(List(patient1)))))
+  }
+
+  it should "make someone busy again, at the current time, when it adds them back" in {
+    val test =
+      for
+        world <- HandlerWorld.make
+        _ <- created(world, create(1, List("abc", "xyz"), Nil, range(10, 11)))
+        _ <- updated(world, update(1, List("abc"), Nil, range(10, 11)))
+        // Moved while xyz is out: xyz's stream does not see this one
+        _ <- updated(world, update(1, List("abc"), Nil, range(14, 15)))
+        _ <- updated(world, update(1, List("abc", "xyz"), Nil, range(14, 15)))
+        oldTime <- created(world, create(2, List("xyz"), Nil, range(10, 11)))
+        newTime <- created(world, create(3, List("xyz"), Nil, TimeRange(at(14, 30), at(15, 30))))
+      yield (oldTime.isRight, newTime)
+    test.asserting(_ shouldBe (true, Left(THERAPIST_BUSY(List("xyz")))))
+  }
+
   it should "not clash with its own old time" in {
     val test =
       for
@@ -144,7 +209,18 @@ class UpdateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
         result <- updated(world, update(1, List("abc"), Nil, range(10, 11)))
       yield result
     test.asserting(_.map(_.map(_.payload)) shouldBe Right(
-      List(AppointmentUpdated(appointmentId(1), List("abc"), Nil, "INDIVIDUAL", millis(10), millis(11)))
+      List(
+        AppointmentUpdated(
+          appointmentId(1),
+          apptType = None,
+          startTime = None,
+          endTime = None,
+          therapistsAdded = Nil,
+          therapistsRemoved = Nil,
+          patientsAdded = Nil,
+          patientsRemoved = List(patient1, patient2).sortBy(_.toString)
+        )
+      )
     ))
   }
 

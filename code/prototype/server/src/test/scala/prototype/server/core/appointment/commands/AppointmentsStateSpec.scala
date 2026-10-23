@@ -79,19 +79,41 @@ class AppointmentsStateSpec extends AnyFlatSpec with Matchers:
       ) shouldBe empty
   }
 
-  "afterUpdated" should "take the full new values, even for an appointment never seen" in {
-    val state = noHistory.afterUpdated(
-      AppointmentUpdated(
-        appointmentId(1),
-        List("xyz"),
-        Nil,
-        "COUPLE",
-        millis(14),
-        millis(15)
+  "afterUpdated" should "apply the changes to an appointment it knows" in {
+    val state = noHistory
+      .afterCreated(created(1, List("abc"), 10, 11))
+      .afterUpdated(
+        AppointmentUpdated(
+          appointmentId(1),
+          apptType = Some("COUPLE"),
+          startTime = Some(millis(14)),
+          endTime = Some(millis(15)),
+          therapistsAdded = List("xyz"),
+          therapistsRemoved = List("abc"),
+          patientsAdded = Nil,
+          patientsRemoved = Nil
+        )
       )
-    )
+    // The patient of the creation is still there: nobody left on that side
     state.appointments(appointmentId(1)) shouldBe
-      AppointmentSlot(Set("xyz"), Set.empty, "COUPLE", millis(14), millis(15))
+      AppointmentSlot(Set("xyz"), Set(patient), "COUPLE", millis(14), millis(15))
+  }
+
+  it should "ignore an appointment it never saw" in {
+    noHistory
+      .afterUpdated(
+        AppointmentUpdated(
+          appointmentId(1),
+          apptType = Some("COUPLE"),
+          startTime = None,
+          endTime = None,
+          therapistsAdded = List("xyz"),
+          therapistsRemoved = Nil,
+          patientsAdded = Nil,
+          patientsRemoved = Nil
+        )
+      )
+      .appointments shouldBe empty
   }
 
   it should "free someone removed from the appointment" in {
@@ -100,11 +122,13 @@ class AppointmentsStateSpec extends AnyFlatSpec with Matchers:
       .afterUpdated(
         AppointmentUpdated(
           appointmentId(1),
-          List("xyz"),
-          Nil,
-          "INDIVIDUAL",
-          millis(10),
-          millis(11)
+          apptType = None,
+          startTime = None,
+          endTime = None,
+          therapistsAdded = Nil,
+          therapistsRemoved = List("abc"),
+          patientsAdded = Nil,
+          patientsRemoved = Nil
         )
       )
     busy(state, 10, 11) shouldBe Set("xyz")

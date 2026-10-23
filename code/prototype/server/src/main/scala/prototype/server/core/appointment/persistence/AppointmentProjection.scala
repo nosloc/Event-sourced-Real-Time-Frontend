@@ -28,10 +28,10 @@ final case class PrestationRow(
     status: PrestationStatus
 )
 
-/** An appointment with its prestations, as the projection sees it. It is
-  * stored in two tables (see `AppointmentRepository`). Plain types only: the
-  * smithy types (`AppointmentId`, `TimeRange`, ...) are not stored. The two ends
-  * of the time range are epoch milliseconds, like in the events.
+/** An appointment with its prestations, as the projection sees it. It is stored
+  * in two tables (see `AppointmentRepository`). Plain types only: the smithy
+  * types (`AppointmentId`, `TimeRange`, ...) are not stored. The two ends of
+  * the time range are epoch milliseconds, like in the events.
   */
 final case class AppointmentState(
     appointmentId: UUID,
@@ -71,14 +71,22 @@ final case class AppointmentProjection(
       )
     )
 
-    // The update carries the full new values
+    // The update carries only what changed. The "added to appointment" events
+    // are not handled: the update already lists who joined, so the row would
+    // name them twice
     on[AppointmentUpdated](_.id).update((state, event) =>
+      val therapistIds =
+        state.therapistIds.filterNot(event.therapistsRemoved.contains) ++
+          event.therapistsAdded
+      val patientIds =
+        state.patientIds.filterNot(event.patientsRemoved.contains) ++
+          event.patientsAdded
       state.copy(
-        therapistIds = event.therapistIds,
-        patientIds = event.patientIds,
-        apptType = event.apptType,
-        startTime = event.startTime,
-        endTime = event.endTime
+        therapistIds = therapistIds.distinct,
+        patientIds = patientIds.distinct,
+        apptType = event.apptType.getOrElse(state.apptType),
+        startTime = event.startTime.getOrElse(state.startTime),
+        endTime = event.endTime.getOrElse(state.endTime)
       )
     )
 

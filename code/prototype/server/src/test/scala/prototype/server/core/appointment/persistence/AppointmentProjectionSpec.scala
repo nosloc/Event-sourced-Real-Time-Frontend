@@ -66,12 +66,21 @@ class AppointmentProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matc
       )
   }
 
-  it should "replace the type, the people and the time on an update, and keep the prestations" in {
+  it should "apply the changes of an update, and keep the prestations" in {
     projection
       .handle(
         Some(state),
         envelope(
-          AppointmentUpdated(id, List("xyz"), List(prestationId(9)), "FAMILY", millis(14), millis(15)),
+          AppointmentUpdated(
+            id,
+            apptType = Some("FAMILY"),
+            startTime = Some(millis(14)),
+            endTime = Some(millis(15)),
+            therapistsAdded = List("xyz"),
+            therapistsRemoved = List("abc"),
+            patientsAdded = List(prestationId(9)),
+            patientsRemoved = Nil
+          ),
           EventTypeName.of[AppointmentUpdated]
         )
       )
