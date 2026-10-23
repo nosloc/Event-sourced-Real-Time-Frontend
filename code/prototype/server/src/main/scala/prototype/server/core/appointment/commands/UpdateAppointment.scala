@@ -6,8 +6,13 @@ import prototype.api.*
 import prototype.server.core.PrototypeEvent
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*
-import prototype.server.core.patient.domain.{PatientCreated, PatientScopes}
+import prototype.server.core.patient.domain.{
+  PatientAddedToAppointment,
+  PatientCreated,
+  PatientScopes
+}
 import prototype.server.core.therapist.domain.{
+  TherapistAddedToAppointment,
   TherapistCreated,
   TherapistScopes
 }
@@ -97,6 +102,14 @@ object UpdateAppointment:
       )
       on[AppointmentDeleted].allEvents.evolve((state, event) =>
         state.afterDeleted(event)
+      )
+
+      // Someone added by an update only has this event in their stream: it tells them about the whole appointment
+      on[TherapistAddedToAppointment].allEvents.evolve((state, event) =>
+        state.afterTherapistAdded(event)
+      )
+      on[PatientAddedToAppointment].allEvents.evolve((state, event) =>
+        state.afterPatientAdded(event)
       )
 
       // The same rules as the creation, once the appointment is known to exist

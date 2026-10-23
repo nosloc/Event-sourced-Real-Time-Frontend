@@ -7,6 +7,8 @@ import prototype.server.core.appointment.domain.{
   AppointmentDeleted,
   AppointmentUpdated
 }
+import prototype.server.core.patient.domain.PatientAddedToAppointment
+import prototype.server.core.therapist.domain.TherapistAddedToAppointment
 
 /** What an existing appointment looks like in the history read (times in epoch
   * milliseconds, as in the events).
@@ -64,37 +66,77 @@ final case class AppointmentsState(
     overlapping(start, end, ignoring).flatMap(_.patientIds).toSet &
       patientIds.toSet
 
-  // Update the state when an appointment is created
-  def afterCreated(event: AppointmentCreated): AppointmentsState =
+  // Put the full appointment under its id, replacing what was there
+  private def withSlot(
+      id: UUID,
+      therapistIds: List[String],
+      patientIds: List[UUID],
+      apptType: String,
+      start: Long,
+      end: Long
+  ): AppointmentsState =
     copy(appointments =
       appointments.updated(
-        event.id,
+        id,
         AppointmentSlot(
-          event.therapistIds.toSet,
-          event.patientIds.toSet,
-          event.apptType,
-          event.startTime,
-          event.endTime
+          therapistIds.toSet,
+          patientIds.toSet,
+          apptType,
+          start,
+          end
         )
       )
+    )
+
+  // Update the state when an appointment is created
+  def afterCreated(event: AppointmentCreated): AppointmentsState =
+    withSlot(
+      event.id,
+      event.therapistIds,
+      event.patientIds,
+      event.apptType,
+      event.startTime,
+      event.endTime
     )
 
   // The event holds the full new values, so it does not need an earlier event
   // of the same appointment in the history read
   def afterUpdated(event: AppointmentUpdated): AppointmentsState =
-    copy(appointments =
-      appointments.updated(
-        event.id,
-        AppointmentSlot(
-          event.therapistIds.toSet,
-          event.patientIds.toSet,
-          event.apptType,
-          event.startTime,
-          event.endTime
-        )
-      )
+    withSlot(
+      event.id,
+      event.therapistIds,
+      event.patientIds,
+      event.apptType,
+      event.startTime,
+      event.endTime
     )
 
   // Remove the appointment from the state when it is deleted
   def afterDeleted(event: AppointmentDeleted): AppointmentsState =
     copy(appointments = appointments - event.id)
+
+  // Update the state when a therapist is added to an appointment
+  def afterTherapistAdded(
+      event: TherapistAddedToAppointment
+  ): AppointmentsState =
+    withSlot(
+      event.appointmentId,
+      event.appointmentTherapists,
+      event.appointmentPatients,
+      event.appointmentType,
+      event.appointmentStartTime,
+      event.appointmentEndTime
+    )
+
+  // Update the state when a patient is added to an appointment
+  def afterPatientAdded(
+      event: PatientAddedToAppointment
+  ): AppointmentsState =
+    withSlot(
+      event.appointmentId,
+      event.appointmentTherapists,
+      event.appointmentPatients,
+      event.appointmentType,
+      event.appointmentStartTime,
+      event.appointmentEndTime
+    )
