@@ -30,6 +30,7 @@ import prototype.server.core.therapist.persistence.{
   TherapistRepository
 }
 import prototype.server.demo.{DemoDataGenerator, DemoDataServiceImpl}
+import prototype.server.eventfeed.EventStoreServiceImpl
 
 import persistent4s.monitoring.MonitoringServer
 import persistent4s.postgres.PostgresModule
@@ -63,6 +64,7 @@ object App extends IOApp.Simple:
       therapists: TherapistService[IO],
       patients: PatientService[IO],
       appointments: AppointmentService[IO],
+      eventStore: EventStoreService[IO],
       routes: HttpRoutes[IO]
   )
 
@@ -149,6 +151,11 @@ object App extends IOApp.Simple:
           therapistServiceImpl
         )
         .toResource
+      // Reads the stored events themselves, not a read model
+      eventStoreServiceImpl = EventStoreServiceImpl(
+        database.eventStore,
+        PrototypeEvent.eventCodec
+      )
       tokens <- Resource.eval(Ref.of[IO, Map[Token, TherapistId]](Map.empty))
       authServiceImpl = new AuthServiceImpl(tokens, therapistServiceImpl)
       authChecker = AuthChecker(tokens)
@@ -162,6 +169,7 @@ object App extends IOApp.Simple:
         patientServiceImpl,
         dashboardServiceImpl,
         demoDataServiceImpl,
+        eventStoreServiceImpl,
         authServiceImpl
       )
     yield Services(
@@ -169,6 +177,7 @@ object App extends IOApp.Simple:
       therapistServiceImpl,
       patientServiceImpl,
       appointmentServiceImpl,
+      eventStoreServiceImpl,
       routes
     )
 

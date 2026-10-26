@@ -156,3 +156,14 @@ Authorization: Bearer {{token}}
 # call returns 409 DemoDataAlreadyGenerated
 POST http://127.0.0.1:9000/api/demo-data
 Authorization: Bearer {{token}}
+
+###
+# ---- Event store ----
+# expected: 200 + the 10 newest events (oldest first) and the total
+GET http://127.0.0.1:9000/api/events/latest?take=10
+Authorization: Bearer {{token}}
+
+###
+# expected: 200 + the 10 oldest events after skipping 20, and the total
+GET http://127.0.0.1:9000/api/events?skip=20&take=10
+Authorization: Bearer {{token}}
