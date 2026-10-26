@@ -21,6 +21,14 @@ enum CompanyError(val message: String)
   case COMPANY_ALREADY_EXISTS(id: UUID)
       extends CompanyError(s"Company with id $id already exists.")
 
+  /** Another company already uses the given name
+    *
+    * @param name
+    *   company name
+    */
+  case COMPANY_NAME_TAKEN(name: String)
+      extends CompanyError(s"A company named $name already exists.")
+
   /** The company name is empty
     *
     * @param id

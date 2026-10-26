@@ -44,6 +44,7 @@ class CompanyServiceImpl(
         CreateCompany(id, name, address)
       ) {
         case COMPANY_ALREADY_EXISTS(_)  => CompanyAlreadyExists()
+        case COMPANY_NAME_TAKEN(_)      => CompanyAlreadyExists()
         case COMPANY_NAME_EMPTY(_)      => InvalidCompany()
         case COMPANY_ADDRESS_INVALID(_) => InvalidCompany()
       }

@@ -47,7 +47,9 @@ class CreateCompanySpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
       .make[PrototypeEvent]
       .map(store => Setup(store, CommandRuntime.eventStoreOnly(store)))
 
-  "CreateCompany" should "save a CompanyCreated event tagged with the company" in {
+  private val unique = CompanyScopes.CompanyUnique(()).toTag
+
+  "CreateCompany" should "save a CompanyCreated event tagged with the company and the shared unique tag" in {
     val test =
       for
         s <- setup
@@ -58,7 +60,7 @@ class CreateCompanySpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
     test.asserting { case (result, saved) =>
       result.map(_.map(_.payload)) shouldBe Right(List(created))
       result.map(_.map(_.metadata.tags)) shouldBe
-        Right(List(Set(CompanyScopes.Company(id).toTag)))
+        Right(List(Set(CompanyScopes.Company(id).toTag, unique)))
       saved.toList shouldBe result.toOption.toList.flatten
     }
   }
@@ -69,14 +71,17 @@ class CreateCompanySpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
       for
         s <- setup
         _ <- s.runtime.execute(CreateCompany.Handler, create)
-        _ <- s.runtime.execute(CreateCompany.Handler, create.copy(id = otherId))
+        _ <- s.runtime.execute(
+          CreateCompany.Handler,
+          create.copy(id = otherId, name = "Other Clinic")
+        )
         saved <- s.store.all
       yield saved
 
     test.asserting { saved =>
       saved.map(_.metadata.tags) shouldBe Vector(
-        Set(CompanyScopes.Company(id).toTag),
-        Set(CompanyScopes.Company(otherId).toTag)
+        Set(CompanyScopes.Company(id).toTag, unique),
+        Set(CompanyScopes.Company(otherId).toTag, unique)
       )
     }
   }

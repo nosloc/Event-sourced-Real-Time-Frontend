@@ -127,18 +127,20 @@ object DemoPlan:
       faker <- IO.delay(Faker(Locale.FRENCH))
       trigrams <- Ref.of[IO, Set[String]](takenTrigrams + "dev")
       patientKeys <- Ref.of[IO, Set[(String, String, LocalDate)]](Set.empty)
+      companyNames <- Ref.of[IO, Set[String]](Set.empty)
       days = DayPlanner.weekdays(
         today.minusWeeks(DemoDataSizes.HistoryWeeks.toLong),
         today.plusWeeks(DemoDataSizes.FutureWeeks.toLong)
       )
       companies <- (1 to DemoDataSizes.Companies).toList.traverse(_ =>
-        company(random, faker, trigrams, patientKeys, days, today)
+        company(random, faker, companyNames, trigrams, patientKeys, days, today)
       )
     yield DemoPlan(companies)
 
   private def company(
       random: Random[IO],
       faker: Faker,
+      companyNames: Ref[IO, Set[String]],
       trigrams: Ref[IO, Set[String]],
       patientKeys: Ref[IO, Set[(String, String, LocalDate)]],
       days: List[LocalDate],
@@ -146,7 +148,7 @@ object DemoPlan:
   ): IO[PlannedCompany] =
     for
       id <- IO.randomUUID
-      name <- IO.delay(faker.company().name())
+      name <- uniqueCompanyName(faker, companyNames)
       street <- IO.delay(faker.address().streetName())
       number <- random.betweenInt(1, 151)
       (town, canton) <- random.elementOf(towns)
@@ -163,6 +165,21 @@ object DemoPlan:
       Address(street, number.toString, town, canton),
       therapists
     )
+
+  // A company is refused if another has the same name: keep them unique
+  // within the plan (a company created by hand with the same name is still
+  // refused, and its writes counted as skipped)
+  private def uniqueCompanyName(
+      faker: Faker,
+      companyNames: Ref[IO, Set[String]]
+  ): IO[String] =
+    for
+      name <- IO.delay(faker.company().name())
+      key = name.trim.toLowerCase(Locale.ROOT)
+      isNew <- companyNames.modify(used => (used + key, !used.contains(key)))
+      result <-
+        if isNew then IO.pure(name) else uniqueCompanyName(faker, companyNames)
+    yield result
 
   private def therapist(
       random: Random[IO],
