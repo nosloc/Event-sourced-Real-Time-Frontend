@@ -28,3 +28,11 @@ object Icons:
   def check: SvgElement = icon("M20 6L9 17l-5-5")
 
   def cross: SvgElement = icon("M18 6L6 18", "M6 6l12 12")
+
+  def chevronLeft: SvgElement = icon("M15 18l-6-6 6-6")
+
+  def chevronRight: SvgElement = icon("M9 18l6-6-6-6")
+
+  def chevronFirst: SvgElement = icon("M17 18l-6-6 6-6", "M7 6v12")
+
+  def chevronLast: SvgElement = icon("M7 18l6-6-6-6", "M17 6v12")
