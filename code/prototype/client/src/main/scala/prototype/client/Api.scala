@@ -92,6 +92,14 @@ object Api:
       .make
       .fold(throw _, identity)
 
+  val eventStore: EventStoreService[IO] =
+    SimpleRestJsonBuilder(EventStoreService)
+      .client(FetchClientBuilder[IO].create)
+      .uri(origin)
+      .middleware(authMiddleware)
+      .make
+      .fold(throw _, identity)
+
   val demoData: DemoDataService[IO] =
     SimpleRestJsonBuilder(DemoDataService)
       .client(FetchClientBuilder[IO].create)

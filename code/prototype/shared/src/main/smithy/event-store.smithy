@@ -36,7 +36,7 @@ operation GetLatestEvents {
 structure ListEventsInput {
     @default(0)
     @httpQuery("skip")
-    skip: Integer
+    skip: Long
 
     @default(50)
     @httpQuery("take")

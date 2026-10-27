@@ -12,7 +12,7 @@ final class EventStoreServiceImpl(
     codec: EventCodec[PrototypeEvent]
 ) extends EventStoreService[IO]:
 
-  override def listEvents(skip: Int, take: Int): IO[EventsPage] =
+  override def listEvents(skip: Long, take: Int): IO[EventsPage] =
     eventStore
       .readFrom(0L, EventFilter())
       .compile
@@ -28,15 +28,17 @@ final class EventStoreServiceImpl(
       .flatMap { count =>
         // Bounded first, so that the page ends with the newest event
         val bounded = EventStoreServiceImpl.boundedTake(take)
-        getEvents((count - bounded).toInt, bounded, count)
+        getEvents(count - bounded, bounded, count)
       }
   end getLatestEvents
 
-  private def getEvents(skip: Int, take: Int, total: Long): IO[EventsPage] =
+  private def getEvents(skip: Long, take: Int, total: Long): IO[EventsPage] =
     val parsedTake = EventStoreServiceImpl.boundedTake(take)
     val parsedSkip = skip.max(0)
+    // P4S takes the number of events to read as an Int
+    val toRead = (parsedSkip + parsedTake).min(Int.MaxValue).toInt
     eventStore
-      .readFrom(0L, EventFilter(), Some(parsedSkip + parsedTake))
+      .readFrom(0L, EventFilter(), Some(toRead))
       .drop(parsedSkip)
       .evalMap(envelope => IO.fromEither(EventViews.from(envelope, codec)))
       .compile
