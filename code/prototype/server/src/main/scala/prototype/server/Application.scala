@@ -1,5 +1,7 @@
 package prototype.server
 
+import scala.concurrent.duration.*
+
 import cats.effect.*
 
 import fs2.concurrent.Topic
@@ -86,6 +88,9 @@ object App extends IOApp.Simple:
         .withHost(config.ember.host)
         .withPort(config.ember.port)
         .withHttpApp(ErrorLogging(services.routes.orNotFound))
+        // The live event streams never end on their own: without this, a
+        // stop waits 30 s for them before releasing the port
+        .withShutdownTimeout(1.second)
         .build
     yield server
 
