@@ -12,6 +12,7 @@ object AppRouter
         case Pages.TimetablePage => "timetable"
         case Pages.AdminPage     => "admin"
         case Pages.DashboardPage => "dashboards"
+        case Pages.EventSourcingPage => "event-sourcing"
         case Pages.NotFoundPage  => "notfound"
       },
       deserializePage = {
@@ -20,6 +21,7 @@ object AppRouter
         case "timetable"  => Pages.TimetablePage
         case "admin"      => Pages.AdminPage
         case "dashboards" => Pages.DashboardPage
+        case "event-sourcing" => Pages.EventSourcingPage
         case _            => Pages.NotFoundPage
       },
       routeFallback = _ => Pages.NotFoundPage

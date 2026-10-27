@@ -4,6 +4,7 @@ import com.raquo.laminar.api.L.*
 import prototype.client.Pages.*
 import prototype.client.views.admin.AdminView
 import prototype.client.views.dashboard.DashboardView
+import prototype.client.views.eventsourcing.EventSourcingView
 import prototype.client.views.timetable.*
 
 import prototype.client.{AppRouter, Session}
@@ -12,13 +13,17 @@ object View:
 
   // The router's page and who is logged in. This is the only place that turns
   // "maybe a user" into a plain username: the views below receive a String.
-  // Pages that need a user: HomePage, TimetablePage and AdminPage.
+  // Pages that need a user: every page but LoginPage and NotFoundPage.
   private val pageAndUserS: Signal[(Page, Option[String])] =
     AppRouter.currentPageSignal.combineWith(Session.currentUserS)
 
   private val effectivePageS: Signal[Page] =
     pageAndUserS.map {
-      case (HomePage | TimetablePage | AdminPage | DashboardPage, None) =>
+      case (
+            HomePage | TimetablePage | AdminPage | DashboardPage |
+            EventSourcingPage,
+            None
+          ) =>
         LoginPage
       case (page, _) => page
     }
@@ -40,9 +45,16 @@ object View:
       .handleCase[PageAndUser, String, HtmlElement] {
         case (DashboardPage, Some(username)) => username
       }((username, _) => Shell(DashboardView(), username))
+      .handleCase[PageAndUser, String, HtmlElement] {
+        case (EventSourcingPage, Some(username)) => username
+      }((username, _) => Shell(EventSourcingView(), username))
       .handleCase[PageAndUser, Unit, HtmlElement] {
         case (LoginPage, _) |
-            (HomePage | TimetablePage | AdminPage | DashboardPage, None) =>
+            (
+              HomePage | TimetablePage | AdminPage | DashboardPage |
+              EventSourcingPage,
+              None
+            ) =>
           ()
       }((_, _) => LoginView())
       .handleCase[PageAndUser, Unit, HtmlElement] { case (NotFoundPage, _) =>

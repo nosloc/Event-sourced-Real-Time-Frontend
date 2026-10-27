@@ -11,5 +11,9 @@ object Routes:
     Route.static(Pages.HomePage, appRoot / endOfSegments),
     Route.static(Pages.TimetablePage, appRoot / "timetable" / endOfSegments),
     Route.static(Pages.AdminPage, appRoot / "admin" / endOfSegments),
-    Route.static(Pages.DashboardPage, appRoot / "dashboards" / endOfSegments)
+    Route.static(Pages.DashboardPage, appRoot / "dashboards" / endOfSegments),
+    Route.static(
+      Pages.EventSourcingPage,
+      appRoot / "event-sourcing" / endOfSegments
+    )
   )

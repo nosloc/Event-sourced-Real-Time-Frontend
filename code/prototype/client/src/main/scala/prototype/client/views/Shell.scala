@@ -7,7 +7,8 @@ import prototype.client.Pages.{
   HomePage,
   TimetablePage,
   AdminPage,
-  DashboardPage
+  DashboardPage,
+  EventSourcingPage
 }
 import prototype.client.Session
 import prototype.client.Api
@@ -47,7 +48,8 @@ object Shell:
       renderLink("Home", HomePage),
       renderLink("Timetable", TimetablePage),
       renderLink("Dashboard", DashboardPage),
-      renderLink("Admin", AdminPage)
+      renderLink("Admin", AdminPage),
+      renderLink("Event sourcing", EventSourcingPage)
     )
 
   private def renderLink(label: String, page: Page): HtmlElement =
