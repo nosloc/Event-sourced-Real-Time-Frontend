@@ -20,6 +20,8 @@ object Routes:
       dashboardServiceImpl: DashboardService[IO],
       demoDataServiceImpl: DemoDataService[IO],
       eventStoreServiceImpl: EventStoreService[IO],
+      // Plain http4s routes, not behind the bearer token check
+      eventFeedRoutes: HttpRoutes[IO],
       authServiceImpl: AuthService[IO]
   ): Resource[IO, HttpRoutes[IO]] =
     for
@@ -72,4 +74,4 @@ object Routes:
         .middleware(middleware)
         .resource
 
-    yield companies <+> therapists <+> appointments <+> staticRoutes <+> auth <+> patients <+> dashboards <+> demoData <+> eventStore
+    yield eventFeedRoutes <+> companies <+> therapists <+> appointments <+> staticRoutes <+> auth <+> patients <+> dashboards <+> demoData <+> eventStore

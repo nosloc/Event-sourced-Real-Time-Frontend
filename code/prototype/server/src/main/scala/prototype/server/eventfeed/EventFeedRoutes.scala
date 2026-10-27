@@ -1,0 +1,52 @@
+package prototype.server.eventfeed
+
+import scala.concurrent.duration.*
+
+import cats.effect.IO
+
+import fs2.Stream
+
+import org.http4s.{HttpRoutes, ServerSentEvent}
+import org.http4s.dsl.io.*
+import org.http4s.headers.`Last-Event-Id`
+import smithy4s.json.Json
+
+/** `GET /api/events/stream`: the new events as server-sent events, each with its
+  * position as id. Only the events above a position are sent: the one in
+  * `Last-Event-ID` (sent back by a browser that reconnects), else `after`.
+  * Not authenticated for now: `EventSource` cannot send the bearer token.
+  */
+object EventFeedRoutes:
+
+  /** Often enough that proxies do not close a quiet connection */
+  val KeepAliveEvery: FiniteDuration = 15.seconds
+
+  def apply(feed: EventFeed): HttpRoutes[IO] =
+    HttpRoutes.of[IO] { case request @ GET -> Root / "api" / "events" / "stream" =>
+      val start = request.headers
+        .get[`Last-Event-Id`]
+        .map(_.id.value)
+        .orElse(request.params.get("after"))
+      start match
+        // Positions start at 1
+        case None => Ok(messages(feed, 0L))
+        case Some(text) =>
+          text.toLongOption match
+            case None           => BadRequest(s"Not an event position: $text")
+            case Some(position) => Ok(messages(feed, position))
+    }
+
+  private def messages(feed: EventFeed, after: Long): Stream[IO, ServerSentEvent] =
+    val events = feed
+      .stream(after)
+      .map(view =>
+        ServerSentEvent(
+          data = Some(Json.writeBlob(view).toUTF8String),
+          id = Some(ServerSentEvent.EventId(view.position.toString))
+        )
+      )
+    val keepAlive = Stream
+      .awakeEvery[IO](KeepAliveEvery)
+      .as(ServerSentEvent(comment = Some("keep-alive")))
+    events.merge(keepAlive)
+end EventFeedRoutes

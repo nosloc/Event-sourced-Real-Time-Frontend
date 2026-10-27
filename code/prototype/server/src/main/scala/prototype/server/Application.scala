@@ -2,6 +2,8 @@ package prototype.server
 
 import cats.effect.*
 
+import fs2.concurrent.Topic
+
 import prototype.Greeting
 import prototype.api.*
 import prototype.server.auth.*
@@ -30,8 +32,14 @@ import prototype.server.core.therapist.persistence.{
   TherapistRepository
 }
 import prototype.server.demo.{DemoDataGenerator, DemoDataServiceImpl}
-import prototype.server.eventfeed.EventStoreServiceImpl
+import prototype.server.eventfeed.{
+  EventFeed,
+  EventFeedProjection,
+  EventFeedRoutes,
+  EventStoreServiceImpl
+}
 
+import persistent4s.EventEnvelope
 import persistent4s.monitoring.MonitoringServer
 import persistent4s.postgres.PostgresModule
 
@@ -65,6 +73,7 @@ object App extends IOApp.Simple:
       patients: PatientService[IO],
       appointments: AppointmentService[IO],
       eventStore: EventStoreService[IO],
+      eventFeed: EventFeed,
       routes: HttpRoutes[IO]
   )
 
@@ -119,6 +128,8 @@ object App extends IOApp.Simple:
         appointmentUpdates,
         therapistServiceImpl
       )(using database.commandRuntime)
+      // Every stored event, published once for the open event streams
+      publishedEvents <- Topic[IO, EventEnvelope[PrototypeEvent]].toResource
       _ <- database.leaderElectedProjectionRuntime.startAll { registered =>
         registered.run(CompanyProjection(companies))
         registered.run(TherapistProjection(therapists))
@@ -127,6 +138,7 @@ object App extends IOApp.Simple:
           AppointmentProjection(appointments),
           Some(appointmentUpdates)
         )
+        registered.run(EventFeedProjection(publishedEvents))
       }
       dashboardServiceImpl <- DashboardServiceImpl(
         companyService,
@@ -156,6 +168,7 @@ object App extends IOApp.Simple:
         database.eventStore,
         PrototypeEvent.eventCodec
       )
+      eventFeed = EventFeed(PrototypeEvent.eventCodec, publishedEvents)
       tokens <- Resource.eval(Ref.of[IO, Map[Token, TherapistId]](Map.empty))
       authServiceImpl = new AuthServiceImpl(tokens, therapistServiceImpl)
       authChecker = AuthChecker(tokens)
@@ -170,6 +183,7 @@ object App extends IOApp.Simple:
         dashboardServiceImpl,
         demoDataServiceImpl,
         eventStoreServiceImpl,
+        EventFeedRoutes(eventFeed),
         authServiceImpl
       )
     yield Services(
@@ -178,6 +192,7 @@ object App extends IOApp.Simple:
       patientServiceImpl,
       appointmentServiceImpl,
       eventStoreServiceImpl,
+      eventFeed,
       routes
     )
 
