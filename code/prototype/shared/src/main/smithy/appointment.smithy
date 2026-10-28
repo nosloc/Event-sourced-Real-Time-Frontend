@@ -154,6 +154,9 @@ structure ListTherapistAppointmentsInput {
 structure ListTherapistAppointmentsOutput {
     @required
     appointments: Appointments
+
+    @required
+    globalPosition: Long
 }
 
 list TherapistIds {

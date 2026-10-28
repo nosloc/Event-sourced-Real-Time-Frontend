@@ -130,9 +130,9 @@ class AppointmentRepositorySpec extends AsyncFlatSpec
     withRepository { (repository, _) =>
       for
         _ <- save(repository, late, early, other)
-        abc <- repository.forTherapist("abc")
-        xyz <- repository.forTherapist("xyz")
-        nobody <- repository.forTherapist("qrs")
+        (abc, _) <- repository.forTherapist("abc")
+        (xyz, _) <- repository.forTherapist("xyz")
+        (nobody, _) <- repository.forTherapist("qrs")
       yield (abc.map(_.appointmentId), xyz.map(_.appointmentId), nobody)
     }.asserting(
       _ shouldBe (

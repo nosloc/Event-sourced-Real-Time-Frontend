@@ -292,7 +292,7 @@ class DemoDataGenerator(
         appointmentsShown <- written
           .filter(_.appointments.nonEmpty)
           .forallM(therapist =>
-            appointments.forTherapist(therapist.trigram).map { states =>
+            appointments.forTherapist(therapist.trigram).map { (states, _) =>
               val statuses = states
                 .map(state =>
                   state.appointmentId ->

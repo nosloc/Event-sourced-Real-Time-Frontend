@@ -174,7 +174,9 @@ class AppointmentServiceImpl(
     therapists.getTherapist(therapistId) *>
       appointments
         .forTherapist(therapistId.value)
-        .flatMap(_.traverse(fromState))
+        .flatMap { case (states, globalPosition) =>
+          states.traverse(fromState).map((_, globalPosition))
+        }
         .map(ListTherapistAppointmentsOutput.apply)
 
   override def getAppointment(

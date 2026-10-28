@@ -15,7 +15,9 @@ final class InMemoryAppointmentService private (
     appointments: Ref[IO, Map[AppointmentId, Appointment]]
 ) extends AppointmentService[IO]:
 
-  private def change(id: AppointmentId)(f: Appointment => Appointment): IO[Appointment] =
+  private def change(
+      id: AppointmentId
+  )(f: Appointment => Appointment): IO[Appointment] =
     appointments
       .modify(all =>
         all.get(id) match
@@ -46,7 +48,9 @@ final class InMemoryAppointmentService private (
         .as(CreateAppointmentOutput(appointment))
     }
 
-  override def getAppointment(appointmentId: AppointmentId): IO[GetAppointmentOutput] =
+  override def getAppointment(
+      appointmentId: AppointmentId
+  ): IO[GetAppointmentOutput] =
     appointments.get
       .map(_.get(appointmentId))
       .flatMap(IO.fromOption(_)(AppointmentNotFound()))
@@ -60,7 +64,9 @@ final class InMemoryAppointmentService private (
         ListTherapistAppointmentsOutput(
           all.values.toList
             .filter(_.therapistIds.contains(therapistId))
-            .sortBy(_.timeRange.start.epochSecond)
+            .sortBy(_.timeRange.start.epochSecond),
+          // No event store behind this fake: no position to report
+          globalPosition = 0L
         )
       )
 
@@ -98,7 +104,9 @@ final class InMemoryAppointmentService private (
         unitPrice,
         PrestationStatus.TO_BILL
       )
-      change(appointmentId)(a => a.copy(prestations = a.prestations :+ prestation))
+      change(appointmentId)(a =>
+        a.copy(prestations = a.prestations :+ prestation)
+      )
         .map(CreatePrestationOutput.apply)
     }
 
@@ -120,7 +128,9 @@ final class InMemoryAppointmentService private (
       prestationId: PrestationId
   ): IO[Unit] =
     change(appointmentId)(a =>
-      a.copy(prestations = a.prestations.filterNot(_.prestationId == prestationId))
+      a.copy(prestations =
+        a.prestations.filterNot(_.prestationId == prestationId)
+      )
     ).void
 
 object InMemoryAppointmentService:
