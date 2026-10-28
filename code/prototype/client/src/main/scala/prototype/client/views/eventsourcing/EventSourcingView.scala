@@ -7,6 +7,7 @@ import EventSourcingModel.EventSourcingPage.*
 import prototype.client.Api.ApiCall
 import prototype.client.Api
 import prototype.client.ErrorMessages
+import prototype.client.live.LiveFeed
 
 /** The events of the event store, live: the newest ones as they are written,
   * and older pages on demand. Holds the state; the rules are in
@@ -198,8 +199,7 @@ object EventSourcingView:
       opened: EventBus[Unit]
   ): Mod[HtmlElement] =
     Seq(
-      // Once the server is subscribed (also after a reconnect), so no event
-      // can fall between this load and the stream
+      // once the stream is open (also after a reconnect), for an event written in between
       opened.events
         .flatMapSwitch(_ =>
           ApiCall

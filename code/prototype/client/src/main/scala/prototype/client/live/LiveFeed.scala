@@ -1,11 +1,12 @@
-package prototype.client.views.eventsourcing
+package prototype.client.live
 
 import com.raquo.laminar.api.L.*
 import prototype.StreamOpened
 
 /** The server's stream of new events, open while the element is mounted. Each
   * message goes to `eventBus`; `opened` fires once the server is subscribed
-  * (the `StreamOpened` event), and again after the browser reconnects on its own.
+  * (the `StreamOpened` event), and again after the browser reconnects on its
+  * own.
   */
 object LiveFeed:
 
