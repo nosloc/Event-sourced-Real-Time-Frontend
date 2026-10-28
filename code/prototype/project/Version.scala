@@ -10,6 +10,10 @@ object Versions {
 
   val Waypoint = "10.0.0-M1"
 
+  // Decodes the stored events in the browser; the version the server gets
+  // through persistent4s-circe
+  val Circe = "0.14.16"
+
   // -- Backend --
 
   val Http4s = "0.23.38"

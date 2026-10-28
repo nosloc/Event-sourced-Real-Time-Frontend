@@ -6,11 +6,21 @@ import com.raquo.laminar.api.L.*
 import prototype.client.views.timetable.TimetableModel.*
 import prototype.client.Api
 import prototype.client.Api.ApiCall
+import prototype.client.live.LiveFeed
+import smithy4s.Blob
+import smithy4s.json.Json
+import prototype.client.live.LiveDataSource
+import smithy4s.time.Timestamp
 
 object TimetableView:
   def apply(
       username: String
   ): HtmlElement =
+
+    val rawLiveEvents: EventBus[String] = new EventBus[String]
+    val subscribed: EventBus[Unit] = new EventBus[Unit]
+
+    val displayedEvent: Var[Option[EventView]] = Var(None)
 
     val today = new Date()
     val weekOffsetVar = Var(0)
@@ -33,20 +43,79 @@ object TimetableView:
 
     val selectedTherapistVar: Var[String] = Var(username)
 
-    val allAppointments: ApiCall[List[Appointment]] =
-      ApiCall(
-        reloadVar.signal
-          .combineWith(selectedTherapistVar.signal)
-          .flatMapSwitch((_, username) =>
-            ApiCall
-              .fromIOCall(
-                Api.appointments
-                  .listTherapistAppointments(TherapistId(username)),
-                _.appointments
-              )
-              .stateS
-          )
+    // val allAppointmentsAndPosition: ApiCall[(List[Appointment], Long)] =
+    //   ApiCall(
+    //     reloadVar.signal
+    //       .combineWith(selectedTherapistVar.signal)
+    //       .flatMapSwitch((_, username) =>
+    //         ApiCall
+    //           .fromIOCall(
+    //             Api.appointments
+    //               .listTherapistAppointments(TherapistId(username)),
+    //             response => (response.appointments, response.globalPosition)
+    //           )
+    //           .stateS
+    //       )
+    //   )
+
+    // val allAppointments: ApiCall[List[Appointment]] =
+    //   ApiCall(allAppointmentsAndPosition.stateS.map {
+    //     case Api.Success((appointments, _)) => Api.Success(appointments)
+    //     case Api.Error(e)                   => Api.Error(e)
+    //     case Api.Loading                    => Api.Loading
+    //   })
+
+    // val globalPositionS: Signal[Long] =
+    //   allAppointmentsAndPosition.stateS.map {
+    //     case Api.Success((_, position)) => position
+    //     case _                          => 0L
+    //   }
+
+    // None for a message that is not an appointment event
+    def decode(raw: String): Option[AppointmentEvent] =
+      Json.read[EventView](Blob(raw)).toOption.flatMap(AppointmentEvent.decode)
+
+    val liveAppointmentsDataSource =
+      new LiveDataSource[List[Appointment], AppointmentEvent, String](
+        eventBus = rawLiveEvents,
+        opened = subscribed,
+        dependencies = selectedTherapistVar.signal,
+        fetchIO = username =>
+          Api.appointments
+            .listTherapistAppointments(TherapistId(username))
+            .map(response => (response.appointments, response.globalPosition)),
+        decode = decode,
+        collect = (username, appointments, event) =>
+          event match
+            case AppointmentCreated(
+                  id,
+                  therapistIds,
+                  patientIds,
+                  apptType,
+                  startTime,
+                  endTime
+                ) if therapistIds.contains(username) =>
+              // An unknown type leaves the list unchanged
+              AppointmentType.values
+                .find(_.stringValue == apptType)
+                .map(appointmentType =>
+                  appointments :+ Appointment(
+                    AppointmentId(id),
+                    therapistIds.map(TherapistId.apply),
+                    patientIds.map(PatientId.apply),
+                    appointmentType,
+                    // The events hold epoch milliseconds
+                    TimeRange(
+                      Timestamp.fromEpochMilli(startTime),
+                      Timestamp.fromEpochMilli(endTime)
+                    ),
+                    Nil
+                  )
+                )
+            case _ => Some(appointments)
       )
+
+    val allAppointments = liveAppointmentsDataSource
 
     val nonFlickeringAppointments: Var[Option[List[Appointment]]] = Var(None)
 
@@ -104,6 +173,8 @@ object TimetableView:
         allAppointments,
         selectedTherapistVar
       ),
+      LiveFeed.bind(rawLiveEvents, subscribed),
+      liveAppointmentsDataSource.bind(),
       cls := "timetable",
       div(
         cls := "timetable__head",
@@ -136,7 +207,12 @@ object TimetableView:
         reloadVar,
         therapistsVar.successS.map(_.getOrElse(Nil)),
         patientsVar.successS.map(_.getOrElse(Nil))
-      )
+      ),
+      rawLiveEvents.events --> { raw =>
+        displayedEvent.set(
+          Json.read[EventView](Blob(raw)).toOption
+        )
+      }
     )
   end apply
 
@@ -151,7 +227,9 @@ object TimetableView:
 
   private def nonFlickeringAppointmentsUpdate(
       unflickeredAppointments: Var[Option[List[Appointment]]],
-      allAppointments: ApiCall[List[Appointment]],
+      allAppointments: LiveDataSource[List[
+        Appointment
+      ], AppointmentEvent, String],
       selectedTherapistVar: Var[String]
   ): Mod[HtmlElement] =
     List(

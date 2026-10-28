@@ -75,7 +75,9 @@ lazy val client =
       libraryDependencies ++= List(
         "com.raquo" %%% "laminar" % Versions.Laminar,
         "org.http4s" %%% "http4s-dom" % Versions.Http4sDom,
-        "com.raquo" %%% "waypoint" % Versions.Waypoint
+        "com.raquo" %%% "waypoint" % Versions.Waypoint,
+        "io.circe" %%% "circe-core" % Versions.Circe,
+        "io.circe" %%% "circe-parser" % Versions.Circe
       ),
       scalaJSUseMainModuleInitializer := true,
 
