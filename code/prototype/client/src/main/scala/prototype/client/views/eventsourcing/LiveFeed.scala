@@ -1,10 +1,11 @@
 package prototype.client.views.eventsourcing
 
 import com.raquo.laminar.api.L.*
+import prototype.StreamOpened
 
 /** The server's stream of new events, open while the element is mounted. Each
-  * message goes to `eventBus`; `opened` fires once the stream is open, and
-  * again after the browser reconnects on its own.
+  * message goes to `eventBus`; `opened` fires once the server is subscribed
+  * (the `StreamOpened` event), and again after the browser reconnects on its own.
   */
 object LiveFeed:
 
@@ -18,7 +19,7 @@ object LiveFeed:
       mount = _ => {
         val source = new org.scalajs.dom.EventSource(sseURL)
         source.onmessage = event => eventBus.emit(event.data.toString)
-        source.onopen = _ => opened.emit(())
+        source.addEventListener(StreamOpened.EventType, _ => opened.emit(()))
         source
       },
       unmount = (_, stream) => {

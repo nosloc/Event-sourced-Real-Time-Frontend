@@ -37,12 +37,18 @@ class EventFeedSpec extends AsyncFlatSpec
     read.timeout(10.seconds).start <* IO.sleep(500.millis)
 
   private def firstEvents(app: App.Services, after: Long, count: Int): IO[List[EventView]] =
-    app.eventFeed.stream(after).take(count.toLong).compile.toList
+    app.eventFeed
+      .stream(after)
+      .collect { case Some(view) => view }
+      .take(count.toLong)
+      .compile
+      .toList
 
   private def streamRequest(query: String, headers: Headers = Headers.empty): Request[IO] =
     Request[IO](Method.GET, Uri.unsafeFromString(s"/api/events/stream$query"), headers = headers)
 
-  // The first message of the response, as its id and its data lines
+  // The first event of the response, after the StreamOpened message: its id
+  // and its data lines
   private def firstMessage(app: App.Services, request: Request[IO]): IO[(String, String)] =
     app.routes.orNotFound
       .run(request)
@@ -51,6 +57,7 @@ class EventFeedSpec extends AsyncFlatSpec
           .through(fs2.text.utf8.decode)
           .through(fs2.text.lines)
           .filter(line => line.startsWith("id: ") || line.startsWith("data: "))
+          .drop(1)
           .take(2)
           .compile
           .toList

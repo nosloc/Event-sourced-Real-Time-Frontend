@@ -18,19 +18,25 @@ final class EventFeed(
     published: Topic[IO, EventEnvelope[PrototypeEvent]]
 ):
 
-  /** Never ends on its own. The subscription is in place before the first
-    * event is sent, and the events whose position is not above `after` are
-    * left out.
+  /** Never ends on its own. Starts with a `None`, sent once the subscription is
+    * in place, so no event published after it can be missed. Then one `Some` per
+    * new event, leaving out those whose position is not above `after`.
     */
-  def stream(after: Long): Stream[IO, EventView] =
+  def stream(after: Long): Stream[IO, Option[EventView]] =
     Stream
       .resource(published.subscribeAwait(EventFeed.QueueSize))
-      .flatten
-      .filter(_.metadata.globalPosition > after)
-      .evalMap(envelope => IO.fromEither(EventViews.from(envelope, codec)))
+      .flatMap(events =>
+        Stream.emit(None)
+          ++ events
+            .filter(_.metadata.globalPosition > after)
+            .evalMap(envelope =>
+              IO.fromEither(EventViews.from(envelope, codec))
+            )
+            .map(Some(_))
+      )
 end EventFeed
 
 object EventFeed:
 
-  /** New events one stream may have waiting before the projection waits for it */
+  /** New events a stream may have waiting before the projection waits */
   val QueueSize: Int = 512

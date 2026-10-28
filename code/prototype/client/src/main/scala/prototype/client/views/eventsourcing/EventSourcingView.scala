@@ -42,7 +42,7 @@ object EventSourcingView:
       showPageVar.signal
         .combineWith(pageSizeVar.signal, anchorVar.signal)
         .map {
-          case (LivePage, _, _) => None
+          case (LivePage, _, _)                    => None
           case (HistoryPage(number), size, anchor) =>
             Some(pageBounds(number, size, anchor))
         }
@@ -120,7 +120,11 @@ object EventSourcingView:
 
     val pagerStateS: Signal[PagerState] =
       showPageVar.signal
-        .combineWith(totalEventsVar.signal, pageSizeVar.signal, anchorVar.signal)
+        .combineWith(
+          totalEventsVar.signal,
+          pageSizeVar.signal,
+          anchorVar.signal
+        )
         .map(PagerState.apply)
 
     val emptyTextS: Signal[String] =
@@ -194,10 +198,9 @@ object EventSourcingView:
       opened: EventBus[Unit]
   ): Mod[HtmlElement] =
     Seq(
-      // At mount, to show the events at once, and again once the stream is
-      // open (also after a reconnect), for an event written in between
-      EventStream
-        .merge(EventStream.unit(), opened.events)
+      // Once the server is subscribed (also after a reconnect), so no event
+      // can fall between this load and the stream
+      opened.events
         .flatMapSwitch(_ =>
           ApiCall
             .fromIOCallSimple(Api.eventStore.getLatestEvents(MaxEventsSize))
