@@ -13,11 +13,11 @@ import smithy4s.json.Json
 import prototype.StreamOpened
 
 /** `GET /api/events/stream`: the new events as server-sent events, each with
-  * its position as id. Only the events above a position are sent: the one in
-  * `Last-Event-ID` (sent back by a browser that reconnects), else `after`. The
-  * first message, a `StreamOpened` event, says the stream has subscribed: the
-  * client can load the current state from then on. Not authenticated for now:
-  * `EventSource` cannot send the bearer token.
+  * its position as id. A browser that reconnects sends back the last one in
+  * `Last-Event-ID`, and only the events above it are sent. The first message, a
+  * `StreamOpened` event, says the stream has subscribed: the client can load
+  * the current state from then on. Not authenticated for now: `EventSource`
+  * cannot send the bearer token.
   */
 object EventFeedRoutes:
 
@@ -30,7 +30,6 @@ object EventFeedRoutes:
         val start = request.headers
           .get[`Last-Event-Id`]
           .map(_.id.value)
-          .orElse(request.params.get("after"))
         start match
           // Positions start at 1
           case None       => Ok(messages(feed, 0L))

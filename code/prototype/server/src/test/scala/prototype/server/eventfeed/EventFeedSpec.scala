@@ -44,8 +44,8 @@ class EventFeedSpec extends AsyncFlatSpec
       .compile
       .toList
 
-  private def streamRequest(query: String, headers: Headers = Headers.empty): Request[IO] =
-    Request[IO](Method.GET, Uri.unsafeFromString(s"/api/events/stream$query"), headers = headers)
+  private def streamRequest(headers: Headers = Headers.empty): Request[IO] =
+    Request[IO](Method.GET, Uri.unsafeFromString("/api/events/stream"), headers = headers)
 
   // The first event of the response, after the StreamOpened message: its id
   // and its data lines
@@ -115,11 +115,11 @@ class EventFeedSpec extends AsyncFlatSpec
     }
   }
 
-  it should "prefer Last-Event-ID over the after parameter" in {
+  it should "resume after the position in Last-Event-ID" in {
     freshDatabase.use { postgres =>
       TestApp.make(postgres).use { app =>
         for
-          message <- opened(firstMessage(app, streamRequest("?after=0", lastEventId("2"))))
+          message <- opened(firstMessage(app, streamRequest(lastEventId("2"))))
           _ <- createCompany(app, "Clinic A")
           _ <- createCompany(app, "Clinic B")
           _ <- createCompany(app, "Clinic C")
@@ -133,10 +133,8 @@ class EventFeedSpec extends AsyncFlatSpec
     freshDatabase.use { postgres =>
       TestApp.make(postgres).use { app =>
         for
-          byParameter <- app.routes.orNotFound.run(streamRequest("?after=abc"))
-          byHeader <- app.routes.orNotFound.run(streamRequest("", lastEventId("12x")))
-        yield List(byParameter.status, byHeader.status) shouldBe
-          List(Status.BadRequest, Status.BadRequest)
+          response <- app.routes.orNotFound.run(streamRequest(lastEventId("12x")))
+        yield response.status shouldBe Status.BadRequest
       }
     }
   }
@@ -145,7 +143,7 @@ class EventFeedSpec extends AsyncFlatSpec
     freshDatabase.use { postgres =>
       TestApp.make(postgres).use { app =>
         for
-          message <- opened(firstMessage(app, streamRequest("")))
+          message <- opened(firstMessage(app, streamRequest()))
           _ <- createCompany(app, "Clinic A")
           (id, data) <- message.joinWithNever
           view <- IO.fromEither(Json.read[EventView](Blob(data)))
