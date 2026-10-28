@@ -8,6 +8,7 @@ import prototype.client.Api.ApiCall
 import prototype.client.Api
 import prototype.client.ErrorMessages
 import prototype.client.live.LiveFeed
+import prototype.client.live.LiveFeed.FeedMessage
 
 /** The events of the event store, live: the newest ones as they are written,
   * and older pages on demand. Holds the state; the rules are in
@@ -17,8 +18,7 @@ object EventSourcingView:
 
   def apply(): HtmlElement =
 
-    val receivedEvents: EventBus[String] = new EventBus[String]
-    val opened: EventBus[Unit] = new EventBus[Unit]
+    val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
 
     val showPageVar: Var[EventSourcingPage] = Var(LivePage)
     val liveEventsVar: Var[List[EventView]] = Var(List.empty)
@@ -74,7 +74,7 @@ object EventSourcingView:
       }
 
     val liveEvent: EventStream[EventView] =
-      receivedEvents.events.map(decode).collectSome
+      feed.events.collect { case FeedMessage.Event(view) => view }
 
     // While a page loads, nothing rather than the previous page
     val shownEventsS: Signal[List[EventView]] =
@@ -142,7 +142,7 @@ object EventSourcingView:
         totalEventsVar,
         arrivedVar,
         errorVar,
-        opened
+        feed.events.collect { case FeedMessage.Opened => () }
       ),
       loadedHistoryPage --> {
         case Some(Api.Loading) =>
@@ -157,7 +157,7 @@ object EventSourcingView:
         case None =>
           historyLoadingVar.set(false)
       },
-      LiveFeed.bind(receivedEvents, opened),
+      LiveFeed.bind(feed),
       sizeChoiceVar.signal.changes --> { size => setPageSize(size) },
       div(
         cls := "event-sourcing__head",
@@ -196,11 +196,11 @@ object EventSourcingView:
       totalEventsVar: Var[Long],
       arrivedVar: Var[Option[String]],
       errorVar: Var[Option[String]],
-      opened: EventBus[Unit]
+      opened: EventStream[Unit]
   ): Mod[HtmlElement] =
     Seq(
       // once the stream is open (also after a reconnect), for an event written in between
-      opened.events
+      opened
         .flatMapSwitch(_ =>
           ApiCall
             .fromIOCallSimple(Api.eventStore.getLatestEvents(MaxEventsSize))

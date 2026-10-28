@@ -7,8 +7,7 @@ import prototype.client.views.timetable.TimetableModel.*
 import prototype.client.Api
 import prototype.client.Api.ApiCall
 import prototype.client.live.LiveFeed
-import smithy4s.Blob
-import smithy4s.json.Json
+import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.live.LiveDataSource
 import smithy4s.time.Timestamp
 
@@ -17,10 +16,7 @@ object TimetableView:
       username: String
   ): HtmlElement =
 
-    val rawLiveEvents: EventBus[String] = new EventBus[String]
-    val subscribed: EventBus[Unit] = new EventBus[Unit]
-
-    val displayedEvent: Var[Option[EventView]] = Var(None)
+    val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
 
     val today = new Date()
     val weekOffsetVar = Var(0)
@@ -43,49 +39,16 @@ object TimetableView:
 
     val selectedTherapistVar: Var[String] = Var(username)
 
-    // val allAppointmentsAndPosition: ApiCall[(List[Appointment], Long)] =
-    //   ApiCall(
-    //     reloadVar.signal
-    //       .combineWith(selectedTherapistVar.signal)
-    //       .flatMapSwitch((_, username) =>
-    //         ApiCall
-    //           .fromIOCall(
-    //             Api.appointments
-    //               .listTherapistAppointments(TherapistId(username)),
-    //             response => (response.appointments, response.globalPosition)
-    //           )
-    //           .stateS
-    //       )
-    //   )
-
-    // val allAppointments: ApiCall[List[Appointment]] =
-    //   ApiCall(allAppointmentsAndPosition.stateS.map {
-    //     case Api.Success((appointments, _)) => Api.Success(appointments)
-    //     case Api.Error(e)                   => Api.Error(e)
-    //     case Api.Loading                    => Api.Loading
-    //   })
-
-    // val globalPositionS: Signal[Long] =
-    //   allAppointmentsAndPosition.stateS.map {
-    //     case Api.Success((_, position)) => position
-    //     case _                          => 0L
-    //   }
-
-    // None for a message that is not an appointment event
-    def decode(raw: String): Option[AppointmentEvent] =
-      Json.read[EventView](Blob(raw)).toOption.flatMap(AppointmentEvent.decode)
-
     val liveAppointmentsDataSource =
-      new LiveDataSource[List[Appointment], AppointmentEvent, String](
-        eventBus = rawLiveEvents,
-        opened = subscribed,
-        dependencies = selectedTherapistVar.signal,
-        fetchIO = username =>
+      new LiveDataSource[String, List[Appointment], AppointmentEvent](
+        feed = feed,
+        key = selectedTherapistVar.signal,
+        load = username =>
           Api.appointments
             .listTherapistAppointments(TherapistId(username))
             .map(response => (response.appointments, response.globalPosition)),
-        decode = decode,
-        collect = (username, appointments, event) =>
+        decode = AppointmentEvent.decode,
+        evolve = (trigram, appointments, event) =>
           event match
             case AppointmentCreated(
                   id,
@@ -94,7 +57,7 @@ object TimetableView:
                   apptType,
                   startTime,
                   endTime
-                ) if therapistIds.contains(username) =>
+                ) if therapistIds.contains(trigram) =>
               // An unknown type leaves the list unchanged
               AppointmentType.values
                 .find(_.stringValue == apptType)
@@ -112,22 +75,21 @@ object TimetableView:
                     Nil
                   )
                 )
-            case _ => Some(appointments)
+                .getOrElse(appointments)
+            case _ => appointments
       )
 
     val allAppointments = liveAppointmentsDataSource
-
-    val nonFlickeringAppointments: Var[Option[List[Appointment]]] = Var(None)
 
     // The placeholder only shows when there is nothing to display yet: the
     // first load, or a new therapist. A reload keeps the grid on screen.
     val showSkeletonS: Signal[Boolean] =
       allAppointments.loadingS
-        .combineWith(nonFlickeringAppointments.signal)
+        .combineWith(allAppointments.valuesS)
         .map((loading, kept) => loading && kept.isEmpty)
 
     val appointmentsForCurrentWeekS: Signal[WeekAppointments] =
-      nonFlickeringAppointments.signal
+      allAppointments.valuesS
         .combineWith(weekDaysS)
         .map { case (appointments, weekDays) =>
           val appointmentsWithDate = appointments
@@ -168,13 +130,7 @@ object TimetableView:
       )
 
     div(
-      nonFlickeringAppointmentsUpdate(
-        nonFlickeringAppointments,
-        allAppointments,
-        selectedTherapistVar
-      ),
-      LiveFeed.bind(rawLiveEvents, subscribed),
-      liveAppointmentsDataSource.bind(),
+      LiveFeed.bind(feed),
       cls := "timetable",
       div(
         cls := "timetable__head",
@@ -207,12 +163,7 @@ object TimetableView:
         reloadVar,
         therapistsVar.successS.map(_.getOrElse(Nil)),
         patientsVar.successS.map(_.getOrElse(Nil))
-      ),
-      rawLiveEvents.events --> { raw =>
-        displayedEvent.set(
-          Json.read[EventView](Blob(raw)).toOption
-        )
-      }
+      )
     )
   end apply
 
@@ -224,26 +175,3 @@ object TimetableView:
       now.getDate().toInt + (dayIndex - sinceMonday)
     )
   end getDayOfCurrentWeek
-
-  private def nonFlickeringAppointmentsUpdate(
-      unflickeredAppointments: Var[Option[List[Appointment]]],
-      allAppointments: LiveDataSource[List[
-        Appointment
-      ], AppointmentEvent, String],
-      selectedTherapistVar: Var[String]
-  ): Mod[HtmlElement] =
-    List(
-      allAppointments.stateS --> {
-        case Api.Success(appointments) =>
-          unflickeredAppointments.set(Some(appointments))
-        case Api.Error(_) =>
-          unflickeredAppointments.set(None)
-        case Api.Loading =>
-          // Do nothing, keep the previous value to avoid flickering
-          ()
-      },
-      selectedTherapistVar.distinct --> { _ =>
-        // When the therapist changes, clear the appointments to avoid showing the previous therapist's appointments
-        unflickeredAppointments.set(None)
-      }
-    )

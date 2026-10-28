@@ -1,11 +1,9 @@
 package prototype.client.views.eventsourcing
 
 import prototype.api.{EventView, EventsPage}
-import smithy4s.Blob
-import smithy4s.json.Json
 
-/** The rules of the event sourcing tab, without state: the pages, the texts
-  * of the pager, and how live events join the ones already held.
+/** The rules of the event sourcing tab, without state: the pages, the texts of
+  * the pager, and how live events join the ones already held.
   */
 object EventSourcingModel:
   enum EventSourcingPage:
@@ -36,8 +34,8 @@ object EventSourcingModel:
     */
   final case class Move(page: EventSourcingPage, anchor: Option[Long] = None)
 
-  /** What the pager shows depends on: the page, the number of events, the
-    * page size, and the number of events when the live window was left
+  /** What the pager shows depends on: the page, the number of events, the page
+    * size, and the number of events when the live window was left
     */
   final case class PagerState(
       page: EventSourcingPage,
@@ -88,7 +86,7 @@ object EventSourcingModel:
       newSize: Int
   ): EventSourcingPage =
     page match
-      case LivePage => LivePage
+      case LivePage            => LivePage
       case HistoryPage(number) =>
         val topRank = (number - 1).toLong * oldSize
         val newNumber = (topRank / newSize).toInt + 1
@@ -112,7 +110,7 @@ object EventSourcingModel:
       anchor: Long
   ): Option[String] =
     page match
-      case LivePage => None
+      case LivePage            => None
       case HistoryPage(number) =>
         Some(s"Page $number of ${pageCount(anchor, size)}")
 
@@ -126,7 +124,7 @@ object EventSourcingModel:
     page match
       case LivePage if total == 0 => "0 of 0"
       case LivePage               => s"1–${size.toLong.min(total)} of $total"
-      case HistoryPage(number) =>
+      case HistoryPage(number)    =>
         val first = (number - 1).toLong * size + 1
         s"$first–${(number.toLong * size).min(anchor)} of $anchor"
 
@@ -141,18 +139,12 @@ object EventSourcingModel:
       case _                                => None
 
   // Live events
-
-  /** A message of the stream: one event as JSON */
-  def decode(raw: String): Option[EventView] =
-    Json.read[EventView](Blob(raw)).toOption
-
   /** Not held yet, and not older than the whole held window (a replay) */
   def isNewEvent(held: List[EventView], event: EventView): Boolean =
     !held.exists(_.eventId == event.eventId) &&
       held.lastOption.forall(_.position < event.position)
 
-  /** The live events already held and newer than the page are not in its
-    * total
+  /** The live events already held and newer than the page are not in its total
     */
   def totalAfterLatest(page: EventsPage, held: List[EventView]): Long =
     val pageNewest = page.events.map(_.position).maxOption.getOrElse(0L)
