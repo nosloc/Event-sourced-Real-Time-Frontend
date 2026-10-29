@@ -12,7 +12,6 @@ object CreateAppointmentModal:
       today: Date,
       username: String,
       showCreateAppointmentModalVar: Var[Boolean],
-      reloadVar: Var[Int],
       therapistListS: Signal[List[Therapist]],
       patientListS: Signal[List[Patient]]
   ): Mod[HtmlElement] =
@@ -42,7 +41,6 @@ object CreateAppointmentModal:
               ),
             onSuccess = () => {
               showCreateAppointmentModalVar.set(false)
-              reloadVar.update(_ + 1)
             },
             onCancel = () => showCreateAppointmentModalVar.set(false),
             submitLabel = "Create",

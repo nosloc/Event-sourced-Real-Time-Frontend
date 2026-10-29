@@ -116,6 +116,12 @@
   color: var(--error);
 }
 
+/* Not a failure: something changed under the user's work */
+.banner--warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
 /* Loading placeholders (the shimmer only runs when motion is allowed) */
 .skeleton {
   display: block;

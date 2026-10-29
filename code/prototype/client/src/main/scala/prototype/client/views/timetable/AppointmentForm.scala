@@ -75,7 +75,8 @@ object AppointmentForm:
       patientListS: Signal[List[Patient]],
       onSuccess: () => Unit,
       onCancel: () => Unit,
-      submitLabel: String
+      submitLabel: String,
+      changesHappenedS: Signal[Boolean] = Signal.fromValue(false)
   ): HtmlElement =
 
     val loadingVar: Var[Boolean] = Var(false)
@@ -200,6 +201,16 @@ object AppointmentForm:
       ),
       child.maybe <-- errorVar.signal.map(
         _.map(msg => div(cls := "banner banner--error", msg))
+      ),
+      child.maybe <-- changesHappenedS.map(changed =>
+        if changed then
+          Some(
+            div(
+              cls := "banner banner--warning",
+              "Changes have been made to this appointment since you opened the form. Saving will overwrite those changes."
+            )
+          )
+        else None
       ),
       div(
         cls := "form__actions",

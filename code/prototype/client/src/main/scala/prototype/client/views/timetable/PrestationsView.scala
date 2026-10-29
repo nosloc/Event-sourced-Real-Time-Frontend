@@ -16,56 +16,95 @@ import prototype.client.{ErrorMessages, InvalidInput}
 object PrestationsView:
   def apply(
       apptId: AppointmentId,
-      prestationsVar: Var[List[Prestation]],
+      apptS: Signal[Appointment],
       showPrestationsVar: Var[Boolean]
   ): HtmlElement =
     val errorVar: Var[Option[String]] = Var(None)
+    // Shown where the error is: someone else's change made the user's work
+    // outdated
+    val warningVar: Var[Option[String]] = Var(None)
     val showAddVar: Var[Boolean] = Var(false)
-    val hasPrestationsS: Signal[Boolean] = prestationsVar.signal
+    // The status each row has picked and not seen confirmed yet, to warn when
+    // someone else deletes that prestation
+    val choicesVar: Var[Map[PrestationId, PrestationStatus]] = Var(Map.empty)
+    // The labels of the prestations last seen, to name one once deleted
+    val knownVar: Var[Map[PrestationId, String]] = Var(Map.empty)
+
+    val prestationsS: Signal[List[Prestation]] = apptS.map(_.prestations)
+    val hasPrestationsS: Signal[Boolean] = prestationsS
       .combineWith(showAddVar)
       .map((ps, addvar) => ps.nonEmpty || addvar)
+      .distinct
     div(
       cls := "prestations",
+      // A prestation that disappears while its row had a choice pending was
+      // deleted by someone else (deleting it here drops the choice first)
+      prestationsS.withCurrentValueOf(knownVar.signal, choicesVar.signal) --> {
+        (prestations, known, choices) =>
+          val current = prestations.map(p => p.prestationId -> p.label).toMap
+          val deleted = known.keySet -- current.keySet
+          deleted
+            .filter(choices.contains)
+            .headOption
+            .foreach(id =>
+              warningVar.set(
+                Some(s"Someone deleted the prestation \"${known(id)}\".")
+              )
+            )
+          knownVar.set(current)
+          choicesVar.update(_ -- deleted)
+      },
       child.maybe <-- errorVar.signal.map(
         _.map(msg => div(cls := "banner banner--error", msg))
       ),
-      child <-- hasPrestationsS.signal.map {
-        case false => div(cls := "prestations__empty", "No prestations yet")
-        case true  =>
-          div(
-            cls := "prestations__scroll",
-            table(
-              cls := "prestations__table",
-              thead(
-                tr(
-                  th("Label"),
-                  th(cls := "num", "Qty"),
-                  th(cls := "num", "Unit Price"),
-                  th(cls := "num", "Total"),
-                  th("Status"),
-                  th()
-                )
-              ),
-              tbody(
-                children <-- prestationsVar.signal.split(
-                  _.prestationId
-                )((_, prestation, _) =>
-                  renderPrestationRow(
-                    prestation,
-                    apptId,
-                    prestationsVar,
-                    errorVar
+      child.maybe <-- warningVar.signal.map(
+        _.map(msg => div(cls := "banner banner--warning", msg))
+      ),
+      // A warning goes away after 3 seconds; a new one restarts the delay
+      warningVar.signal.changes
+        .collect { case Some(_) => () }
+        .flatMapSwitch(_ => EventStream.delay(3000))
+        --> { _ => warningVar.set(None) },
+      child <-- hasPrestationsS.map { hasPrestations =>
+        hasPrestations match
+          case false => div(cls := "prestations__empty", "No prestations yet")
+          case true  =>
+            div(
+              cls := "prestations__scroll",
+              table(
+                cls := "prestations__table",
+                thead(
+                  tr(
+                    th("Label"),
+                    th(cls := "num", "Qty"),
+                    th(cls := "num", "Unit Price"),
+                    th(cls := "num", "Total"),
+                    th("Status"),
+                    th()
                   )
                 ),
-                renderAddPrestationRow(
-                  showAddVar,
-                  prestationsVar,
-                  apptId,
-                  errorVar
+                // One tbody per prestation: its row and, under it, its
+                // warning
+                children <-- prestationsS.split(
+                  _.prestationId
+                )((_, initial, prestationS) =>
+                  renderPrestationRow(
+                    prestationS,
+                    initial,
+                    apptId,
+                    errorVar,
+                    choicesVar
+                  )
+                ),
+                tbody(
+                  renderAddPrestationRow(
+                    showAddVar,
+                    apptId,
+                    errorVar
+                  )
                 )
               )
             )
-          )
       },
       button(
         cls := "btn",
@@ -81,85 +120,95 @@ object PrestationsView:
   end apply
 
   private def renderPrestationRow(
-      prestation: Prestation,
+      prestationS: Signal[Prestation],
+      initial: Prestation,
       apptId: AppointmentId,
-      prestationsVar: Var[List[Prestation]],
-      errorVar: Var[Option[String]]
+      errorVar: Var[Option[String]],
+      choicesVar: Var[Map[PrestationId, PrestationStatus]]
   ): HtmlElement =
-    val totalPrice: Double = prestation.quantity * prestation.unitPrice
-    // The last status confirmed by the server for this row (starts as the one
-    // it was rendered with, and moves forward on each successful change) -
-    // both the dropdown's choices and "did the picker change?" are computed
-    // from this, not from the original `prestation`, so a second change in
-    // the same window still offers the right choices.
-    val currentStatusVar: Var[PrestationStatus] = Var(prestation.status)
-    val selectedStatusVar: Var[PrestationStatus] = Var(prestation.status)
-    val hasPendingChangeS: Signal[Boolean] = currentStatusVar.signal
-      .combineWith(selectedStatusVar.signal)
-      .map(_ != _)
-    tr(
-      td(prestation.label),
-      td(cls := "num", prestation.quantity.toString),
-      td(cls := "num", f"${prestation.unitPrice}%.2f"),
+    // Label, quantity and price never change after creation; the status is
+    // live
+    val totalPrice: Double = initial.quantity * initial.unitPrice
+    val liveStatusS: Signal[PrestationStatus] =
+      prestationS.map(_.status).distinct
+    // Where the status change of this row stands. Idle: the picker shows the
+    // live status
+    val pendingVar: Var[Pending] = Var(Pending.Idle)
+    val staleS: Signal[Boolean] = pendingVar.signal.map(_.isStale)
+    // No new pick or validation while a choice is stale or on its way
+    val blockedS: Signal[Boolean] =
+      pendingVar.signal.map(pending => pending.isStale || pending.isSent)
+    val pickBus: EventBus[PrestationStatus] = new EventBus
+
+    val shownStatusS: Signal[PrestationStatus] = pendingVar.signal
+      .combineWith(liveStatusS)
+      .map((pending, live) => pending.choice.getOrElse(live))
+
+    // Shown under the row until the user cancels the stale choice
+    val warningS: Signal[Option[String]] = pendingVar.signal
+      .map {
+        case (Pending.Stale(_)) =>
+          Some(
+            s"Someone changed the status concurrently. Cancel your change to see the current status."
+          )
+        case _ => None
+      }
+
+    val row = tr(
+      pickBus.events.withCurrentValueOf(liveStatusS) --> { (choice, live) =>
+        pendingVar.set(Pending.picked(choice, live))
+      },
+      liveStatusS.changes --> { live =>
+        pendingVar.update(_.afterLiveChange(live))
+      },
+      // The view needs the pending choice to warn if the prestation is deleted
+      pendingVar.signal --> { pending =>
+        choicesVar.update(choices =>
+          pending.choice.fold(choices - initial.prestationId)(choice =>
+            choices.updated(initial.prestationId, choice)
+          )
+        )
+      },
+      td(initial.label),
+      td(cls := "num", initial.quantity.toString),
+      td(cls := "num", f"${initial.unitPrice}%.2f"),
       td(cls := "num", f"$totalPrice%.2f"),
       td(
         cls := "prestations__status",
         // the cell stays a real table cell; this box does the flex layout
         div(
           cls := "prestations__status-box",
-          PopoverPicker(
-            id = s"status-${prestation.prestationId}",
+          PopoverPicker.controlled(
+            id = s"status-${initial.prestationId}",
             label = "",
-            items = currentStatusVar.signal.map(current =>
-              PrestationStatus.values
-                .filter(p => verifyStatusChange(current, p) || p == current)
-                .map { s =>
-                  val itemLabel =
-                    s.toString.replace("_", " ").toLowerCase().capitalize
-                  PopoverPicker.Item(
-                    name = itemLabel,
-                    value = s,
-                    buttonLabel = Some(itemLabel)
-                  )
-                }
-                .toList
-            ),
-            selectedVar = selectedStatusVar,
-            fallbackLabel = _.toString
+            items = liveStatusS.map(statusItems),
+            selectedS = shownStatusS,
+            onSelect = pickBus.writer,
+            fallbackLabel = statusLabel,
+            lockedS = blockedS
           ),
-          child.maybe <-- hasPendingChangeS.map(
+          child.maybe <-- pendingVar.signal
+            .map(_ != Pending.Idle)
+            .distinct
+            .map(
+              Option.when(_)(
+                renderValidateButton(
+                  pendingVar,
+                  blockedS,
+                  apptId,
+                  initial.prestationId,
+                  errorVar
+                )
+              )
+            ),
+          child.maybe <-- staleS.map(
             Option.when(_)(
               button(
-                cls := "btn btn--small btn--icon btn--primary",
-                aria.label := "Validate status change",
-                title := "Validate status change",
-                Icons.check,
-                onClick
-                  .compose(
-                    _.sample(selectedStatusVar.signal)
-                      .flatMapSwitch { newStatus =>
-                        ApiCall
-                          .fromIOCallSimple(
-                            Api.appointments.updatePrestationStatus(
-                              apptId,
-                              prestation.prestationId,
-                              newStatus
-                            )
-                          )
-                          .stateS
-                      }
-                  ) --> {
-                  case Api.Loading =>
-                    errorVar.set(None)
-                  case Api.Success(res) =>
-                    errorVar.set(None)
-                    prestationsVar.set(res.appointment.prestations)
-                    res.appointment.prestations
-                      .find(_.prestationId == prestation.prestationId)
-                      .foreach(p => currentStatusVar.set(p.status))
-                  case Api.Error(error) =>
-                    errorVar.set(Some(ErrorMessages.errorToMessage(error)))
-                }
+                cls := "btn btn--small btn--icon",
+                aria.label := "Cancel the status change",
+                title := "Cancel the status change",
+                Icons.cross,
+                onClick --> { _ => pendingVar.set(Pending.Idle) }
               )
             )
           )
@@ -167,36 +216,176 @@ object PrestationsView:
       ),
       td(
         cls := "prestations__row-actions",
-        button(
-          cls := "btn btn--small btn--icon btn--danger",
-          aria.label := "Delete",
-          title := "Delete",
-          Icons.trash,
-          onClick.flatMap { _ =>
-            ApiCall
-              .fromIOCallSimple(
-                Api.appointments
-                  .deletePrestation(apptId, prestation.prestationId)
-              )
-              .stateS
-          } --> {
-            case Api.Loading =>
-              errorVar.set(None)
-            case Api.Success(_) =>
-              errorVar.set(None)
-              prestationsVar.update(
-                _.filterNot(_.prestationId == prestation.prestationId)
-              )
-            case Api.Error(error) =>
-              errorVar.set(Some(ErrorMessages.errorToMessage(error)))
-          }
+        // Deleting it here drops the pending choice, so the view does not
+        // take it for someone else's deletion
+        renderDeleteButton(
+          apptId,
+          initial.prestationId,
+          errorVar,
+          onDelete = () => pendingVar.set(Pending.Idle)
         )
       )
     )
 
+    tbody(
+      cls := "prestations__item",
+      row,
+      child.maybe <-- warningS.map(
+        _.map(msg =>
+          tr(
+            cls := "prestations__warning",
+            td(colSpan := 6, msg)
+          )
+        )
+      )
+    )
+  end renderPrestationRow
+
+  // The statuses the picker offers: the current one and those it can move to
+  private def statusItems(
+      current: PrestationStatus
+  ): List[PopoverPicker.Item[PrestationStatus]] =
+    PrestationStatus.values
+      .filter(p => verifyStatusChange(current, p) || p == current)
+      .map { s =>
+        val itemLabel = statusLabel(s)
+        PopoverPicker.Item(
+          name = itemLabel,
+          value = s,
+          buttonLabel = Some(itemLabel)
+        )
+      }
+      .toList
+
+  // Sends the picked status. The new status comes back through the event
+  // stream, which moves the row out of Sent (see `Pending.afterLiveChange`)
+  private def renderValidateButton(
+      pendingVar: Var[Pending],
+      blockedS: Signal[Boolean],
+      apptId: AppointmentId,
+      prestationId: PrestationId,
+      errorVar: Var[Option[String]]
+  ): HtmlElement =
+    // a disabled button does not show its tooltip in every browser, so the
+    // wrapper carries it. Why it is disabled is told in the warning banner
+    span(
+      cls := "prestations__validate",
+      title := "Validate status change",
+      button(
+        cls := "btn btn--small btn--icon btn--primary",
+        aria.label := "Validate status change",
+        disabled <-- blockedS,
+        Icons.check,
+        onClick
+          .compose(
+            _.sample(pendingVar.signal)
+              .collect { case Pending.Picked(newStatus) => newStatus }
+              .flatMapSwitch { newStatus =>
+                ApiCall
+                  .fromIOCallSimple(
+                    Api.appointments.updatePrestationStatus(
+                      apptId,
+                      prestationId,
+                      newStatus
+                    )
+                  )
+                  .stateS
+                  .map(state => (newStatus, state))
+              }
+          ) --> {
+          case (newStatus, Api.Loading) =>
+            errorVar.set(None)
+            pendingVar.set(Pending.Sent(newStatus))
+          case (_, Api.Success(_)) =>
+            errorVar.set(None)
+          case (_, Api.Error(error)) =>
+            errorVar.set(Some(ErrorMessages.errorToMessage(error)))
+            pendingVar.update(_.afterError)
+        }
+      )
+    )
+  end renderValidateButton
+
+  private def renderDeleteButton(
+      apptId: AppointmentId,
+      prestationId: PrestationId,
+      errorVar: Var[Option[String]],
+      onDelete: () => Unit
+  ): HtmlElement =
+    button(
+      cls := "btn btn--small btn--icon btn--danger",
+      aria.label := "Delete",
+      title := "Delete",
+      Icons.trash,
+      onClick.flatMap { _ =>
+        onDelete()
+        ApiCall
+          .fromIOCallSimple(
+            Api.appointments.deletePrestation(apptId, prestationId)
+          )
+          .stateS
+      } --> {
+        case Api.Loading =>
+          errorVar.set(None)
+        case Api.Success(_) =>
+          errorVar.set(None)
+        case Api.Error(error) =>
+          errorVar.set(Some(ErrorMessages.errorToMessage(error)))
+      }
+    )
+  end renderDeleteButton
+
+  // The status change of one row, from the user's pick to the server's event.
+  // The transitions are pure, the row only feeds them
+  private enum Pending:
+    case Idle
+    // Chosen, not validated yet
+    case Picked(status: PrestationStatus)
+    // Validated, waiting for its event to come back through the stream
+    case Sent(status: PrestationStatus)
+    // The live status changed under the choice: only cancel clears it
+    case Stale(status: PrestationStatus)
+
+    // The status the picker shows instead of the live one
+    def choice: Option[PrestationStatus] = this match
+      case Idle           => None
+      case Picked(status) => Some(status)
+      case Sent(status)   => Some(status)
+      case Stale(status)  => Some(status)
+
+    def isStale: Boolean = this match
+      case Stale(_) => true
+      case _        => false
+
+    def isSent: Boolean = this match
+      case Sent(_) => true
+      case _       => false
+
+    // Only a sent choice can be confirmed by the live status. Any other live
+    // change, even to the same status, was made by someone else: the choice
+    // was made against an outdated status
+    def afterLiveChange(live: PrestationStatus): Pending = this match
+      case Sent(status) if status == live => Idle
+      case Sent(status)                   => Stale(status)
+      case Picked(status)                 => Stale(status)
+      case other                          => other
+
+    // Back to picked, to retry or change the choice, unless someone else's
+    // change made it stale meanwhile
+    def afterError: Pending = this match
+      case Sent(status) => Picked(status)
+      case other        => other
+
+  private object Pending:
+    // Picking the live status itself leaves nothing pending
+    def picked(choice: PrestationStatus, live: PrestationStatus): Pending =
+      if choice == live then Idle else Picked(choice)
+
+  private def statusLabel(status: PrestationStatus): String =
+    status.toString.replace("_", " ").toLowerCase().capitalize
+
   private def renderAddPrestationRow(
       showAddVar: Var[Boolean],
-      prestationsVar: Var[List[Prestation]],
       appointmentId: AppointmentId,
       errorVar: Var[Option[String]]
   ): Mod[HtmlElement] =
@@ -253,7 +442,7 @@ object PrestationsView:
                     )
                   ),
                   selectedVar = Var(PrestationStatus.TO_BILL),
-                  locked = true
+                  lockedS = Signal.fromValue(true)
                 )
               )
             ),
@@ -309,8 +498,7 @@ object PrestationsView:
                   {
                     case Api.Loading =>
                       errorVar.set(None)
-                    case Api.Success(res) =>
-                      prestationsVar.set(res.appointment.prestations)
+                    case Api.Success(_) =>
                       errorVar.set(None)
                       showAddVar.set(false)
                     case Api.Error(error) =>

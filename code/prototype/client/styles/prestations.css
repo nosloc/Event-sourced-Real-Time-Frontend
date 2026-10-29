@@ -175,3 +175,24 @@
 .prestations__status-box .btn--icon {
   flex: none;
 }
+
+/* A stale choice: the row grows a line under it that says why. The row and
+   its warning read as one block, so the line between them goes */
+.prestations__item:has(.prestations__warning) > tr:first-child td {
+  border-bottom: none;
+  background: var(--warning-soft);
+}
+
+.prestations__table .prestations__warning td {
+  padding-top: 0;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 13px;
+  white-space: normal;
+}
+
+/* Holds the validate button's tooltip, which a disabled button may not show */
+.prestations__validate {
+  display: inline-flex;
+  flex: none;
+}

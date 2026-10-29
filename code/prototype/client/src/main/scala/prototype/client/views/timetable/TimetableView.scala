@@ -34,8 +34,6 @@ object TimetableView:
       WeekRange(weekDays.head, weekDays.last)
     }
 
-    val reloadVar: Var[Int] = Var(0)
-
     val selectedTherapistVar: Var[String] = Var(username)
 
     val allAppointments =
@@ -73,7 +71,14 @@ object TimetableView:
       .map(_ => new Date().decimalHours)
       .startWith(new Date().decimalHours)
 
-    val selectedAppointmentVar: Var[Option[Appointment]] = Var(None)
+    val selectedAppointmentIdVar: Var[Option[AppointmentId]] = Var(None)
+
+    val selectedAppointmentS: Signal[Option[Appointment]] =
+      selectedAppointmentIdVar.signal.combineWith(allAppointments.valuesS).map {
+        case (Some(selectedId), Some(appointments)) =>
+          appointments.find(_.appointmentId == selectedId)
+        case _ => None
+      }
 
     val showCreateAppointmentModalVar: Var[Boolean] = Var(false)
 
@@ -91,6 +96,10 @@ object TimetableView:
 
     div(
       LiveFeed.bind(feed),
+      // The selected appointment left the list (deleted, or no longer the
+      // therapist's): forget it, so the modal does not come back by itself
+      selectedAppointmentS.changes.filter(_.isEmpty).mapTo(None)
+        --> selectedAppointmentIdVar,
       cls := "timetable",
       div(
         cls := "timetable__head",
@@ -107,12 +116,12 @@ object TimetableView:
         showSkeletonS,
         currentTimeS,
         weekDaysS,
-        selectedAppointmentVar,
+        selectedAppointmentIdVar,
         today
       ),
       AppointmentModal(
-        selectedAppointmentVar,
-        reloadVar,
+        selectedAppointmentIdVar,
+        selectedAppointmentS,
         therapistsVar.successS.map(_.getOrElse(Nil)),
         patientsVar.successS.map(_.getOrElse(Nil))
       ),
@@ -120,7 +129,6 @@ object TimetableView:
         today,
         username,
         showCreateAppointmentModalVar,
-        reloadVar,
         therapistsVar.successS.map(_.getOrElse(Nil)),
         patientsVar.successS.map(_.getOrElse(Nil))
       )

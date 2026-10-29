@@ -23,6 +23,8 @@
 
   --error: oklch(42% 0.17 25);
   --error-soft: oklch(96% 0.025 25);
+  --warning: oklch(42% 0.09 65);
+  --warning-soft: oklch(96% 0.035 80);
   --shadow: oklch(30% 0.02 175 / 0.08);
 
   --radius-control: 8px;

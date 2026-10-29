@@ -6,7 +6,7 @@ import prototype.api.*
 object AppointmentBlock:
   def apply(
       appointmentS: Signal[Appointment],
-      selectedAppointmentVar: Var[Option[Appointment]]
+      selectedAppointmentIdVar: Var[Option[AppointmentId]]
   ): HtmlElement =
 
     val Nbsp = "\u00a0"
@@ -23,13 +23,13 @@ object AppointmentBlock:
       cls := "appt",
       cls := "appt--clickable",
       cls("appt--short") <-- decimalDurationS.map(_ < 0.5),
-      cls("appt--selected") <-- selectedAppointmentVar.signal
+      cls("appt--selected") <-- selectedAppointmentIdVar.signal
         .combineWith(
           appointmentS
         )
         .map {
           case (Some(selected), appointment) =>
-            selected.appointmentId == appointment.appointmentId
+            selected == appointment.appointmentId
           case (None, _) => false
         },
       styleAttr <-- decimalStartS
@@ -45,7 +45,7 @@ object AppointmentBlock:
       ),
       onClick.compose(_.sample(appointmentS))
         --> { appointment =>
-          selectedAppointmentVar.set(Some(appointment))
+          selectedAppointmentIdVar.set(Some(appointment.appointmentId))
         }
     )
   end apply

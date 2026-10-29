@@ -14,7 +14,7 @@ object WeekGrid:
       showSkeletonS: Signal[Boolean],
       currentTimeS: Signal[Double],
       weekDaysS: Signal[List[Date]],
-      selectedAppointmentVar: Var[Option[Appointment]],
+      selectedAppointmentIdVar: Var[Option[AppointmentId]],
       today: Date
   ): HtmlElement =
 
@@ -47,7 +47,7 @@ object WeekGrid:
             appointmentsS,
             currentTimeS,
             inWindowS,
-            selectedAppointmentVar,
+            selectedAppointmentIdVar,
             today
           )
         )
@@ -77,7 +77,7 @@ object WeekGrid:
       appointmentsS: Signal[WeekAppointments],
       currentTimeS: Signal[Double],
       inWindowS: Signal[Boolean],
-      selectedAppointmentVar: Var[Option[Appointment]],
+      selectedAppointmentIdVar: Var[Option[AppointmentId]],
       today: Date
   ): HtmlElement =
     tbody(
@@ -97,7 +97,7 @@ object WeekGrid:
                   .split(_.appointment.appointmentId) { (_, _, apptS) =>
                     AppointmentBlock(
                       apptS.map(_.appointment),
-                      selectedAppointmentVar
+                      selectedAppointmentIdVar
                     )
                   },
                 if today.sameDayAs(dayColumn.date) then
