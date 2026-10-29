@@ -8,8 +8,7 @@ import prototype.client.Api
 import prototype.client.Api.ApiCall
 import prototype.client.live.LiveFeed
 import prototype.client.live.LiveFeed.FeedMessage
-import prototype.client.live.LiveDataSource
-import smithy4s.time.Timestamp
+import prototype.client.appointments.LiveAppointmentsForTherapist
 
 object TimetableView:
   def apply(
@@ -39,47 +38,8 @@ object TimetableView:
 
     val selectedTherapistVar: Var[String] = Var(username)
 
-    val liveAppointmentsDataSource =
-      new LiveDataSource[String, List[Appointment], AppointmentEvent](
-        feed = feed,
-        key = selectedTherapistVar.signal,
-        load = username =>
-          Api.appointments
-            .listTherapistAppointments(TherapistId(username))
-            .map(response => (response.appointments, response.globalPosition)),
-        decode = AppointmentEvent.decode,
-        evolve = (trigram, appointments, event) =>
-          event match
-            case AppointmentCreated(
-                  id,
-                  therapistIds,
-                  patientIds,
-                  apptType,
-                  startTime,
-                  endTime
-                ) if therapistIds.contains(trigram) =>
-              // An unknown type leaves the list unchanged
-              AppointmentType.values
-                .find(_.stringValue == apptType)
-                .map(appointmentType =>
-                  appointments :+ Appointment(
-                    AppointmentId(id),
-                    therapistIds.map(TherapistId.apply),
-                    patientIds.map(PatientId.apply),
-                    appointmentType,
-                    // The events hold epoch milliseconds
-                    TimeRange(
-                      Timestamp.fromEpochMilli(startTime),
-                      Timestamp.fromEpochMilli(endTime)
-                    ),
-                    Nil
-                  )
-                )
-                .getOrElse(appointments)
-            case _ => appointments
-      )
-
-    val allAppointments = liveAppointmentsDataSource
+    val allAppointments =
+      LiveAppointmentsForTherapist(feed, selectedTherapistVar.signal)
 
     // The placeholder only shows when there is nothing to display yet: the
     // first load, or a new therapist. A reload keeps the grid on screen.
