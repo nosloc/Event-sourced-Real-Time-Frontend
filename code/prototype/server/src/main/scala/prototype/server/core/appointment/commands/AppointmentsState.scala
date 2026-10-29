@@ -5,10 +5,10 @@ import java.util.UUID
 import prototype.server.core.appointment.domain.{
   AppointmentCreated,
   AppointmentDeleted,
-  AppointmentUpdated
+  AppointmentUpdated,
+  PatientAddedToAppointment,
+  TherapistAddedToAppointment
 }
-import prototype.server.core.patient.domain.PatientAddedToAppointment
-import prototype.server.core.therapist.domain.TherapistAddedToAppointment
 
 /** What an existing appointment looks like in the history read (times in epoch
   * milliseconds, as in the events).
@@ -126,7 +126,7 @@ final case class AppointmentsState(
       event: TherapistAddedToAppointment
   ): AppointmentsState =
     withSlot(
-      event.appointmentId,
+      event.id,
       event.appointmentTherapists,
       event.appointmentPatients,
       event.appointmentType,
@@ -139,7 +139,7 @@ final case class AppointmentsState(
       event: PatientAddedToAppointment
   ): AppointmentsState =
     withSlot(
-      event.appointmentId,
+      event.id,
       event.appointmentTherapists,
       event.appointmentPatients,
       event.appointmentType,

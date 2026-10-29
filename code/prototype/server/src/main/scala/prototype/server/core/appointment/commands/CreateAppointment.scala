@@ -7,12 +7,10 @@ import prototype.server.core.PrototypeEvent
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*
 import prototype.server.core.patient.domain.{
-  PatientAddedToAppointment,
   PatientCreated,
   PatientScopes
 }
 import prototype.server.core.therapist.domain.{
-  TherapistAddedToAppointment,
   TherapistCreated,
   TherapistScopes
 }

@@ -7,12 +7,10 @@ import prototype.server.core.PrototypeEvent
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*
 import prototype.server.core.patient.domain.{
-  PatientAddedToAppointment,
   PatientCreated,
   PatientScopes
 }
 import prototype.server.core.therapist.domain.{
-  TherapistAddedToAppointment,
   TherapistCreated,
   TherapistScopes
 }
@@ -198,8 +196,8 @@ object UpdateAppointment:
             addedTherapists.map(therapist =>
               Set(TherapistScopes.Therapist(therapist).toTag) ->
                 TherapistAddedToAppointment(
-                  therapist,
                   command.id,
+                  therapist,
                   command.therapistIds.distinct,
                   command.patientIds.distinct,
                   command.apptType,
@@ -209,8 +207,8 @@ object UpdateAppointment:
             ) ++ addedPatients.map(patient =>
               Set(PatientScopes.Patient(patient).toTag) ->
                 PatientAddedToAppointment(
-                  patient,
                   command.id,
+                  patient,
                   command.therapistIds.distinct,
                   command.patientIds.distinct,
                   command.apptType,

@@ -67,3 +67,28 @@ final case class PrestationDeleted(
     id: UUID, // The appointment id
     prestationId: UUID
 ) extends AppointmentEvent derives Encoder, Decoder
+
+// To each therapist an update adds, and only in their stream: the whole
+// appointment as the update leaves it, since their stream holds nothing about
+// it to apply the update to. The appointment projection ignores it: the update
+// already lists who joined
+final case class TherapistAddedToAppointment(
+    id: UUID, // The appointment id
+    therapistId: String, // The trigram of the therapist added
+    appointmentTherapists: List[String],
+    appointmentPatients: List[UUID],
+    appointmentType: String,
+    appointmentStartTime: Long,
+    appointmentEndTime: Long
+) extends AppointmentEvent derives Encoder, Decoder
+
+// The same for each patient an update adds
+final case class PatientAddedToAppointment(
+    id: UUID, // The appointment id
+    patientId: UUID, // The patient added
+    appointmentTherapists: List[String],
+    appointmentPatients: List[UUID],
+    appointmentType: String,
+    appointmentStartTime: Long,
+    appointmentEndTime: Long
+) extends AppointmentEvent derives Encoder, Decoder

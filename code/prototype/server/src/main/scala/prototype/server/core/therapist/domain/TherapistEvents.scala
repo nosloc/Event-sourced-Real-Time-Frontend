@@ -24,14 +24,3 @@ final case class TherapistCreated(
     companyId: UUID,
     role: Role
 ) extends TherapistEvent derives Encoder, Decoder
-
-// Event tagged only on the therapist tag used to give all the appointment's information to the therapist's stream
-final case class TherapistAddedToAppointment(
-    id: String, // The trigram of the therapist added
-    appointmentId: UUID,
-    appointmentTherapists: List[String],
-    appointmentPatients: List[UUID],
-    appointmentType: String,
-    appointmentStartTime: Long,
-    appointmentEndTime: Long
-) extends TherapistEvent derives Encoder, Decoder

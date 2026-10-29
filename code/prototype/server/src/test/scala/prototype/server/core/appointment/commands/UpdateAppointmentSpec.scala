@@ -9,10 +9,7 @@ import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*
 import prototype.server.core.patient.domain.PatientScopes
-import prototype.server.core.therapist.domain.{
-  TherapistAddedToAppointment,
-  TherapistScopes
-}
+import prototype.server.core.therapist.domain.TherapistScopes
 import prototype.server.support.HandlerWorld
 import prototype.server.support.HandlerWorld.{patient1, patient2}
 
@@ -67,8 +64,8 @@ class UpdateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
           ),
           // The appointment as it is after the update
           TherapistAddedToAppointment(
-            "qrs",
             appointmentId(1),
+            "qrs",
             List("abc", "qrs"),
             List(patient2),
             "COUPLE",
