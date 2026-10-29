@@ -19,5 +19,5 @@ object LiveAppointmentsForTherapist:
           .listTherapistAppointments(TherapistId(therapistId))
           .map(response => (response.appointments, response.globalPosition)),
       decode = AppointmentEvent.decode,
-      evolve = AppointmentEvolve.evolve
+      evolve = AppointmentListEvolve.evolve
     )

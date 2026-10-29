@@ -15,11 +15,10 @@ given Decoder[PrestationStatus] = Decoder[String].emap(value =>
 
 /** The events about appointments as the server stores them, decoded in the
   * browser from the live stream. A copy of the server's event classes: same
-  * names, same fields, same JSON. On the server, `TherapistAddedToAppointment`
-  * is a therapist event; here it sits with the others because it gives a
-  * therapist a whole appointment.
+  * names, same fields, same JSON.
   */
-sealed trait AppointmentEvent
+sealed trait AppointmentEvent:
+  def id: UUID
 
 final case class AppointmentCreated(
     id: UUID,
@@ -65,11 +64,22 @@ final case class PrestationDeleted(
     prestationId: UUID
 ) extends AppointmentEvent derives Decoder
 
-// To the therapist added by an update: the whole appointment, since the update
-// itself only lists what changed
+// To each therapist an update adds: the whole appointment as the update leaves
+// it
 final case class TherapistAddedToAppointment(
-    id: String, // The trigram of the therapist added
-    appointmentId: UUID,
+    id: UUID, // The appointment id
+    therapistId: String, // The trigram of the therapist added
+    appointmentTherapists: List[String],
+    appointmentPatients: List[UUID],
+    appointmentType: String,
+    appointmentStartTime: Long,
+    appointmentEndTime: Long
+) extends AppointmentEvent derives Decoder
+
+// The same for each patient an update adds
+final case class PatientAddedToAppointment(
+    id: UUID, // The appointment id
+    patientId: UUID, // The patient added
     appointmentTherapists: List[String],
     appointmentPatients: List[UUID],
     appointmentType: String,
@@ -99,6 +109,8 @@ object AppointmentEvent:
           Some(parser.decode[PrestationDeleted](view.payload))
         case "TherapistAddedToAppointment" =>
           Some(parser.decode[TherapistAddedToAppointment](view.payload))
+        case "PatientAddedToAppointment" =>
+          Some(parser.decode[PatientAddedToAppointment](view.payload))
         case _ => None
     decoded.flatMap {
       case Right(event) => Some(event)

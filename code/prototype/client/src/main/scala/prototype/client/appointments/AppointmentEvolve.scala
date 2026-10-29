@@ -4,18 +4,19 @@ import prototype.api.*
 import smithy4s.time.Timestamp
 import java.util.UUID
 
+/** How one appointment changes with an event: the same rules as the server's
+  * appointment projection, plus the "added to appointment" events, which the
+  * projection ignores. Here they only build an appointment not known yet.
+  * `None`: no such appointment, or it was deleted.
+  */
 object AppointmentEvolve:
   def evolve(
-      trigram: String,
-      appointments: List[Appointment],
+      appointment: Option[Appointment],
       event: AppointmentEvent
-  ): List[Appointment] =
+  ): Option[Appointment] =
     event match
 
-      // Add the appointment if the therapist is in it and it is not listed yet
-      case created: AppointmentCreated
-          if created.therapistIds.contains(trigram) &&
-            !appointments.exists(_.appointmentId.value == created.id) =>
+      case created: AppointmentCreated if appointment.isEmpty =>
         newAppointment(
           created.id,
           created.therapistIds,
@@ -23,84 +24,99 @@ object AppointmentEvolve:
           created.apptType,
           created.startTime,
           created.endTime
-        ).fold(appointments)(appointment => appointments :+ appointment)
+        )
 
-      // Remove the appointment from the list
-      case AppointmentDeleted(id) =>
-        appointments.filterNot(_.appointmentId.value == id)
+      case _: AppointmentDeleted =>
+        None
 
-      // Remove the appointment if the current therapist is removed from it
-      case updated: AppointmentUpdated
-          if updated.therapistsRemoved.contains(trigram) =>
-        appointments.filterNot(_.appointmentId.value == updated.id)
-
-      // The therapist joins: TherapistAddedToAppointment brings the whole
-      // appointment, this update alone cannot build it
-      case updated: AppointmentUpdated
-          if updated.therapistsAdded.contains(trigram) =>
-        appointments
-
-      // Apply what changed to the appointment, if it is listed
+      // The update carries only what changed
       case updated: AppointmentUpdated =>
-        appointments.map { appointment =>
-          if (appointment.appointmentId.value == updated.id)
-            val newTherapists = appointment.therapistIds
-              .filterNot(therapist =>
-                updated.therapistsRemoved.contains(therapist.value)
-              ) ++
-              updated.therapistsAdded.map(TherapistId.apply)
-            val newPatients = appointment.patientIds
-              .filterNot(patient =>
-                updated.patientsRemoved.contains(patient.value)
-              ) ++
-              updated.patientsAdded.map(PatientId.apply)
-            val newType = updated.apptType
-              .flatMap(apptType =>
-                AppointmentType.values.find(_.stringValue == apptType)
+        appointment.map { appointment =>
+          val newTherapists = appointment.therapistIds
+            .filterNot(therapist =>
+              updated.therapistsRemoved.contains(therapist.value)
+            ) ++
+            updated.therapistsAdded.map(TherapistId.apply)
+          val newPatients = appointment.patientIds
+            .filterNot(patient =>
+              updated.patientsRemoved.contains(patient.value)
+            ) ++
+            updated.patientsAdded.map(PatientId.apply)
+          val newType = updated.apptType
+            .flatMap(apptType =>
+              AppointmentType.values.find(_.stringValue == apptType)
+            )
+            .getOrElse(appointment.appointmentType)
+          val newTimeRange = TimeRange(
+            updated.startTime
+              .map(Timestamp.fromEpochMilli)
+              .getOrElse(
+                appointment.timeRange.start
+              ),
+            updated.endTime
+              .map(Timestamp.fromEpochMilli)
+              .getOrElse(
+                appointment.timeRange.end
               )
-              .getOrElse(appointment.appointmentType)
-            val newTimeRange = TimeRange(
-              updated.startTime
-                .map(Timestamp.fromEpochMilli)
-                .getOrElse(
-                  appointment.timeRange.start
-                ),
-              updated.endTime
-                .map(Timestamp.fromEpochMilli)
-                .getOrElse(
-                  appointment.timeRange.end
-                )
-            )
-            appointment.copy(
-              therapistIds = newTherapists.distinct,
-              patientIds = newPatients.distinct,
-              appointmentType = newType,
-              timeRange = newTimeRange
-            )
-          else appointment
+          )
+          appointment.copy(
+            therapistIds = newTherapists.distinct,
+            patientIds = newPatients.distinct,
+            appointmentType = newType,
+            timeRange = newTimeRange
+          )
         }
 
-      // Add the appointment if this therapist is the one added and it is not
-      // listed yet
-      case added: TherapistAddedToAppointment
-          if added.id == trigram && !appointments.exists(
-            _.appointmentId.value == added.appointmentId
-          ) =>
+      // A new prestation starts at its first status
+      case created: PrestationCreated =>
+        appointment.map(appointment =>
+          appointment.copy(prestations =
+            appointment.prestations :+ Prestation(
+              appointmentId = AppointmentId(created.id),
+              prestationId = PrestationId(created.prestationId),
+              label = created.label,
+              quantity = created.quantity,
+              unitPrice = created.unitPrice,
+              status = PrestationStatus.TO_BILL
+            )
+          )
+        )
+
+      case updated: PrestationStatusUpdated =>
+        appointment.map(appointment =>
+          appointment.copy(prestations =
+            appointment.prestations.map(prestation =>
+              if prestation.prestationId.value == updated.prestationId then
+                prestation.copy(status = updated.status)
+              else prestation
+            )
+          )
+        )
+
+      case deleted: PrestationDeleted =>
+        appointment.map(appointment =>
+          appointment.copy(prestations =
+            appointment.prestations
+              .filterNot(_.prestationId.value == deleted.prestationId)
+          )
+        )
+
+      // A creation for an appointment that exists already is ignored
+      case _: AppointmentCreated => appointment
+
+      // Whoever is added gets the whole appointment. An appointment already
+      // known gets the update itself, and keeps its prestations
+      case added: TherapistAddedToAppointment =>
         newAppointment(
-          added.appointmentId,
+          added.id,
           added.appointmentTherapists,
           added.appointmentPatients,
           added.appointmentType,
           added.appointmentStartTime,
           added.appointmentEndTime
-        ).fold(appointments)(appointment => appointments :+ appointment)
+        )
 
-      // Another therapist's appointment, or one already listed
-      case _: AppointmentCreated          => appointments
-      case _: TherapistAddedToAppointment => appointments
-
-      // TODO: Handle the remaining events
-      case _ => appointments
+      case _: PatientAddedToAppointment => appointment
 
   // None for an unknown appointment type
   private def newAppointment(
