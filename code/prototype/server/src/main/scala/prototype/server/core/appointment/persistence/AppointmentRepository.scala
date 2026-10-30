@@ -6,7 +6,7 @@ import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 
 import prototype.api.PrestationStatus
-import prototype.server.core.appointment.domain.given
+import prototype.events.appointments.given
 
 import persistent4s.postgres.{PostgresAtomicRepository, PostgresRepositoryTable}
 

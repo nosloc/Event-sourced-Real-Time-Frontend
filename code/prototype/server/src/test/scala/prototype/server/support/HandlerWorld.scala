@@ -7,7 +7,7 @@ import cats.effect.IO
 import cats.syntax.all.*
 
 import prototype.api.{Address, Role}
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 import prototype.server.core.company.commands.CreateCompany
 import prototype.server.core.patient.commands.CreatePatient
 import prototype.server.core.therapist.commands.CreateTherapist

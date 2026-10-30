@@ -7,7 +7,7 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.*
 
 import prototype.api.*
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 import prototype.server.core.company.domain.{CompanyCreated, CompanyScopes}
 import prototype.server.core.company.domain.CompanyError.*
 import prototype.server.support.InMemoryEventStore

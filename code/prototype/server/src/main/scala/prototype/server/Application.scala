@@ -8,10 +8,11 @@ import fs2.concurrent.Topic
 
 import prototype.Greeting
 import prototype.api.*
+import prototype.events.PrototypeEvent
 import prototype.server.auth.*
 import prototype.server.config.AppConfig
 import prototype.server.config.syntax.loadIO
-import prototype.server.core.PrototypeEvent
+import prototype.server.core.PrototypeEventCodec
 import prototype.server.core.appointment.api.AppointmentServiceImpl
 import prototype.server.core.appointment.persistence.{
   AppointmentProjection,
@@ -104,7 +105,7 @@ object App extends IOApp.Simple:
       database <- PostgresModule.makeWithConfig[IO](
         config.postgres
       )
-      events <- database.domain(PrototypeEvent.eventCodec)
+      events <- database.domain(PrototypeEventCodec.eventCodec)
       // Its port is fixed: off in the tests, so they can run while a dev
       // server is up
       _ <-
@@ -171,9 +172,9 @@ object App extends IOApp.Simple:
       // Reads the stored events themselves, not a read model
       eventStoreServiceImpl = EventStoreServiceImpl(
         events.eventStore,
-        PrototypeEvent.eventCodec
+        PrototypeEventCodec.eventCodec
       )
-      eventFeed = EventFeed(PrototypeEvent.eventCodec, publishedEvents)
+      eventFeed = EventFeed(PrototypeEventCodec.eventCodec, publishedEvents)
       tokens <- Resource.eval(Ref.of[IO, Map[Token, TherapistId]](Map.empty))
       authServiceImpl = new AuthServiceImpl(tokens, therapistServiceImpl)
       authChecker = AuthChecker(tokens)

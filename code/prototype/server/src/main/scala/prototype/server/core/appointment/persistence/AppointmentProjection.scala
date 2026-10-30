@@ -7,8 +7,8 @@ import cats.effect.IO
 import fs2.concurrent.Topic
 
 import prototype.api.PrestationStatus
-import prototype.server.core.PrototypeEvent
-import prototype.server.core.appointment.domain.{
+import prototype.events.PrototypeEvent
+import prototype.events.appointments.{
   AppointmentCreated,
   AppointmentDeleted,
   AppointmentUpdated,

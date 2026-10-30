@@ -6,7 +6,7 @@ import java.util.UUID
 import cats.effect.{IO, Resource}
 import cats.effect.testing.scalatest.AsyncIOSpec
 
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 import prototype.server.core.patient.domain.{PatientCreated, PatientScopes}
 import prototype.server.support.EventEnvelopes
 

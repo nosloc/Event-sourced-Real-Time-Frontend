@@ -7,7 +7,7 @@ import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.*
 
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 import prototype.server.core.patient.domain.{PatientCreated, PatientScopes}
 import prototype.server.core.patient.domain.PatientError.*
 import prototype.server.support.InMemoryEventStore

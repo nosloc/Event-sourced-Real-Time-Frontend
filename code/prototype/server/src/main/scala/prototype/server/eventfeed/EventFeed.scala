@@ -6,7 +6,7 @@ import fs2.Stream
 import fs2.concurrent.Topic
 
 import prototype.api.EventView
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 
 import persistent4s.{EventCodec, EventEnvelope}
 

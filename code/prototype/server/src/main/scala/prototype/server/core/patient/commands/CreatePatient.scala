@@ -3,7 +3,7 @@ package prototype.server.core.patient.commands
 import java.time.LocalDate
 import java.util.UUID
 
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 import prototype.server.core.patient.domain.{
   PatientCreated,
   PatientError,

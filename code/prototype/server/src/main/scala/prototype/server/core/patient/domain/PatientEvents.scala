@@ -3,7 +3,7 @@ package prototype.server.core.patient.domain
 import java.time.LocalDate
 import java.util.UUID
 
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 
 import io.circe.{Decoder, Encoder}
 

@@ -7,7 +7,7 @@ import scala.concurrent.duration.*
 import cats.effect.IO
 
 import prototype.api.*
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 import prototype.server.core.company.commands.CreateCompany
 import prototype.server.core.company.domain.CompanyError
 import prototype.server.core.company.domain.CompanyError.*

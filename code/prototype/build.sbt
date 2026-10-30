@@ -26,8 +26,25 @@ lazy val shared = crossProject(JSPlatform, JVMPlatform)
     ),
     libraryDependencies ++= Seq(
       // %%% so each platform (JVM and JS) gets its own build of the library
-      "com.disneystreaming.smithy4s" %%% "smithy4s-http4s" % smithy4sVersion.value
+      "com.disneystreaming.smithy4s" %%% "smithy4s-http4s" % smithy4sVersion.value,
+
+      // Event decoding and encoding
+      "io.circe" %%% "circe-core" % Versions.Circe,
+      "io.circe" %%% "circe-parser" % Versions.Circe
     )
+  )
+  // Code for one platform only, in shared/jvm and shared/js (the common code
+  // stays in shared/src)
+  .jvmSettings(
+    Compile / unmanagedSourceDirectories +=
+      baseDirectory.value.getParentFile / "jvm" / "src" / "main" / "scala",
+    // P4S exists for the JVM only: the events are P4S events on the server
+    libraryDependencies +=
+      "io.github.persistent4s" %% "persistent4s-core" % Versions.Persistent4s
+  )
+  .jsSettings(
+    Compile / unmanagedSourceDirectories +=
+      baseDirectory.value.getParentFile / "js" / "src" / "main" / "scala"
   )
 
 lazy val server =

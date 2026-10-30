@@ -2,8 +2,8 @@ package prototype.server.core.appointment.commands
 
 import java.util.UUID
 
+import prototype.events.appointments.*
 import prototype.server.core.appointment.AppointmentFixtures.*
-import prototype.server.core.appointment.domain.*
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

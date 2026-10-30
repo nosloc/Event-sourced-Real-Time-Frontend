@@ -2,7 +2,7 @@ package prototype.server.core.company.domain
 
 import java.util.UUID
 
-import prototype.server.core.PrototypeEvent
+import prototype.server.core.PrototypeEventCodec
 
 import persistent4s.EventTypeName
 import persistent4s.circe.FutureEventVersion
@@ -19,7 +19,7 @@ import org.scalatest.matchers.should.Matchers
   */
 class CompanyEventSpec extends AnyFlatSpec with Matchers with EitherValues:
 
-  private val codec = PrototypeEvent.eventCodec
+  private val codec = PrototypeEventCodec.eventCodec
   private val eventType = EventTypeName.of[CompanyCreated]
 
   private val id = UUID.fromString("13ddd512-9f19-4af3-b5a9-af79bd82411e")

@@ -3,7 +3,7 @@ package prototype.server.core.therapist.domain
 import java.util.UUID
 
 import prototype.api.Role
-import prototype.server.core.PrototypeEvent
+import prototype.server.core.PrototypeEventCodec
 
 import persistent4s.EventTypeName
 import persistent4s.circe.FutureEventVersion
@@ -20,7 +20,7 @@ import org.scalatest.matchers.should.Matchers
   */
 class TherapistEventSpec extends AnyFlatSpec with Matchers with EitherValues:
 
-  private val codec = PrototypeEvent.eventCodec
+  private val codec = PrototypeEventCodec.eventCodec
   private val eventType = EventTypeName.of[TherapistCreated]
 
   private val company = UUID.fromString("13ddd512-9f19-4af3-b5a9-af79bd82411e")

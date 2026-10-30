@@ -1,7 +1,7 @@
 package prototype.server.eventfeed
 
 import prototype.api.*
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 
 import persistent4s.{EventCodec, EventEnvelope}
 

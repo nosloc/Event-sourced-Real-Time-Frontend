@@ -3,7 +3,7 @@ package prototype.server.core.patient.api
 import cats.effect.IO
 
 import prototype.api.*
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 import prototype.server.core.patient.commands.CreatePatient
 import prototype.server.core.patient.domain.PatientError.*
 import prototype.server.core.patient.persistence.{

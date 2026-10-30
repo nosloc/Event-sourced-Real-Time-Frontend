@@ -1,17 +1,15 @@
 package prototype.server.core
 
-import prototype.server.core.appointment.domain.AppointmentEvent
+import prototype.events.PrototypeEvent
+import prototype.events.appointments.AppointmentEvent
 import prototype.server.core.company.domain.CompanyEvent
 import prototype.server.core.patient.domain.PatientEvent
 import prototype.server.core.therapist.domain.TherapistEvent
 
-import persistent4s.{Event, EventCodec}
+import persistent4s.EventCodec
 import persistent4s.circe.CirceEventCodec
 
-trait PrototypeEvent extends Event
-
-object PrototypeEvent:
-
+object PrototypeEventCodec:
   val eventCodec: EventCodec[PrototypeEvent] =
     CirceEventCodec
       .builder[PrototypeEvent]

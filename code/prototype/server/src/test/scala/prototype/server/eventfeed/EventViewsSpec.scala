@@ -3,8 +3,9 @@ package prototype.server.eventfeed
 import java.time.Instant
 import java.util.UUID
 
-import prototype.server.core.PrototypeEvent
-import prototype.server.core.appointment.domain.AppointmentCreated
+import prototype.events.PrototypeEvent
+import prototype.events.appointments.AppointmentCreated
+import prototype.server.core.PrototypeEventCodec
 import prototype.server.support.EventEnvelopes
 
 import persistent4s.{EventTypeName, Tag}
@@ -19,7 +20,7 @@ import smithy4s.time.Timestamp
   */
 class EventViewsSpec extends AnyFlatSpec with Matchers with EitherValues:
 
-  private val codec = PrototypeEvent.eventCodec
+  private val codec = PrototypeEventCodec.eventCodec
 
   private val appointmentId = UUID.fromString("5b1e3c2a-8f4d-4c1e-9a7b-2d6f0e8c9a11")
   private val patientId = UUID.fromString("0c9d8e7f-6a5b-4c3d-8e2f-1a0b9c8d7e6f")

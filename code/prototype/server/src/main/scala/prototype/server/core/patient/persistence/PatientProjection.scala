@@ -5,7 +5,7 @@ import java.util.UUID
 
 import cats.effect.IO
 
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 import prototype.server.core.patient.domain.PatientCreated
 
 import persistent4s.ExactlyOnceEventSourcedProjection

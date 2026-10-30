@@ -4,7 +4,7 @@ import cats.effect.IO
 
 import fs2.concurrent.Topic
 
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 
 import persistent4s.{EventEnvelope, EventTypeName, StatelessProjection}
 

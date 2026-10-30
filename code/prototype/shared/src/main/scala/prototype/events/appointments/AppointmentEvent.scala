@@ -1,9 +1,9 @@
-package prototype.server.core.appointment.domain
+package prototype.events.appointments
 
 import java.util.UUID
 
 import prototype.api.PrestationStatus
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 
 import io.circe.{Decoder, Encoder}
 

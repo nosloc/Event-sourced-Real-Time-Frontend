@@ -3,7 +3,9 @@ package prototype.server.core.appointment.domain
 import java.util.UUID
 
 import prototype.api.PrestationStatus
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
+import prototype.events.appointments.*
+import prototype.server.core.PrototypeEventCodec
 
 import persistent4s.EventTypeName
 import persistent4s.circe.FutureEventVersion
@@ -20,7 +22,7 @@ import org.scalatest.matchers.should.Matchers
   */
 class AppointmentEventSpec extends AnyFlatSpec with Matchers with EitherValues:
 
-  private val codec = PrototypeEvent.eventCodec
+  private val codec = PrototypeEventCodec.eventCodec
 
   private val appointment = UUID.fromString("13ddd512-9f19-4af3-b5a9-af79bd82411e")
   private val patient = UUID.fromString("070874c8-5296-452e-8c91-cfaf54385932")

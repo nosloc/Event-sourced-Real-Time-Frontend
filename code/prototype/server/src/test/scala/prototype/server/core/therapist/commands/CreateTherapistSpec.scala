@@ -7,7 +7,7 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.*
 
 import prototype.api.{Address, Role}
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 import prototype.server.core.company.commands.CreateCompany
 import prototype.server.core.therapist.domain.{TherapistCreated, TherapistScopes}
 import prototype.server.core.therapist.domain.TherapistError.*

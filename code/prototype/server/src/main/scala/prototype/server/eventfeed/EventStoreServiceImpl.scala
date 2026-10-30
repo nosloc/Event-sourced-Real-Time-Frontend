@@ -3,7 +3,7 @@ package prototype.server.eventfeed
 import cats.effect.IO
 
 import prototype.api.{EventStoreService, EventsPage}
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 
 import persistent4s.{EventCodec, EventFilter, EventStore}
 

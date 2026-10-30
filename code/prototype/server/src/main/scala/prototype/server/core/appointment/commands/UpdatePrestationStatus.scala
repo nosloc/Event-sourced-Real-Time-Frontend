@@ -4,7 +4,8 @@ import java.util.UUID
 
 import prototype.StatusTransitions
 import prototype.api.PrestationStatus
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
+import prototype.events.appointments.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*
 

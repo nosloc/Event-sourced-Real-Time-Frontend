@@ -9,7 +9,7 @@ import cats.effect.IO
 import cats.syntax.all.*
 
 import prototype.api.*
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 import prototype.server.core.appointment.commands.{
   CreateAppointment,
   CreatePrestation,

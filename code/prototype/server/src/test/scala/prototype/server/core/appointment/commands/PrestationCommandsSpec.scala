@@ -8,6 +8,7 @@ import cats.syntax.all.*
 
 import prototype.api.PrestationStatus
 import prototype.api.PrestationStatus.*
+import prototype.events.appointments.*
 import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*

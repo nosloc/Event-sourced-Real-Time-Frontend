@@ -3,7 +3,7 @@ package prototype.server.core.therapist.domain
 import java.util.UUID
 
 import prototype.api.Role
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 
 import io.circe.{Decoder, Encoder}
 

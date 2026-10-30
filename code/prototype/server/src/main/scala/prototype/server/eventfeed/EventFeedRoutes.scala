@@ -6,11 +6,12 @@ import cats.effect.IO
 
 import fs2.Stream
 
+import prototype.StreamOpened
+
 import org.http4s.{HttpRoutes, ServerSentEvent}
 import org.http4s.dsl.io.*
 import org.http4s.headers.`Last-Event-Id`
 import smithy4s.json.Json
-import prototype.StreamOpened
 
 /** `GET /api/events/stream`: the new events as server-sent events, each with
   * its position as id. A browser that reconnects sends back the last one in

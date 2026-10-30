@@ -2,7 +2,8 @@ package prototype.server.core.appointment.commands
 
 import java.util.UUID
 
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
+import prototype.events.appointments.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*
 
@@ -45,7 +46,9 @@ object CreatePrestation:
         scope(AppointmentScopes.Appointment)(_.id)
         scope(AppointmentScopes.Prestation)(_.prestationId)
 
-        on[AppointmentCreated].allEvents.evolve(_.copy(appointmentExists = true))
+        on[AppointmentCreated].allEvents.evolve(
+          _.copy(appointmentExists = true)
+        )
         on[AppointmentDeleted].allEvents.evolve(
           _.copy(appointmentExists = false)
         )

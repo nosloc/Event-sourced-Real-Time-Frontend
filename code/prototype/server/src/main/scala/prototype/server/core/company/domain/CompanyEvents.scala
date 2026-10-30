@@ -2,7 +2,7 @@ package prototype.server.core.company.domain
 
 import java.util.UUID
 
-import prototype.server.core.PrototypeEvent
+import prototype.events.PrototypeEvent
 
 import io.circe.{Decoder, Encoder}
 
