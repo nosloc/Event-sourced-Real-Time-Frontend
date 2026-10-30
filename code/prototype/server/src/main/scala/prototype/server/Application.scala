@@ -101,10 +101,10 @@ object App extends IOApp.Simple:
   ): Resource[IO, Services] =
     for
       // Persistent4s
-      database <- PostgresModule.makeWithConfig[IO, PrototypeEvent](
-        config.postgres,
-        PrototypeEvent.eventCodec
+      database <- PostgresModule.makeWithConfig[IO](
+        config.postgres
       )
+      events <- database.domain(PrototypeEvent.eventCodec)
       // Its port is fixed: off in the tests, so they can run while a dev
       // server is up
       _ <-
@@ -114,15 +114,15 @@ object App extends IOApp.Simple:
         else Resource.unit[IO]
       companies = CompanyRepository.make(database.sessions)
       companyService = CompanyServiceImpl(companies)(using
-        database.commandRuntime
+        events.commandRuntime
       )
       patients = PatientRepository.make(database.sessions)
       patientServiceImpl = PatientServiceImpl(patients)(using
-        database.commandRuntime
+        events.commandRuntime
       )
       therapists = TherapistRepository.make(database.sessions)
       therapistServiceImpl = TherapistServiceImpl(therapists)(using
-        database.commandRuntime
+        events.commandRuntime
       )
       appointments = AppointmentRepository.make(database.sessions)
       // The appointment commands wait for their projection: it publishes on
@@ -132,10 +132,10 @@ object App extends IOApp.Simple:
         appointments,
         appointmentUpdates,
         therapistServiceImpl
-      )(using database.commandRuntime)
+      )(using events.commandRuntime)
       // Every stored event, published once for the open event streams
       publishedEvents <- Topic[IO, EventEnvelope[PrototypeEvent]].toResource
-      _ <- database.leaderElectedProjectionRuntime.startAll { registered =>
+      _ <- events.leaderElectedProjectionRuntime.startAll { registered =>
         registered.run(CompanyProjection(companies))
         registered.run(TherapistProjection(therapists))
         registered.run(PatientProjection(patients))
@@ -155,7 +155,7 @@ object App extends IOApp.Simple:
       _ <-
         if withSeed then
           DevAccount
-            .ensure(therapistServiceImpl)(using database.commandRuntime)
+            .ensure(therapistServiceImpl)(using events.commandRuntime)
             .toResource
         else Resource.unit[IO]
       // Generates the demo data on request, through the command handlers;
@@ -163,14 +163,14 @@ object App extends IOApp.Simple:
       demoDataServiceImpl <- DemoDataServiceImpl
         .make(
           DemoDataGenerator(companies, therapists, patients, appointments)(using
-            database.commandRuntime
+            events.commandRuntime
           ),
           therapistServiceImpl
         )
         .toResource
       // Reads the stored events themselves, not a read model
       eventStoreServiceImpl = EventStoreServiceImpl(
-        database.eventStore,
+        events.eventStore,
         PrototypeEvent.eventCodec
       )
       eventFeed = EventFeed(PrototypeEvent.eventCodec, publishedEvents)

@@ -16,9 +16,6 @@ import skunk.circe.codec.all.json
 import skunk.codec.all.*
 import skunk.data.Arr
 import skunk.syntax.all.*
-import persistent4s.ReadCursor
-import skunk.data.TransactionIsolationLevel
-import skunk.data.TransactionAccessMode
 
 /** Stores one state, an appointment with its prestations, in two tables:
   * `appointments` and `prestations`. The library calls the three callbacks
@@ -47,29 +44,15 @@ final class AppointmentRepository private (pool: Resource[IO, Session[IO]])
   def all: IO[List[AppointmentState]] =
     useSession(_.execute(everyAppointment))
 
-  private val checkpointOf: Query[String, ReadCursor] =
-    sql"""SELECT commit_group, global_position FROM projection_checkpoints
-        WHERE projection_name = $text"""
-      .query(int8 *: int8)
-      .map((g, p) => ReadCursor(g, p))
-
-  /** The appointments a therapist is in, earliest first. */
+  /** The appointments a therapist is in, earliest first. With the projection
+    * position
+    */
   def forTherapist(therapistId: String): IO[(List[AppointmentState], Long)] =
-    useSession(session =>
-      session
-        .transaction(
-          TransactionIsolationLevel.RepeatableRead,
-          TransactionAccessMode.ReadOnly
-        )
-        .use(_ =>
-          for
-            states <- session.execute(ofTherapist)(therapistId)
-            cursor <- session
-              .execute(checkpointOf)("appointment-projection")
-              .map(_.headOption.getOrElse(ReadCursor(0L, 0L)))
-          yield (states, cursor.globalPosition)
-        )
-    )
+    readWithCursor(AppointmentProjectionName)(session =>
+      session.execute(ofTherapist)(therapistId)
+    ).map { case (appointments, cursor) =>
+      (appointments, cursor.globalPosition)
+    }
 
 object AppointmentRepository:
 

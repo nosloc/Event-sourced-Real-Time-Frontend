@@ -43,6 +43,8 @@ final case class AppointmentState(
     prestations: List[PrestationRow]
 )
 
+val AppointmentProjectionName: String = "appointment-projection"
+
 /** Every appointment event carries the appointment id, so one projection keeps
   * the appointment and its prestations together: the prestation events update
   * the list in the state, and the repository decides how it is stored.
@@ -56,7 +58,7 @@ final case class AppointmentProjection(
       AppointmentState
     ]:
 
-  override val name: String = "appointment-projection"
+  override val name: String = AppointmentProjectionName
 
   override protected val eventHandlers = handlers:
     on[AppointmentCreated](_.id).create(event =>

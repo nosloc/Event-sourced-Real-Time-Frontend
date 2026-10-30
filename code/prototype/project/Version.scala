@@ -22,7 +22,7 @@ object Versions {
 
   val Logback = "1.6.5"
 
-  val Persistent4s = "0.4.0-RC9"
+  val Persistent4s = "0.4.0-RC11"
 
   val Datafaker = "2.7.0"
 

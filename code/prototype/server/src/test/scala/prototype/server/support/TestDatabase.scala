@@ -2,8 +2,6 @@ package prototype.server.support
 
 import cats.effect.{IO, Resource}
 
-import prototype.server.core.PrototypeEvent
-
 import persistent4s.postgres.{PostgresConfig, PostgresModule}
 
 import org.typelevel.log4cats.Logger
@@ -23,7 +21,9 @@ object TestDatabase:
   private given TracerProvider[IO] = TracerProvider.noop[IO]
   private given MeterProvider[IO] = MeterProvider.noop[IO]
 
-  def sessions(postgres: PostgresConfig): Resource[IO, Resource[IO, Session[IO]]] =
+  def sessions(
+      postgres: PostgresConfig
+  ): Resource[IO, Resource[IO, Session[IO]]] =
     PostgresModule
-      .makeWithConfig[IO, PrototypeEvent](postgres, PrototypeEvent.eventCodec)
+      .makeWithConfig[IO](postgres)
       .map(_.sessions)
