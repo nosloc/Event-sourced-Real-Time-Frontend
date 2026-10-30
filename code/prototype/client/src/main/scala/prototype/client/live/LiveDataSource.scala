@@ -3,7 +3,7 @@ package prototype.client.live
 import com.raquo.laminar.api.L.*
 import cats.effect.IO
 import prototype.client.Api
-import prototype.api.EventView
+import prototype.api.EventMessage
 import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.live.LiveModel.Input
 
@@ -21,7 +21,7 @@ final class LiveDataSource[K, A, E](
     feed: EventBus[FeedMessage],
     key: Signal[K],
     load: K => IO[(A, Long)],
-    decode: EventView => Option[E],
+    decode: EventMessage => Option[E],
     evolve: (K, A, E) => A
 ):
 
@@ -54,9 +54,9 @@ final class LiveDataSource[K, A, E](
 
   private val receivedInput: EventStream[LiveModel.Input[K, A, E]] =
     feed.events
-      .collect { case FeedMessage.Event(view) => view }
-      .map(view =>
-        decode(view).map(event => Input.Received(view.position, event))
+      .collect { case FeedMessage.Event(message) => message }
+      .map(message =>
+        decode(message).map(event => Input.Received(message.position, event))
       )
       .collectSome
 

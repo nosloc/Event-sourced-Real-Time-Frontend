@@ -43,37 +43,9 @@ structure ListEventsInput {
     take: Integer
 }
 
-structure EventView {
-    @required
-    position: Long
-
-    @required
-    eventId: String
-
-    @required
-    eventType: String
-
-    @required
-    recordedAt: Timestamp
-
-    @required
-    tags: EventTags
-
-    @required
-    payload: String
-}
-
-list EventViews {
-    member: EventView
-}
-
-list EventTags {
-    member: String
-}
-
 structure EventsPage {
     @required
-    events: EventViews
+    events: EventMessages
 
     @required
     total: Long

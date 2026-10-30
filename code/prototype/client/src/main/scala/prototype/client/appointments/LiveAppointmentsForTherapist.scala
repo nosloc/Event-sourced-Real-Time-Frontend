@@ -3,6 +3,7 @@ package prototype.client.appointments
 import com.raquo.laminar.api.L.*
 import prototype.client.live.LiveDataSource
 import prototype.api.*
+import prototype.events.appointments.*
 import prototype.client.live.LiveFeed
 import prototype.client.Api
 
@@ -18,6 +19,6 @@ object LiveAppointmentsForTherapist:
         Api.appointments
           .listTherapistAppointments(TherapistId(therapistId))
           .map(response => (response.appointments, response.globalPosition)),
-      decode = AppointmentEvent.decode,
+      decode = AppointmentEventDecoder.decode,
       evolve = AppointmentListEvolve.evolve
     )

@@ -18,7 +18,7 @@ import smithy4s.time.Timestamp
 /** A stored event as the browser sees it: the metadata the store keeps with
   * it, and its content exactly as the store encodes it.
   */
-class EventViewsSpec extends AnyFlatSpec with Matchers with EitherValues:
+class EventMessagesSpec extends AnyFlatSpec with Matchers with EitherValues:
 
   private val codec = PrototypeEventCodec.eventCodec
 
@@ -51,16 +51,16 @@ class EventViewsSpec extends AnyFlatSpec with Matchers with EitherValues:
       built.metadata.copy(globalPosition = 42L, id = eventId, timestamp = recordedAt)
     )
 
-  "EventViews.from" should "copy the metadata of the stored event" in {
-    val view = EventViews.from(envelope, codec).value
-    view.position shouldBe 42L
-    view.eventId shouldBe eventId.toString
-    view.eventType shouldBe "AppointmentCreated"
-    view.recordedAt shouldBe Timestamp.fromInstant(recordedAt)
+  "EventMessages.from" should "copy the metadata of the stored event" in {
+    val message = EventMessages.from(envelope, codec).value
+    message.position shouldBe 42L
+    message.eventId shouldBe eventId.toString
+    message.eventType shouldBe "AppointmentCreated"
+    message.recordedAt shouldBe Timestamp.fromInstant(recordedAt)
   }
 
   it should "give the tags as category:id, sorted" in {
-    EventViews.from(envelope, codec).value.tags shouldBe List(
+    EventMessages.from(envelope, codec).value.tags shouldBe List(
       s"appointment:$appointmentId",
       s"patient:$patientId",
       "therapist:tst"
@@ -68,7 +68,7 @@ class EventViewsSpec extends AnyFlatSpec with Matchers with EitherValues:
   }
 
   it should "carry the content exactly as the store encodes it" in {
-    EventViews.from(envelope, codec).value.payload shouldBe
+    EventMessages.from(envelope, codec).value.payload shouldBe
       codec.encode(event).value
   }
-end EventViewsSpec
+end EventMessagesSpec

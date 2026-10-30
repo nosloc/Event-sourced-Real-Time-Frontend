@@ -1,7 +1,7 @@
 package prototype.client.views.eventsourcing
 
 import com.raquo.laminar.api.L.*
-import prototype.api.EventView
+import prototype.api.EventMessage
 import EventSourcingModel.*
 import EventSourcingModel.EventSourcingPage.*
 import prototype.client.Api.ApiCall
@@ -21,7 +21,7 @@ object EventSourcingView:
     val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
 
     val showPageVar: Var[EventSourcingPage] = Var(LivePage)
-    val liveEventsVar: Var[List[EventView]] = Var(List.empty)
+    val liveEventsVar: Var[List[EventMessage]] = Var(List.empty)
     val historyPageVar: Var[Option[ShownHistoryPage]] = Var(None)
 
     val pageSizeVar: Var[Int] = Var(50)
@@ -37,7 +37,7 @@ object EventSourcingView:
 
     val errorVar: Var[Option[String]] = Var(None)
     val historyLoadingVar: Var[Boolean] = Var(false)
-    val selectedVar: Var[Option[EventView]] = Var(None)
+    val selectedVar: Var[Option[EventMessage]] = Var(None)
 
     val askedHistoryS: Signal[Option[(Long, Int)]] =
       showPageVar.signal
@@ -67,17 +67,17 @@ object EventSourcingView:
     val loadedHistoryPage: EventStream[Option[Api.ApiState[ShownHistoryPage]]] =
       askedHistoryS.changes.flatMapSwitch(loadHistory)
 
-    val historyEventsS: Signal[List[EventView]] =
+    val historyEventsS: Signal[List[EventMessage]] =
       historyPageVar.signal.combineWith(askedHistoryS).map {
         case (Some(page), Some((skip, size))) => page.slice(skip, size).reverse
         case _                                => List.empty
       }
 
-    val liveEvent: EventStream[EventView] =
-      feed.events.collect { case FeedMessage.Event(view) => view }
+    val liveEvent: EventStream[EventMessage] =
+      feed.events.collect { case FeedMessage.Event(message) => message }
 
     // While a page loads, nothing rather than the previous page
-    val shownEventsS: Signal[List[EventView]] =
+    val shownEventsS: Signal[List[EventMessage]] =
       showPageVar.signal
         .combineWith(
           liveEventsVar.signal,
@@ -191,8 +191,8 @@ object EventSourcingView:
   end apply
 
   private def keepLiveEventsUpToDate(
-      liveEvent: EventStream[EventView],
-      liveEventsVar: Var[List[EventView]],
+      liveEvent: EventStream[EventMessage],
+      liveEventsVar: Var[List[EventMessage]],
       totalEventsVar: Var[Long],
       arrivedVar: Var[Option[String]],
       errorVar: Var[Option[String]],

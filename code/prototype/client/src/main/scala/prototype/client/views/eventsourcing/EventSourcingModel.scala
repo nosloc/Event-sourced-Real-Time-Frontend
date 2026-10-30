@@ -1,6 +1,6 @@
 package prototype.client.views.eventsourcing
 
-import prototype.api.{EventView, EventsPage}
+import prototype.api.{EventMessage, EventsPage}
 
 /** The rules of the event sourcing tab, without state: the pages, the texts of
   * the pager, and how live events join the ones already held.
@@ -22,11 +22,11 @@ object EventSourcingModel:
   final case class ShownHistoryPage(
       from: Long,
       to: Long,
-      events: List[EventView]
+      events: List[EventMessage]
   ):
     def covers(skip: Long, size: Long): Boolean =
       from <= skip && skip + size <= to
-    def slice(skip: Long, size: Long): List[EventView] =
+    def slice(skip: Long, size: Long): List[EventMessage] =
       events.drop((skip - from).toInt).take(size.toInt)
 
   /** Where a move leads, and the number of events to freeze the pages at when
@@ -140,22 +140,22 @@ object EventSourcingModel:
 
   // Live events
   /** Not held yet, and not older than the whole held window (a replay) */
-  def isNewEvent(held: List[EventView], event: EventView): Boolean =
+  def isNewEvent(held: List[EventMessage], event: EventMessage): Boolean =
     !held.exists(_.eventId == event.eventId) &&
       held.lastOption.forall(_.position < event.position)
 
   /** The live events already held and newer than the page are not in its total
     */
-  def totalAfterLatest(page: EventsPage, held: List[EventView]): Long =
+  def totalAfterLatest(page: EventsPage, held: List[EventMessage]): Long =
     val pageNewest = page.events.map(_.position).maxOption.getOrElse(0L)
     page.total + held.count(_.position > pageNewest)
 
   /** Both lists without duplicates, newest first, at most `MaxEventsSize` */
   def mergeEvents(
-      oldEvents: List[EventView],
-      newEvents: List[EventView]
-  ): List[EventView] =
-    val allEvents: Map[String, EventView] =
+      oldEvents: List[EventMessage],
+      newEvents: List[EventMessage]
+  ): List[EventMessage] =
+    val allEvents: Map[String, EventMessage] =
       (oldEvents ++ newEvents).map(e => e.eventId -> e).toMap
     allEvents.values.toList
       .sortBy(-_.position)
@@ -163,9 +163,9 @@ object EventSourcingModel:
   end mergeEvents
 
   def mergeEvents(
-      oldEvents: List[EventView],
-      newEvent: EventView
-  ): List[EventView] =
+      oldEvents: List[EventMessage],
+      newEvent: EventMessage
+  ): List[EventMessage] =
     mergeEvents(oldEvents, List(newEvent))
   end mergeEvents
 end EventSourcingModel

@@ -40,7 +40,7 @@ final class EventStoreServiceImpl(
     eventStore
       .readFrom(0L, EventFilter(), Some(toRead))
       .drop(parsedSkip)
-      .evalMap(envelope => IO.fromEither(EventViews.from(envelope, codec)))
+      .evalMap(envelope => IO.fromEither(EventMessages.from(envelope, codec)))
       .compile
       .toList
       .map(events => EventsPage(events, total))

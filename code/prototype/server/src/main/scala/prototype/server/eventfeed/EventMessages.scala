@@ -7,15 +7,15 @@ import persistent4s.{EventCodec, EventEnvelope}
 
 import smithy4s.time.Timestamp
 
-object EventViews:
+object EventMessages:
   def from(
       envelope: EventEnvelope[PrototypeEvent],
       codec: EventCodec[PrototypeEvent]
-  ): Either[Throwable, EventView] =
+  ): Either[Throwable, EventMessage] =
     codec
       .encode(envelope.payload)
       .map(payload =>
-        EventView(
+        EventMessage(
           position = envelope.metadata.globalPosition,
           eventId = envelope.metadata.id.toString,
           eventType = envelope.metadata.eventType.value,

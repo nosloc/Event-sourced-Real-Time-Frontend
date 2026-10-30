@@ -1,7 +1,7 @@
 package prototype.client.views.eventsourcing
 
 import com.raquo.laminar.api.L.*
-import prototype.api.EventView
+import prototype.api.EventMessage
 
 /** The events shown, newest first: position, time, type, tags. The row that
   * just arrived is highlighted; clicking a row selects it.
@@ -9,10 +9,10 @@ import prototype.api.EventView
 object EventTable:
 
   def apply(
-      eventsS: Signal[List[EventView]],
+      eventsS: Signal[List[EventMessage]],
       arrivedS: Signal[Option[String]],
       emptyTextS: Signal[String],
-      onSelect: EventView => Unit
+      onSelect: EventMessage => Unit
   ): HtmlElement =
     div(
       cls := "admin__scroll",
@@ -38,9 +38,9 @@ object EventTable:
 
   // A row is a button in spirit: it can be reached with the keyboard too
   private def renderRow(
-      event: EventView,
+      event: EventMessage,
       arrivedS: Signal[Boolean],
-      onSelect: EventView => Unit
+      onSelect: EventMessage => Unit
   ): HtmlElement =
     tr(
       cls := "admin__row",

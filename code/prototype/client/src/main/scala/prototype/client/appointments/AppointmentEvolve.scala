@@ -1,6 +1,7 @@
 package prototype.client.appointments
 
 import prototype.api.*
+import prototype.events.appointments.*
 import smithy4s.time.Timestamp
 import java.util.UUID
 

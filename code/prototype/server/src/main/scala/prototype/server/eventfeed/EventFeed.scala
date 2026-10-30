@@ -5,7 +5,7 @@ import cats.effect.IO
 import fs2.Stream
 import fs2.concurrent.Topic
 
-import prototype.api.EventView
+import prototype.api.EventMessage
 import prototype.events.PrototypeEvent
 
 import persistent4s.{EventCodec, EventEnvelope}
@@ -22,7 +22,7 @@ final class EventFeed(
     * in place, so no event published after it can be missed. Then one `Some` per
     * new event, leaving out those whose position is not above `after`.
     */
-  def stream(after: Long): Stream[IO, Option[EventView]] =
+  def stream(after: Long): Stream[IO, Option[EventMessage]] =
     Stream
       .resource(published.subscribeAwait(EventFeed.QueueSize))
       .flatMap(events =>
@@ -30,7 +30,7 @@ final class EventFeed(
           ++ events
             .filter(_.metadata.globalPosition > after)
             .evalMap(envelope =>
-              IO.fromEither(EventViews.from(envelope, codec))
+              IO.fromEither(EventMessages.from(envelope, codec))
             )
             .map(Some(_))
       )

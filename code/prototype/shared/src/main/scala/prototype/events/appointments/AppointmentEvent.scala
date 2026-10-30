@@ -2,10 +2,10 @@ package prototype.events.appointments
 
 import java.util.UUID
 
-import prototype.api.PrestationStatus
+import prototype.api.{EventMessage, PrestationStatus}
 import prototype.events.PrototypeEvent
 
-import io.circe.{Decoder, Encoder}
+import io.circe.{Decoder, Encoder, parser}
 
 // The stored JSON is the status name, e.g. "TO_BILL"
 given Encoder[PrestationStatus] = Encoder[String].contramap(_.stringValue)
@@ -19,6 +19,36 @@ sealed trait AppointmentEvent extends PrototypeEvent:
 
   /** Identifies the appointment that this event is about */
   def id: UUID
+
+object AppointmentEvent:
+
+  /** The appointment event in an event message, read by its type name (P4S
+    * stores an event under its class name). None: not an appointment event.
+    * Some(Left): an appointment event whose payload does not decode.
+    */
+  def decode(
+      message: EventMessage
+  ): Option[Either[io.circe.Error, AppointmentEvent]] =
+    message.eventType match
+      case "AppointmentCreated" =>
+        Some(parser.decode[AppointmentCreated](message.payload))
+      case "AppointmentUpdated" =>
+        Some(parser.decode[AppointmentUpdated](message.payload))
+      case "AppointmentDeleted" =>
+        Some(parser.decode[AppointmentDeleted](message.payload))
+      case "PrestationCreated" =>
+        Some(parser.decode[PrestationCreated](message.payload))
+      case "PrestationStatusUpdated" =>
+        Some(parser.decode[PrestationStatusUpdated](message.payload))
+      case "PrestationDeleted" =>
+        Some(parser.decode[PrestationDeleted](message.payload))
+      case "TherapistAddedToAppointment" =>
+        Some(parser.decode[TherapistAddedToAppointment](message.payload))
+      case "PatientAddedToAppointment" =>
+        Some(parser.decode[PatientAddedToAppointment](message.payload))
+      case _ => None
+  end decode
+end AppointmentEvent
 
 final case class AppointmentCreated(
     id: UUID,

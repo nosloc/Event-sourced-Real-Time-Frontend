@@ -4,7 +4,7 @@ import scala.scalajs.js
 import scala.scalajs.js.Date
 
 import com.raquo.laminar.api.L.*
-import prototype.api.EventView
+import prototype.api.EventMessage
 import prototype.client.views.components.Modal
 import prototype.client.views.timetable.dateToString
 
@@ -13,7 +13,7 @@ import prototype.client.views.timetable.dateToString
   */
 object EventDetailsModal:
 
-  def apply(selectedVar: Var[Option[EventView]]): Mod[HtmlElement] =
+  def apply(selectedVar: Var[Option[EventMessage]]): Mod[HtmlElement] =
     child.maybe <-- selectedVar.signal.map(
       _.map(event =>
         Modal(
@@ -46,11 +46,11 @@ object EventDetailsModal:
     )
 
   /** Local time, to the second */
-  def timeOf(event: EventView): String =
+  def timeOf(event: EventMessage): String =
     val d = dateOf(event)
     f"${d.getHours().toInt}%02d:${d.getMinutes().toInt}%02d:${d.getSeconds().toInt}%02d"
 
-  private def dateOf(event: EventView): Date =
+  private def dateOf(event: EventMessage): Date =
     new Date(event.recordedAt.epochMilli.toDouble)
 
   private def row(label: String, value: String): HtmlElement =

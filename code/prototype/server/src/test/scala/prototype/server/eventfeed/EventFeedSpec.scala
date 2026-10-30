@@ -36,10 +36,10 @@ class EventFeedSpec extends AsyncFlatSpec
   private def opened[A](read: IO[A]): IO[Fiber[IO, Throwable, A]] =
     read.timeout(10.seconds).start <* IO.sleep(500.millis)
 
-  private def firstEvents(app: App.Services, after: Long, count: Int): IO[List[EventView]] =
+  private def firstEvents(app: App.Services, after: Long, count: Int): IO[List[EventMessage]] =
     app.eventFeed
       .stream(after)
-      .collect { case Some(view) => view }
+      .collect { case Some(message) => message }
       .take(count.toLong)
       .compile
       .toList
@@ -146,11 +146,11 @@ class EventFeedSpec extends AsyncFlatSpec
           message <- opened(firstMessage(app, streamRequest()))
           _ <- createCompany(app, "Clinic A")
           (id, data) <- message.joinWithNever
-          view <- IO.fromEither(Json.read[EventView](Blob(data)))
+          message <- IO.fromEither(Json.read[EventMessage](Blob(data)))
         yield
           id shouldBe "1"
-          view.position shouldBe 1L
-          view.eventType shouldBe "CompanyCreated"
+          message.position shouldBe 1L
+          message.eventType shouldBe "CompanyCreated"
       }
     }
   }

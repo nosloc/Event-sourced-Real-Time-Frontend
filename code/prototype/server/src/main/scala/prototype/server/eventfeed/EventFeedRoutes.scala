@@ -53,10 +53,10 @@ object EventFeedRoutes:
             eventType = Some(StreamOpened.EventType),
             data = Some(StreamOpened.data(after))
           )
-        case Some(view) =>
+        case Some(message) =>
           ServerSentEvent(
-            data = Some(Json.writeBlob(view).toUTF8String),
-            id = Some(ServerSentEvent.EventId(view.position.toString))
+            data = Some(Json.writeBlob(message).toUTF8String),
+            id = Some(ServerSentEvent.EventId(message.position.toString))
           )
       }
     val keepAlive = Stream
