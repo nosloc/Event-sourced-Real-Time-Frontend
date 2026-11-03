@@ -50,13 +50,13 @@ class TherapistProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matche
   "TherapistProjection" should "create the therapist row, with the role's name, from the creation event" in {
     projection.handle(None, envelope).asserting { row =>
       row shouldBe Some(
-        TherapistState("abc", "Ann", "Lee", company, "NEUROPSYCHOLOGIST")
+        TherapistState("abc", "Ann", "Lee", company, Role.NEUROPSYCHOLOGIST)
       )
     }
   }
 
   it should "refuse a second creation for a therapist that already has a row" in {
-    val existing = TherapistState("abc", "Old", "Old", company, "PHYSICIAN")
+    val existing = TherapistState("abc", "Old", "Old", company, Role.PHYSICIAN)
     projection
       .handle(Some(existing), envelope)
       .attempt

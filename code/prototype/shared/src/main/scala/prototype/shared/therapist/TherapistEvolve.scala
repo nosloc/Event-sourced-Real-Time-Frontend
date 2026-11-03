@@ -18,7 +18,7 @@ object TherapistEvolve:
               firstName = created.firstName,
               lastName = created.lastName,
               companyId = created.companyId,
-              role = created.role.stringValue
+              role = created.role
             )
           )
         )

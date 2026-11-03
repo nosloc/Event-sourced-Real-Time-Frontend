@@ -1,7 +1,6 @@
 package prototype.server.core.therapist.api
 
 import cats.effect.IO
-import cats.syntax.all.*
 
 import prototype.api.*
 import prototype.server.core.therapist.commands.CreateTherapist
@@ -23,33 +22,24 @@ class TherapistServiceImpl(
 
   // The role is stored as its name: a name nobody can read back means the
   // stored data is corrupted, not that the caller did something wrong
-  private def fromState(state: TherapistState): IO[Therapist] =
-    Role.values
-      .find(_.stringValue == state.role)
-      .liftTo[IO](
-        IllegalStateException(
-          s"Therapist ${state.therapistId} has an unknown role: ${state.role}"
-        )
-      )
-      .map(role =>
-        Therapist(
-          state.firstName,
-          state.lastName,
-          TherapistId(state.therapistId),
-          CompanyId(state.companyId),
-          role
-        )
-      )
+  private def fromState(state: TherapistState): Therapist =
+    Therapist(
+      state.firstName,
+      state.lastName,
+      TherapistId(state.therapistId),
+      CompanyId(state.companyId),
+      state.role
+    )
 
   // Sorted by id: the list is shown to users and a projection has no stable order
   override def listTherapists(): IO[ListTherapistsOutput] =
     therapists.all
-      .flatMap(_.sortBy(_.therapistId).traverse(fromState))
+      .map(_.sortBy(_.therapistId).map(fromState))
       .map(ListTherapistsOutput.apply)
 
   override def getTherapist(therapistId: TherapistId): IO[GetTherapistOutput] =
     therapists.find(therapistId.value).flatMap {
-      case Some(state) => fromState(state).map(GetTherapistOutput.apply)
+      case Some(state) => IO.pure(GetTherapistOutput(fromState(state)))
       case None        => IO.raiseError(TherapistNotFound(therapistId))
     }
 
