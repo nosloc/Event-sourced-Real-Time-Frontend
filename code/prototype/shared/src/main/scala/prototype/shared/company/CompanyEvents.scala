@@ -41,6 +41,11 @@ final case class CompanyCreated(
 ) extends CompanyEvent derives Encoder, Decoder
 
 object CompanyEvent:
+
+  /** The company event in an event message, read by its type name (P4S stores
+    * an event under its class name). None: not a company event. Some(Left): a
+    * company event whose payload does not decode.
+    */
   def decode(
       message: EventMessage
   ): Option[Either[io.circe.Error, CompanyEvent]] =
