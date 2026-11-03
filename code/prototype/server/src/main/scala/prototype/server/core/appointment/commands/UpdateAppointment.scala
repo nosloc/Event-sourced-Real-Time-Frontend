@@ -3,8 +3,8 @@ package prototype.server.core.appointment.commands
 import java.util.UUID
 
 import prototype.api.*
-import prototype.events.PrototypeEvent
 import prototype.appointment.*
+import prototype.events.PrototypeEvent
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*
 import prototype.server.core.patient.domain.{PatientCreated, PatientScopes}
@@ -24,7 +24,7 @@ final case class UpdateAppointment(
     id: UUID,
     therapistIds: List[String],
     patientIds: List[UUID],
-    apptType: String,
+    apptType: AppointmentType,
     timeRange: TimeRange
 )
 

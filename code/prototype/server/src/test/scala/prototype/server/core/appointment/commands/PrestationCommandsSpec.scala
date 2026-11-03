@@ -6,7 +6,10 @@ import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.*
 
-import prototype.api.PrestationStatus
+import prototype.api.{
+  AppointmentType,
+  PrestationStatus
+}
 import prototype.api.PrestationStatus.*
 import prototype.appointment.*
 import prototype.server.core.appointment.AppointmentFixtures.*
@@ -32,7 +35,7 @@ class PrestationCommandsSpec extends AsyncFlatSpec with AsyncIOSpec with Matcher
       _ <- world.runtime
         .execute(
           CreateAppointment.Handler,
-          CreateAppointment(appointment, List("abc"), Nil, "INDIVIDUAL", range(10, 11))
+          CreateAppointment(appointment, List("abc"), Nil, AppointmentType.INDIVIDUAL, range(10, 11))
         )
         .flatMap(IO.fromEither)
       _ <- addPrestation(world, prestationId(1)).flatMap(IO.fromEither)
@@ -65,7 +68,7 @@ class PrestationCommandsSpec extends AsyncFlatSpec with AsyncIOSpec with Matcher
         world <- HandlerWorld.make
         _ <- world.runtime.execute(
           CreateAppointment.Handler,
-          CreateAppointment(appointment, List("abc"), Nil, "INDIVIDUAL", range(10, 11))
+          CreateAppointment(appointment, List("abc"), Nil, AppointmentType.INDIVIDUAL, range(10, 11))
         )
         result <- addPrestation(world, prestationId(1), "Report", 80.5f, 2)
       yield result

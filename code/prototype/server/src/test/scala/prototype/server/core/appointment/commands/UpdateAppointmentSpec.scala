@@ -4,7 +4,10 @@ import java.util.UUID
 
 import cats.effect.testing.scalatest.AsyncIOSpec
 
-import prototype.api.TimeRange
+import prototype.api.{
+  AppointmentType,
+  TimeRange
+}
 import prototype.appointment.*
 import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
@@ -25,14 +28,14 @@ import org.scalatest.matchers.should.Matchers
 class UpdateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
 
   private def create(n: Int, therapists: List[String], patients: List[UUID], timeRange: TimeRange) =
-    CreateAppointment(appointmentId(n), therapists, patients, "INDIVIDUAL", timeRange)
+    CreateAppointment(appointmentId(n), therapists, patients, AppointmentType.INDIVIDUAL, timeRange)
 
   private def update(
       n: Int,
       therapists: List[String],
       patients: List[UUID],
       timeRange: TimeRange,
-      apptType: String = "INDIVIDUAL"
+      apptType: AppointmentType = AppointmentType.INDIVIDUAL
   ) =
     UpdateAppointment(appointmentId(n), therapists, patients, apptType, timeRange)
 
@@ -47,7 +50,7 @@ class UpdateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
       for
         world <- HandlerWorld.make
         _ <- created(world, create(1, List("abc", "xyz"), List(patient1, patient2), range(10, 11)))
-        result <- updated(world, update(1, List("abc", "qrs"), List(patient2), range(14, 15), "COUPLE"))
+        result <- updated(world, update(1, List("abc", "qrs"), List(patient2), range(14, 15), AppointmentType.COUPLE))
       yield result
 
     test.asserting { result =>
@@ -55,7 +58,7 @@ class UpdateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
         List(
           AppointmentUpdated(
             appointmentId(1),
-            apptType = Some("COUPLE"),
+            apptType = Some(AppointmentType.COUPLE),
             startTime = Some(millis(14)),
             endTime = Some(millis(15)),
             therapistsAdded = List("qrs"),
@@ -69,7 +72,7 @@ class UpdateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
             "qrs",
             List("abc", "qrs"),
             List(patient2),
-            "COUPLE",
+            AppointmentType.COUPLE,
             millis(14),
             millis(15)
           )

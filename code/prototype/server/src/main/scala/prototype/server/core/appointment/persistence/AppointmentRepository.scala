@@ -5,7 +5,7 @@ import java.util.UUID
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 
-import prototype.api.PrestationStatus
+import prototype.api.{AppointmentType, PrestationStatus}
 import prototype.appointment.{AppointmentState, PrestationRow}
 import prototype.appointment.given
 
@@ -70,6 +70,13 @@ object AppointmentRepository:
       "status"
     )(PrestationRow.apply)
 
+  private val appointmentType: Codec[AppointmentType] =
+    text.eimap(name =>
+      AppointmentType
+        .fromString(name)
+        .toRight(s"Unknown appointment type: $name")
+    )(apptType => apptType.stringValue)
+
   // One row per appointment: its columns, then all of its prestations in one
   // column (an empty list when it has none)
   private val selectWithPrestations: Fragment[Void] = sql"""
@@ -91,7 +98,7 @@ object AppointmentRepository:
     LEFT JOIN prestations p ON p.appointment_id = a.appointment_id"""
 
   private val appointmentState: skunk.Decoder[AppointmentState] =
-    (uuid *: _text *: _uuid *: text *: int8 *: int8 *: json).emap {
+    (uuid *: _text *: _uuid *: appointmentType *: int8 *: int8 *: json).emap {
       case (id, therapistIds, patientIds, apptType, start, end, prestations) =>
         prestations
           .as[List[PrestationRow]]
@@ -127,11 +134,11 @@ object AppointmentRepository:
       ORDER BY a.start_time, a.appointment_id""".query(appointmentState)
 
   private val upsertAppointment
-      : Command[(UUID, Arr[String], Arr[UUID], String, Long, Long)] =
+      : Command[(UUID, Arr[String], Arr[UUID], AppointmentType, Long, Long)] =
     sql"""
       INSERT INTO appointments
         (appointment_id, therapist_ids, patient_ids, appt_type, start_time, end_time)
-      VALUES (${uuid *: _text *: _uuid *: text *: int8 *: int8})
+      VALUES (${uuid *: _text *: _uuid *: appointmentType *: int8 *: int8})
       ON CONFLICT (appointment_id) DO UPDATE SET
         therapist_ids = EXCLUDED.therapist_ids,
         patient_ids = EXCLUDED.patient_ids,

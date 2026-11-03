@@ -2,17 +2,22 @@ package prototype.appointment
 
 import java.util.UUID
 
-import prototype.api.{EventMessage, PrestationStatus}
+import prototype.api.{AppointmentType, EventMessage, PrestationStatus}
 import prototype.events.PrototypeEvent
 
-import io.circe.{Decoder, Encoder, parser}
+import io.circe.{parser, Decoder, Encoder}
 
 // The stored JSON is the status name, e.g. "TO_BILL"
 given Encoder[PrestationStatus] = Encoder[String].contramap(_.stringValue)
 given Decoder[PrestationStatus] = Decoder[String].emap(value =>
-  PrestationStatus.values
-    .find(_.stringValue == value)
+  PrestationStatus
+    .fromString(value)
     .toRight(s"Unknown prestation status: $value")
+)
+
+given Encoder[AppointmentType] = Encoder[String].contramap(_.stringValue)
+given Decoder[AppointmentType] = Decoder[String].emap(value =>
+  AppointmentType.fromString(value).toRight(s"Unknown appointment type: $value")
 )
 
 sealed trait AppointmentEvent extends PrototypeEvent:
@@ -54,7 +59,7 @@ final case class AppointmentCreated(
     id: UUID,
     therapistIds: List[String],
     patientIds: List[UUID],
-    apptType: String,
+    apptType: AppointmentType,
     startTime: Long,
     endTime: Long
 ) extends AppointmentEvent derives Encoder, Decoder
@@ -70,7 +75,7 @@ final case class AppointmentUpdated(
     therapistsRemoved: List[String],
     patientsAdded: List[UUID],
     patientsRemoved: List[UUID],
-    apptType: Option[String],
+    apptType: Option[AppointmentType],
     startTime: Option[Long],
     endTime: Option[Long]
 ) extends AppointmentEvent derives Encoder, Decoder
@@ -107,7 +112,7 @@ final case class TherapistAddedToAppointment(
     therapistId: String, // The trigram of the therapist added
     appointmentTherapists: List[String],
     appointmentPatients: List[UUID],
-    appointmentType: String,
+    appointmentType: AppointmentType,
     appointmentStartTime: Long,
     appointmentEndTime: Long
 ) extends AppointmentEvent derives Encoder, Decoder
@@ -118,7 +123,7 @@ final case class PatientAddedToAppointment(
     patientId: UUID, // The patient added
     appointmentTherapists: List[String],
     appointmentPatients: List[UUID],
-    appointmentType: String,
+    appointmentType: AppointmentType,
     appointmentStartTime: Long,
     appointmentEndTime: Long
 ) extends AppointmentEvent derives Encoder, Decoder

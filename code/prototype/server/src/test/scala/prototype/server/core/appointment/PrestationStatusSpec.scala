@@ -1,8 +1,8 @@
 package prototype.server.core.appointment
 
-import prototype.appointment.StatusTransitions.verifyStatusChange
 import prototype.api.PrestationStatus
 import prototype.api.PrestationStatus.*
+import prototype.appointment.StatusTransitions.verifyStatusChange
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

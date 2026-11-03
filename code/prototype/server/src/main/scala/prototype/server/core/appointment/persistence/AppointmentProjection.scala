@@ -6,18 +6,18 @@ import cats.effect.IO
 
 import fs2.concurrent.Topic
 
-import prototype.events.PrototypeEvent
 import prototype.appointment.{
   AppointmentCreated,
   AppointmentDeleted,
   AppointmentEvent,
+  AppointmentEvolve,
+  AppointmentState,
   AppointmentUpdated,
   PrestationCreated,
   PrestationDeleted,
-  PrestationStatusUpdated,
-  AppointmentEvolve,
-  AppointmentState
+  PrestationStatusUpdated
 }
+import prototype.events.PrototypeEvent
 
 import persistent4s.ExactlyOnceEventSourcedProjection
 

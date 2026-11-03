@@ -2,6 +2,7 @@ package prototype.server.core.appointment.commands
 
 import java.util.UUID
 
+import prototype.api.AppointmentType
 import prototype.appointment.*
 import prototype.server.core.appointment.AppointmentFixtures.*
 
@@ -22,7 +23,7 @@ class AppointmentsStateSpec extends AnyFlatSpec with Matchers:
       appointmentId(n),
       therapists,
       List(patient),
-      "INDIVIDUAL",
+      AppointmentType.INDIVIDUAL,
       millis(from),
       millis(to)
     )
@@ -85,7 +86,7 @@ class AppointmentsStateSpec extends AnyFlatSpec with Matchers:
       .afterUpdated(
         AppointmentUpdated(
           appointmentId(1),
-          apptType = Some("COUPLE"),
+          apptType = Some(AppointmentType.COUPLE),
           startTime = Some(millis(14)),
           endTime = Some(millis(15)),
           therapistsAdded = List("xyz"),
@@ -96,7 +97,7 @@ class AppointmentsStateSpec extends AnyFlatSpec with Matchers:
       )
     // The patient of the creation is still there: nobody left on that side
     state.appointments(appointmentId(1)) shouldBe
-      AppointmentSlot(Set("xyz"), Set(patient), "COUPLE", millis(14), millis(15))
+      AppointmentSlot(Set("xyz"), Set(patient), AppointmentType.COUPLE, millis(14), millis(15))
   }
 
   it should "ignore an appointment it never saw" in {
@@ -104,7 +105,7 @@ class AppointmentsStateSpec extends AnyFlatSpec with Matchers:
       .afterUpdated(
         AppointmentUpdated(
           appointmentId(1),
-          apptType = Some("COUPLE"),
+          apptType = Some(AppointmentType.COUPLE),
           startTime = None,
           endTime = None,
           therapistsAdded = List("xyz"),

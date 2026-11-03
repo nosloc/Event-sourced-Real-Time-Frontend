@@ -5,7 +5,11 @@ import java.util.UUID
 import cats.effect.{IO, Resource}
 import cats.effect.testing.scalatest.AsyncIOSpec
 
-import prototype.api.PrestationStatus
+import prototype.api.{
+  AppointmentType,
+  PrestationStatus
+}
+import prototype.appointment.{AppointmentState, PrestationRow}
 import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.support.{PostgresSuite, TestDatabase}
 
@@ -14,7 +18,6 @@ import org.scalatest.matchers.should.Matchers
 import skunk.Session
 import skunk.codec.all.{int8, uuid}
 import skunk.syntax.all.*
-import prototype.appointment.{PrestationRow, AppointmentState}
 
 /** The hand-written repository on a real Postgres in Docker: one appointment
   * and its prestations stored in two tables, read back with one join. This is
@@ -38,7 +41,7 @@ class AppointmentRepositorySpec
       appointmentId(n),
       therapists,
       List(patient),
-      "INDIVIDUAL",
+      AppointmentType.INDIVIDUAL,
       millis(from),
       millis(from + 1),
       prestations

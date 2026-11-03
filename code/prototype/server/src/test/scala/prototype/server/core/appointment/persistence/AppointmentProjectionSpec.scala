@@ -3,9 +3,12 @@ package prototype.server.core.appointment.persistence
 import cats.effect.{IO, Resource}
 import cats.effect.testing.scalatest.AsyncIOSpec
 
-import prototype.api.PrestationStatus
-import prototype.events.PrototypeEvent
+import prototype.api.{
+  AppointmentType,
+  PrestationStatus
+}
 import prototype.appointment.*
+import prototype.events.PrototypeEvent
 import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.support.EventEnvelopes
@@ -37,7 +40,7 @@ class AppointmentProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matc
     id,
     List("abc"),
     Nil,
-    "INDIVIDUAL",
+    AppointmentType.INDIVIDUAL,
     millis(10),
     millis(11),
     prestations = List(
@@ -51,13 +54,13 @@ class AppointmentProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matc
       .handle(
         None,
         envelope(
-          AppointmentCreated(id, List("abc", "xyz"), List(prestationId(9)), "COUPLE", millis(10), millis(11)),
+          AppointmentCreated(id, List("abc", "xyz"), List(prestationId(9)), AppointmentType.COUPLE, millis(10), millis(11)),
           EventTypeName.of[AppointmentCreated]
         )
       )
       .asserting(
         _ shouldBe Some(
-          AppointmentState(id, List("abc", "xyz"), List(prestationId(9)), "COUPLE", millis(10), millis(11), Nil)
+          AppointmentState(id, List("abc", "xyz"), List(prestationId(9)), AppointmentType.COUPLE, millis(10), millis(11), Nil)
         )
       )
   }
@@ -69,7 +72,7 @@ class AppointmentProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matc
         envelope(
           AppointmentUpdated(
             id,
-            apptType = Some("FAMILY"),
+            apptType = Some(AppointmentType.FAMILY),
             startTime = Some(millis(14)),
             endTime = Some(millis(15)),
             therapistsAdded = List("xyz"),
@@ -85,7 +88,7 @@ class AppointmentProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matc
           state.copy(
             therapistIds = List("xyz"),
             patientIds = List(prestationId(9)),
-            apptType = "FAMILY",
+            apptType = AppointmentType.FAMILY,
             startTime = millis(14),
             endTime = millis(15)
           )
@@ -141,7 +144,7 @@ class AppointmentProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matc
   }
 
   it should "refuse a second creation for a row that exists" in {
-    val created = AppointmentCreated(id, List("abc"), Nil, "INDIVIDUAL", millis(10), millis(11))
+    val created = AppointmentCreated(id, List("abc"), Nil, AppointmentType.INDIVIDUAL, millis(10), millis(11))
     projection
       .handle(Some(state), envelope(created, EventTypeName.of[AppointmentCreated]))
       .attempt

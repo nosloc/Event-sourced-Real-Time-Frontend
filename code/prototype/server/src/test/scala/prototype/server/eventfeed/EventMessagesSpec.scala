@@ -3,8 +3,9 @@ package prototype.server.eventfeed
 import java.time.Instant
 import java.util.UUID
 
-import prototype.events.PrototypeEvent
+import prototype.api.AppointmentType
 import prototype.appointment.AppointmentCreated
+import prototype.events.PrototypeEvent
 import prototype.server.core.PrototypeEventCodec
 import prototype.server.support.EventEnvelopes
 
@@ -31,7 +32,7 @@ class EventMessagesSpec extends AnyFlatSpec with Matchers with EitherValues:
     appointmentId,
     List("tst"),
     List(patientId),
-    "INDIVIDUAL",
+    AppointmentType.INDIVIDUAL,
     36000000L,
     39600000L
   )

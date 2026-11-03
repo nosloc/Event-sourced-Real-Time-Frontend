@@ -2,9 +2,12 @@ package prototype.server.core.appointment.domain
 
 import java.util.UUID
 
-import prototype.api.PrestationStatus
-import prototype.events.PrototypeEvent
+import prototype.api.{
+  AppointmentType,
+  PrestationStatus
+}
 import prototype.appointment.*
+import prototype.events.PrototypeEvent
 import prototype.server.core.PrototypeEventCodec
 
 import persistent4s.EventTypeName
@@ -42,7 +45,7 @@ class AppointmentEventSpec extends AnyFlatSpec with Matchers with EitherValues:
   // Each event, and the JSON it was saved as
   private val cases: List[(PrototypeEvent, EventTypeName, Json)] = List(
     (
-      AppointmentCreated(appointment, List("abc", "xyz"), List(patient), "INDIVIDUAL", 36000000L, 39600000L),
+      AppointmentCreated(appointment, List("abc", "xyz"), List(patient), AppointmentType.INDIVIDUAL, 36000000L, 39600000L),
       EventTypeName.of[AppointmentCreated],
       Json.obj(people*)
     ),
@@ -51,7 +54,7 @@ class AppointmentEventSpec extends AnyFlatSpec with Matchers with EitherValues:
     (
       AppointmentUpdated(
         appointment,
-        apptType = Some("COUPLE"),
+        apptType = Some(AppointmentType.COUPLE),
         startTime = None,
         endTime = Some(43200000L),
         therapistsAdded = List("qrs"),

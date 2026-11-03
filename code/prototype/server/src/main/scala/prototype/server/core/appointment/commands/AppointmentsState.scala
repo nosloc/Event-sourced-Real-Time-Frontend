@@ -2,6 +2,7 @@ package prototype.server.core.appointment.commands
 
 import java.util.UUID
 
+import prototype.api.AppointmentType
 import prototype.appointment.{
   AppointmentCreated,
   AppointmentDeleted,
@@ -16,7 +17,7 @@ import prototype.appointment.{
 final case class AppointmentSlot(
     therapistIds: Set[String],
     patientIds: Set[UUID],
-    apptType: String,
+    apptType: AppointmentType,
     start: Long,
     end: Long
 )
@@ -71,7 +72,7 @@ final case class AppointmentsState(
       id: UUID,
       therapistIds: List[String],
       patientIds: List[UUID],
-      apptType: String,
+      apptType: AppointmentType,
       start: Long,
       end: Long
   ): AppointmentsState =

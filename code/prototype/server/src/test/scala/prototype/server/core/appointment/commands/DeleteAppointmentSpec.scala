@@ -2,6 +2,7 @@ package prototype.server.core.appointment.commands
 
 import cats.effect.testing.scalatest.AsyncIOSpec
 
+import prototype.api.AppointmentType
 import prototype.appointment.*
 import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
@@ -21,7 +22,7 @@ import org.scalatest.matchers.should.Matchers
 class DeleteAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
 
   private def create(n: Int, therapists: List[String]) =
-    CreateAppointment(appointmentId(n), therapists, List(patient1), "INDIVIDUAL", range(10, 11))
+    CreateAppointment(appointmentId(n), therapists, List(patient1), AppointmentType.INDIVIDUAL, range(10, 11))
 
   "DeleteAppointment" should "be saved in the streams of the people in the appointment" in {
     val test =
@@ -62,12 +63,12 @@ class DeleteAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
         _ <- world.runtime.execute(CreateAppointment.Handler, create(1, List("abc")))
         _ <- world.runtime.execute(
           UpdateAppointment.Handler,
-          UpdateAppointment(appointmentId(1), List("xyz"), Nil, "INDIVIDUAL", range(10, 11))
+          UpdateAppointment(appointmentId(1), List("xyz"), Nil, AppointmentType.INDIVIDUAL, range(10, 11))
         )
         result <- world.runtime.execute(DeleteAppointment.Handler, DeleteAppointment(appointmentId(1)))
         xyzFree <- world.runtime.execute(
           CreateAppointment.Handler,
-          CreateAppointment(appointmentId(2), List("xyz"), Nil, "INDIVIDUAL", range(10, 11))
+          CreateAppointment(appointmentId(2), List("xyz"), Nil, AppointmentType.INDIVIDUAL, range(10, 11))
         )
       yield (result.map(_.flatMap(_.metadata.tags)), xyzFree.isRight)
     test.asserting { case (tags, xyzFree) =>

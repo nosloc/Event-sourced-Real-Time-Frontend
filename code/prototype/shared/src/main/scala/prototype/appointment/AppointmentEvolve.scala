@@ -1,11 +1,9 @@
 package prototype.appointment
 
-import prototype.api.*
-import prototype.appointment.AppointmentInconsistency.{
-  AlreadyExists,
-  NotFound
-}
 import java.util.UUID
+
+import prototype.api.*
+import prototype.appointment.AppointmentInconsistency.{AlreadyExists, NotFound}
 
 /** The appointment fold, shared by the server projection and the browser.
   * `Left` when the event does not fit the state (see
@@ -22,13 +20,15 @@ object AppointmentEvolve:
         if appointment.isDefined then Left(AlreadyExists(created))
         else
           Right(
-            newAppointment(
-              created.id,
-              created.therapistIds,
-              created.patientIds,
-              created.apptType,
-              created.startTime,
-              created.endTime
+            Some(
+              newAppointment(
+                created.id,
+                created.therapistIds,
+                created.patientIds,
+                created.apptType,
+                created.startTime,
+                created.endTime
+              )
             )
           )
 
@@ -46,12 +46,6 @@ object AppointmentEvolve:
           val newPatients = appointment.patientIds
             .filterNot(patient => updated.patientsRemoved.contains(patient)) ++
             updated.patientsAdded
-          val newType: String = updated.apptType
-            .flatMap(apptType =>
-              AppointmentType.values.find(_.stringValue == apptType)
-            )
-            .map(_.stringValue)
-            .getOrElse(appointment.apptType)
 
           val newTimeRange = (
             updated.startTime
@@ -63,10 +57,11 @@ object AppointmentEvolve:
                 appointment.endTime
               )
           )
+          val newApptType = updated.apptType.getOrElse(appointment.apptType)
           appointment.copy(
             therapistIds = newTherapists.distinct,
             patientIds = newPatients.distinct,
-            apptType = newType,
+            apptType = newApptType,
             startTime = newTimeRange._1,
             endTime = newTimeRange._2
           )
@@ -110,13 +105,15 @@ object AppointmentEvolve:
       case added: TherapistAddedToAppointment =>
         Right(
           appointment.orElse(
-            newAppointment(
-              added.id,
-              added.appointmentTherapists,
-              added.appointmentPatients,
-              added.appointmentType,
-              added.appointmentStartTime,
-              added.appointmentEndTime
+            Some(
+              newAppointment(
+                added.id,
+                added.appointmentTherapists,
+                added.appointmentPatients,
+                added.appointmentType,
+                added.appointmentStartTime,
+                added.appointmentEndTime
+              )
             )
           )
         )
@@ -137,20 +134,16 @@ object AppointmentEvolve:
       id: UUID,
       therapistIds: List[String],
       patientIds: List[UUID],
-      apptType: String,
+      apptType: AppointmentType,
       startTime: Long,
       endTime: Long
-  ): Option[AppointmentState] =
-    AppointmentType.values
-      .find(_.stringValue == apptType)
-      .map(appointmentType =>
-        AppointmentState(
-          id,
-          therapistIds,
-          patientIds,
-          appointmentType.stringValue,
-          startTime,
-          endTime,
-          Nil
-        )
-      )
+  ): AppointmentState =
+    AppointmentState(
+      id,
+      therapistIds,
+      patientIds,
+      apptType,
+      startTime,
+      endTime,
+      Nil
+    )

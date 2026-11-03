@@ -9,8 +9,8 @@ import cats.effect.IO
 import cats.syntax.all.*
 
 import prototype.api.*
-import prototype.events.PrototypeEvent
 import prototype.appointment.AppointmentState
+import prototype.events.PrototypeEvent
 import prototype.server.core.appointment.commands.{
   CreateAppointment,
   CreatePrestation,
@@ -19,11 +19,12 @@ import prototype.server.core.appointment.commands.{
   UpdateAppointment,
   UpdatePrestationStatus
 }
-
-import prototype.server.core.appointment.persistence.AppointmentRepository
 import prototype.server.core.appointment.domain.AppointmentError
 import prototype.server.core.appointment.domain.AppointmentError.*
-import prototype.server.core.appointment.persistence.AppointmentProjection
+import prototype.server.core.appointment.persistence.{
+  AppointmentProjection,
+  AppointmentRepository
+}
 
 import persistent4s.{
   CommandRuntime,
@@ -32,7 +33,6 @@ import persistent4s.{
 }
 
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import smithy4s.time.Timestamp
 
 /** The appointments, on Persistent4S. Commands go through the handlers; reads
   * come from the projection. The read model is updated a moment after a
@@ -77,38 +77,8 @@ class AppointmentServiceImpl(
     case error: APPOINTMENT_ALREADY_EXISTS => error
     case error: PRESTATION_ALREADY_EXISTS  => error
 
-  // The type is stored as its name: a name nobody can read back means the
-  // stored data is corrupted
   private def fromState(state: AppointmentState): IO[Appointment] =
-    AppointmentType.values
-      .find(_.stringValue == state.apptType)
-      .liftTo[IO](
-        IllegalStateException(
-          s"Appointment ${state.appointmentId} has an unknown type: ${state.apptType}"
-        )
-      )
-      .map(apptType =>
-        Appointment(
-          AppointmentId(state.appointmentId),
-          state.therapistIds.map(TherapistId(_)),
-          state.patientIds.map(PatientId(_)),
-          apptType,
-          TimeRange(
-            Timestamp.fromEpochMilli(state.startTime),
-            Timestamp.fromEpochMilli(state.endTime)
-          ),
-          state.prestations.map(prestation =>
-            Prestation(
-              AppointmentId(state.appointmentId),
-              PrestationId(prestation.prestationId),
-              prestation.label,
-              prestation.quantity,
-              prestation.unitPrice,
-              prestation.status
-            )
-          )
-        )
-      )
+    IO.pure(AppointmentState.toAppointment(state))
 
   // How long a command waits for the projection before answering anyway
   private val syncTimeout = 5.seconds
@@ -202,7 +172,7 @@ class AppointmentServiceImpl(
           id,
           therapistIds.map(_.value),
           patientIds.map(_.value),
-          apptType.stringValue,
+          apptType,
           timeRange
         ),
         id
@@ -239,7 +209,7 @@ class AppointmentServiceImpl(
           id,
           therapistIds.map(_.value),
           patientIds.map(_.value),
-          apptType.stringValue,
+          apptType,
           timeRange
         ),
         id

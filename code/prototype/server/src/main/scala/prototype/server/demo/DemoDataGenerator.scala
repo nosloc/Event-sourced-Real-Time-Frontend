@@ -206,7 +206,7 @@ class DemoDataGenerator(
         appointment.id,
         List(therapist.trigram),
         appointment.patients.map(therapist.patients(_).id),
-        appointment.apptType.stringValue,
+        appointment.apptType,
         TimeRange(
           Timestamp.fromEpochMilli(appointment.start.toEpochMilli),
           Timestamp.fromEpochMilli(appointment.end.toEpochMilli)

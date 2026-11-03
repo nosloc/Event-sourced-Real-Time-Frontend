@@ -6,7 +6,10 @@ import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.*
 
-import prototype.api.TimeRange
+import prototype.api.{
+  AppointmentType,
+  TimeRange
+}
 import prototype.appointment.*
 import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
@@ -31,7 +34,7 @@ class CreateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
       patients: List[UUID],
       timeRange: TimeRange
   ) =
-    CreateAppointment(appointmentId(n), therapists, patients, "INDIVIDUAL", timeRange)
+    CreateAppointment(appointmentId(n), therapists, patients, AppointmentType.INDIVIDUAL, timeRange)
 
   private def run(world: HandlerWorld, command: CreateAppointment) =
     world.runtime.execute(CreateAppointment.Handler, command)
@@ -50,7 +53,7 @@ class CreateAppointmentSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
             appointmentId(1),
             List("abc"),
             List(patient1),
-            "INDIVIDUAL",
+            AppointmentType.INDIVIDUAL,
             millis(10),
             millis(11)
           )
