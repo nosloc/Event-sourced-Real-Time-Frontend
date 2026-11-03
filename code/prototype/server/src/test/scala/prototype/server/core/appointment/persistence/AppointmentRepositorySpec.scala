@@ -14,7 +14,7 @@ import org.scalatest.matchers.should.Matchers
 import skunk.Session
 import skunk.codec.all.{int8, uuid}
 import skunk.syntax.all.*
-import prototype.events.appointments.{PrestationRow, AppointmentState}
+import prototype.appointment.{PrestationRow, AppointmentState}
 
 /** The hand-written repository on a real Postgres in Docker: one appointment
   * and its prestations stored in two tables, read back with one join. This is

@@ -1,7 +1,7 @@
-package prototype.events.appointments
+package prototype.appointment
 
 import prototype.api.*
-import prototype.events.appointments.AppointmentInconsistency.{
+import prototype.appointment.AppointmentInconsistency.{
   AlreadyExists,
   NotFound
 }

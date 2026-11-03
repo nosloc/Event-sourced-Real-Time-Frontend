@@ -4,7 +4,7 @@ import java.util.UUID
 
 import prototype.api.PrestationStatus
 import prototype.events.PrototypeEvent
-import prototype.events.appointments.*
+import prototype.appointment.*
 import prototype.server.core.PrototypeEventCodec
 
 import persistent4s.EventTypeName

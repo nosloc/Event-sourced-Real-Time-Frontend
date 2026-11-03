@@ -3,7 +3,7 @@ package prototype.client.appointments
 import com.raquo.laminar.api.L.*
 import prototype.client.live.LiveDataSource
 import prototype.api.*
-import prototype.events.appointments.*
+import prototype.appointment.*
 import prototype.client.live.LiveFeed
 import prototype.client.Api
 

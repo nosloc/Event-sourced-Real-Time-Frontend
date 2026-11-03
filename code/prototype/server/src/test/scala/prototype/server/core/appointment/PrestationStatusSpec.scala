@@ -1,6 +1,6 @@
 package prototype.server.core.appointment
 
-import prototype.StatusTransitions.verifyStatusChange
+import prototype.appointment.StatusTransitions.verifyStatusChange
 import prototype.api.PrestationStatus
 import prototype.api.PrestationStatus.*
 

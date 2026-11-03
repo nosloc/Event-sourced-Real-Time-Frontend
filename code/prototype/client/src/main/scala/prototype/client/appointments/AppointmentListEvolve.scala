@@ -1,7 +1,7 @@
 package prototype.client.appointments
 
 import prototype.api.*
-import prototype.events.appointments.*
+import prototype.appointment.*
 
 /** A therapist's appointments: applies `AppointmentEvolve` to the appointment
   * an event is about, and keeps it only if the therapist is in it. An

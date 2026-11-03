@@ -1,4 +1,4 @@
-package prototype.events.appointments
+package prototype.appointment
 
 /** An appointment event that does not fit the state it is applied to. Each
   * side decides what it means: the server holds every appointment, so it is an

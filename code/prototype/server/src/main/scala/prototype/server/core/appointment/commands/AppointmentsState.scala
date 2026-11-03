@@ -2,7 +2,7 @@ package prototype.server.core.appointment.commands
 
 import java.util.UUID
 
-import prototype.events.appointments.{
+import prototype.appointment.{
   AppointmentCreated,
   AppointmentDeleted,
   AppointmentUpdated,

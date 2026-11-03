@@ -2,10 +2,10 @@ package prototype.server.core.appointment.commands
 
 import java.util.UUID
 
-import prototype.StatusTransitions
+import prototype.appointment.StatusTransitions
 import prototype.api.PrestationStatus
 import prototype.events.PrototypeEvent
-import prototype.events.appointments.*
+import prototype.appointment.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*
 

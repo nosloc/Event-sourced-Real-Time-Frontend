@@ -4,7 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 import prototype.events.PrototypeEvent
-import prototype.events.appointments.AppointmentCreated
+import prototype.appointment.AppointmentCreated
 import prototype.server.core.PrototypeEventCodec
 import prototype.server.support.EventEnvelopes
 

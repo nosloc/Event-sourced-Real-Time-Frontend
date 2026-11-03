@@ -1,4 +1,4 @@
-package prototype
+package prototype.appointment
 
 import prototype.api.PrestationStatus
 

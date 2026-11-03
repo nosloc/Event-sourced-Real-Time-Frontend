@@ -7,7 +7,7 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.*
 
 import prototype.api.TimeRange
-import prototype.events.appointments.*
+import prototype.appointment.*
 import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*

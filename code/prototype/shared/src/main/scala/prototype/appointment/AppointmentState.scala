@@ -1,4 +1,4 @@
-package prototype.events.appointments
+package prototype.appointment
 
 import java.util.UUID
 import prototype.api.PrestationStatus

@@ -6,7 +6,7 @@ import prototype.client.Api
 import prototype.client.Api.ApiCall
 import prototype.client.views.components.Icons
 import prototype.client.views.components.PopoverPicker
-import prototype.StatusTransitions.verifyStatusChange
+import prototype.appointment.StatusTransitions.verifyStatusChange
 import prototype.client.{ErrorMessages, InvalidInput}
 
 /** The prestations of one appointment: a table (label, quantity, unit price,

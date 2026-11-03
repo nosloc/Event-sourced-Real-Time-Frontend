@@ -10,7 +10,7 @@ import cats.syntax.all.*
 
 import prototype.api.*
 import prototype.events.PrototypeEvent
-import prototype.events.appointments.AppointmentState
+import prototype.appointment.AppointmentState
 import prototype.server.core.appointment.commands.{
   CreateAppointment,
   CreatePrestation,

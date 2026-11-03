@@ -7,7 +7,7 @@ import cats.effect.IO
 import fs2.concurrent.Topic
 
 import prototype.events.PrototypeEvent
-import prototype.events.appointments.{
+import prototype.appointment.{
   AppointmentCreated,
   AppointmentDeleted,
   AppointmentEvent,

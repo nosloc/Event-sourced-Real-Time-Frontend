@@ -5,7 +5,7 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 
 import prototype.api.PrestationStatus
 import prototype.events.PrototypeEvent
-import prototype.events.appointments.*
+import prototype.appointment.*
 import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.support.EventEnvelopes
