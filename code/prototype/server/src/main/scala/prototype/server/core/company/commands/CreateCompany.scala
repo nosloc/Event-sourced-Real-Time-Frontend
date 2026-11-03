@@ -3,13 +3,10 @@ package prototype.server.core.company.commands
 import java.util.UUID
 
 import prototype.api.*
-import prototype.shared.events.PrototypeEvent
-import prototype.server.core.company.domain.{
-  CompanyCreated,
-  CompanyError,
-  CompanyScopes
-}
+import prototype.server.core.company.domain.{CompanyError, CompanyScopes}
 import prototype.server.core.company.domain.CompanyError.*
+import prototype.shared.company.CompanyCreated
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.EventSourcedCommandHandler
 

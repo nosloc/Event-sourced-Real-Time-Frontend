@@ -3,6 +3,7 @@ package prototype.server.core.company.domain
 import java.util.UUID
 
 import prototype.server.core.PrototypeEventCodec
+import prototype.shared.company.CompanyCreated
 
 import persistent4s.EventTypeName
 import persistent4s.circe.FutureEventVersion

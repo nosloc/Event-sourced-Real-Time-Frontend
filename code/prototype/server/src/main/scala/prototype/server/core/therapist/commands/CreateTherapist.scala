@@ -3,14 +3,15 @@ package prototype.server.core.therapist.commands
 import java.util.UUID
 
 import prototype.api.Role
-import prototype.shared.events.PrototypeEvent
-import prototype.server.core.company.domain.{CompanyCreated, CompanyScopes}
+import prototype.server.core.company.domain.CompanyScopes
 import prototype.server.core.therapist.domain.{
   TherapistCreated,
   TherapistError,
   TherapistScopes
 }
 import prototype.server.core.therapist.domain.TherapistError.*
+import prototype.shared.company.CompanyCreated
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.EventSourcedCommandHandler
 

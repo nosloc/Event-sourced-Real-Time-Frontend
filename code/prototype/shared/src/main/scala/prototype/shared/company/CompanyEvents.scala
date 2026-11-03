@@ -1,7 +1,8 @@
-package prototype.server.core.company.domain
+package prototype.shared.company
 
 import java.util.UUID
 
+import prototype.api.EventMessage
 import prototype.shared.events.PrototypeEvent
 
 import io.circe.{Decoder, Encoder}
@@ -38,3 +39,12 @@ final case class CompanyCreated(
     addressCity: String,
     addressState: String
 ) extends CompanyEvent derives Encoder, Decoder
+
+object CompanyEvent:
+  def decode(
+      message: EventMessage
+  ): Option[Either[io.circe.Error, CompanyEvent]] =
+    message.eventType match
+      case "CompanyCreated" =>
+        Some(io.circe.parser.decode[CompanyCreated](message.payload))
+      case _ => None

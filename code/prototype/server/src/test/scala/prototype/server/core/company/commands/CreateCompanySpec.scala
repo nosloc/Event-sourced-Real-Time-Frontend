@@ -7,10 +7,11 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.syntax.all.*
 
 import prototype.api.*
-import prototype.shared.events.PrototypeEvent
-import prototype.server.core.company.domain.{CompanyCreated, CompanyScopes}
 import prototype.server.core.company.domain.CompanyError.*
+import prototype.server.core.company.domain.CompanyScopes
 import prototype.server.support.InMemoryEventStore
+import prototype.shared.company.CompanyCreated
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.CommandRuntime
 

@@ -4,19 +4,15 @@ import java.util.UUID
 
 import cats.effect.IO
 
+import prototype.shared.company.{
+  CompanyCreated,
+  CompanyEvent,
+  CompanyEvolve,
+  CompanyState
+}
 import prototype.shared.events.PrototypeEvent
-import prototype.server.core.company.domain.CompanyCreated
 
 import persistent4s.ExactlyOnceEventSourcedProjection
-
-final case class CompanyState(
-    companyId: UUID,
-    name: String,
-    addressStreet: String,
-    addressNumber: String,
-    addressCity: String,
-    addressState: String
-)
 
 final case class CompanyProjection(protected val repository: CompanyRepository)
     extends ExactlyOnceEventSourcedProjection[
@@ -28,14 +24,9 @@ final case class CompanyProjection(protected val repository: CompanyRepository)
 
   override val name: String = "company-projection"
 
+  private val evolve
+      : (Option[CompanyState], CompanyEvent) => IO[Option[CompanyState]] =
+    (state, event) => IO.fromEither(CompanyEvolve.evolve(state, event))
+
   override protected val eventHandlers = handlers:
-    on[CompanyCreated](_.id).create(event =>
-      CompanyState(
-        event.id,
-        event.name,
-        event.addressStreet,
-        event.addressNumber,
-        event.addressCity,
-        event.addressState
-      )
-    )
+    on[CompanyCreated](_.id).handleF(evolve)

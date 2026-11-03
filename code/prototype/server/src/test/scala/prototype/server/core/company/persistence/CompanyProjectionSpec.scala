@@ -5,11 +5,12 @@ import java.util.UUID
 import cats.effect.{IO, Resource}
 import cats.effect.testing.scalatest.AsyncIOSpec
 
-import prototype.shared.events.PrototypeEvent
-import prototype.server.core.company.domain.{CompanyCreated, CompanyScopes}
+import prototype.server.core.company.domain.CompanyScopes
 import prototype.server.support.EventEnvelopes
+import prototype.shared.company.{CompanyCreated, CompanyInconsistency, CompanyState}
+import prototype.shared.events.PrototypeEvent
 
-import persistent4s.{EventEnvelope, EventTypeName, ProjectionStateAlreadyExists}
+import persistent4s.{EventEnvelope, EventTypeName}
 
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -18,7 +19,10 @@ import org.scalatest.matchers.should.Matchers
   * The repository is built on a pool that fails when used, so a handler that
   * reached for the database would make the test fail.
   */
-class CompanyProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
+class CompanyProjectionSpec
+    extends AsyncFlatSpec
+    with AsyncIOSpec
+    with Matchers:
 
   private val repository = CompanyRepository.make(
     Resource.eval(
@@ -68,8 +72,6 @@ class CompanyProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
       .handle(Some(existing), envelope)
       .attempt
       .asserting { result =>
-        result shouldBe Left(
-          ProjectionStateAlreadyExists(EventTypeName.of[CompanyCreated])
-        )
+        result shouldBe Left(CompanyInconsistency.AlreadyExists(created))
       }
   }
