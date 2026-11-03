@@ -10,12 +10,7 @@ import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.support.EventEnvelopes
 
-import persistent4s.{
-  EventEnvelope,
-  EventTypeName,
-  ProjectionStateAlreadyExists,
-  ProjectionStateNotFound
-}
+import persistent4s.{EventEnvelope, EventTypeName}
 
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -146,27 +141,17 @@ class AppointmentProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matc
   }
 
   it should "refuse a second creation for a row that exists" in {
+    val created = AppointmentCreated(id, List("abc"), Nil, "INDIVIDUAL", millis(10), millis(11))
     projection
-      .handle(
-        Some(state),
-        envelope(
-          AppointmentCreated(id, List("abc"), Nil, "INDIVIDUAL", millis(10), millis(11)),
-          EventTypeName.of[AppointmentCreated]
-        )
-      )
+      .handle(Some(state), envelope(created, EventTypeName.of[AppointmentCreated]))
       .attempt
-      .asserting(_ shouldBe Left(ProjectionStateAlreadyExists(EventTypeName.of[AppointmentCreated])))
+      .asserting(_ shouldBe Left(AppointmentInconsistency.AlreadyExists(created)))
   }
 
   it should "refuse a change to a row that does not exist" in {
+    val created = PrestationCreated(id, prestationId(3), "Follow-up", 60f, 1)
     projection
-      .handle(
-        None,
-        envelope(
-          PrestationCreated(id, prestationId(3), "Follow-up", 60f, 1),
-          EventTypeName.of[PrestationCreated]
-        )
-      )
+      .handle(None, envelope(created, EventTypeName.of[PrestationCreated]))
       .attempt
-      .asserting(_ shouldBe Left(ProjectionStateNotFound(EventTypeName.of[PrestationCreated])))
+      .asserting(_ shouldBe Left(AppointmentInconsistency.NotFound(created)))
   }

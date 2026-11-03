@@ -14,12 +14,14 @@ import org.scalatest.matchers.should.Matchers
 import skunk.Session
 import skunk.codec.all.{int8, uuid}
 import skunk.syntax.all.*
+import prototype.events.appointments.{PrestationRow, AppointmentState}
 
-/** The hand-written repository on a real Postgres in Docker: one appointment and
-  * its prestations stored in two tables, read back with one join. This is the
-  * SQL no other spec checks. Docker must be running.
+/** The hand-written repository on a real Postgres in Docker: one appointment
+  * and its prestations stored in two tables, read back with one join. This is
+  * the SQL no other spec checks. Docker must be running.
   */
-class AppointmentRepositorySpec extends AsyncFlatSpec
+class AppointmentRepositorySpec
+    extends AsyncFlatSpec
     with AsyncIOSpec
     with Matchers
     with PostgresSuite:
@@ -42,7 +44,10 @@ class AppointmentRepositorySpec extends AsyncFlatSpec
       prestations
     )
 
-  private def prestation(n: Int, status: PrestationStatus = PrestationStatus.TO_BILL) =
+  private def prestation(
+      n: Int,
+      status: PrestationStatus = PrestationStatus.TO_BILL
+  ) =
     PrestationRow(prestationId(n), s"Prestation $n", 10f * n, n, status)
 
   // A repository and the raw connection pool on a fresh database
@@ -53,12 +58,18 @@ class AppointmentRepositorySpec extends AsyncFlatSpec
       .flatMap(TestDatabase.sessions)
       .use(sessions => test(AppointmentRepository.make(sessions), sessions))
 
-  private def save(repository: AppointmentRepository, states: AppointmentState*) =
+  private def save(
+      repository: AppointmentRepository,
+      states: AppointmentState*
+  ) =
     repository.persist(states.map(s => s.appointmentId -> s).toMap, Nil)
 
   private def prestationRows(sessions: Resource[IO, Session[IO]], id: UUID) =
     sessions.use(
-      _.unique(sql"SELECT count(*) FROM prestations WHERE appointment_id = $uuid".query(int8))(id)
+      _.unique(
+        sql"SELECT count(*) FROM prestations WHERE appointment_id = $uuid"
+          .query(int8)
+      )(id)
     )
 
   "The appointment repository" should "read back what it saved, prestations in order" in {
@@ -66,7 +77,11 @@ class AppointmentRepositorySpec extends AsyncFlatSpec
       1,
       List("abc", "xyz"),
       10,
-      List(prestation(2, PrestationStatus.PAID), prestation(1), prestation(3, PrestationStatus.CANCELLED))
+      List(
+        prestation(2, PrestationStatus.PAID),
+        prestation(1),
+        prestation(3, PrestationStatus.CANCELLED)
+      )
     )
     withRepository { (repository, _) =>
       save(repository, saved) *> repository.find(saved.appointmentId)
@@ -86,7 +101,12 @@ class AppointmentRepositorySpec extends AsyncFlatSpec
   }
 
   it should "replace the prestations when the appointment is saved again" in {
-    val first = appointment(1, List("abc"), 10, List(prestation(1), prestation(2), prestation(3)))
+    val first = appointment(
+      1,
+      List("abc"),
+      10,
+      List(prestation(1), prestation(2), prestation(3))
+    )
     val second = first.copy(
       therapistIds = List("xyz"),
       startTime = millis(14),
@@ -104,7 +124,8 @@ class AppointmentRepositorySpec extends AsyncFlatSpec
   }
 
   it should "remove the prestations with their appointment" in {
-    val saved = appointment(1, List("abc"), 10, List(prestation(1), prestation(2)))
+    val saved =
+      appointment(1, List("abc"), 10, List(prestation(1), prestation(2)))
     withRepository { (repository, sessions) =>
       for
         _ <- save(repository, saved)

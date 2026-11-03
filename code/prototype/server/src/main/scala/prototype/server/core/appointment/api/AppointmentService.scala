@@ -10,6 +10,7 @@ import cats.syntax.all.*
 
 import prototype.api.*
 import prototype.events.PrototypeEvent
+import prototype.events.appointments.AppointmentState
 import prototype.server.core.appointment.commands.{
   CreateAppointment,
   CreatePrestation,
@@ -18,13 +19,11 @@ import prototype.server.core.appointment.commands.{
   UpdateAppointment,
   UpdatePrestationStatus
 }
+
+import prototype.server.core.appointment.persistence.AppointmentRepository
 import prototype.server.core.appointment.domain.AppointmentError
 import prototype.server.core.appointment.domain.AppointmentError.*
-import prototype.server.core.appointment.persistence.{
-  AppointmentProjection,
-  AppointmentRepository,
-  AppointmentState
-}
+import prototype.server.core.appointment.persistence.AppointmentProjection
 
 import persistent4s.{
   CommandRuntime,
