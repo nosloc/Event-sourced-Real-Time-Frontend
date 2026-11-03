@@ -3,6 +3,8 @@ package prototype.client.appointments
 import prototype.api.*
 import prototype.appointment.*
 
+import org.scalajs.dom
+
 /** A therapist's appointments: applies `AppointmentEvolve` to the appointment
   * an event is about, and keeps it only if the therapist is in it. An
   * appointment already listed keeps its place.
@@ -14,13 +16,36 @@ object AppointmentListEvolve:
       event: AppointmentEvent
   ): List[Appointment] =
     val current = appointments.find(_.appointmentId.value == event.id)
-    val evolved = AppointmentEvolve
+    val evolveResult = AppointmentEvolve
       .evolve(
-        current,
+        current.map(AppointmentState.fromAppointment),
         event
       )
-      .filter(_.therapistIds.contains(trigram))
+      .map(
+        _.map(AppointmentState.toAppointment)
+          .filter(_.therapistIds.contains(trigram))
+      )
 
+    evolveResult match
+      case Left(error) =>
+        dom.console.warn(
+          s"Appointment event skipped, it does not fit the appointments held: ${error.getMessage}"
+        )
+        appointments // The event does not fit the current state: ignore it, keep the current state
+      case Right(evolved) =>
+        updateAppointments(
+          appointments,
+          event,
+          current,
+          evolved
+        )
+
+  private def updateAppointments(
+      appointments: List[Appointment],
+      event: AppointmentEvent,
+      current: Option[Appointment],
+      evolved: Option[Appointment]
+  ): List[Appointment] =
     evolved match
       case Some(updated) if current.isDefined =>
         appointments.map(a =>
