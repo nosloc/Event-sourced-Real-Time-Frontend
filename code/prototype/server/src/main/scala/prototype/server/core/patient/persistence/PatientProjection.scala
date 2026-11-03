@@ -1,21 +1,18 @@
 package prototype.server.core.patient.persistence
 
-import java.time.LocalDate
 import java.util.UUID
 
 import cats.effect.IO
 
-import prototype.server.core.patient.domain.PatientCreated
 import prototype.shared.events.PrototypeEvent
+import prototype.shared.patient.{
+  PatientCreated,
+  PatientEvent,
+  PatientEvolve,
+  PatientState
+}
 
 import persistent4s.ExactlyOnceEventSourcedProjection
-
-final case class PatientState(
-    patientId: UUID,
-    firstName: String,
-    lastName: String,
-    dateOfBirth: LocalDate
-)
 
 final case class PatientProjection(
     protected val repository: PatientRepository
@@ -28,12 +25,9 @@ final case class PatientProjection(
 
   override val name: String = "patient-projection"
 
+  private val evolve
+      : (Option[PatientState], PatientEvent) => IO[Option[PatientState]] =
+    (state, event) => IO.fromEither(PatientEvolve.evolve(state, event))
+
   override protected val eventHandlers = handlers:
-    on[PatientCreated](_.id).create(event =>
-      PatientState(
-        event.id,
-        event.firstName,
-        event.lastName,
-        event.dateOfBirth
-      )
-    )
+    on[PatientCreated](_.id).handleF(evolve)

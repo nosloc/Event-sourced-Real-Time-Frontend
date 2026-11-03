@@ -4,6 +4,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 import prototype.server.core.PrototypeEventCodec
+import prototype.shared.patient.PatientCreated
 
 import persistent4s.EventTypeName
 import persistent4s.circe.FutureEventVersion

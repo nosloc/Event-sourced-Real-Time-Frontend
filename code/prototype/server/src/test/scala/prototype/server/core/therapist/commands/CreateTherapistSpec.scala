@@ -8,10 +8,11 @@ import cats.syntax.all.*
 
 import prototype.api.{Address, Role}
 import prototype.server.core.company.commands.CreateCompany
-import prototype.server.core.therapist.domain.{TherapistCreated, TherapistScopes}
 import prototype.server.core.therapist.domain.TherapistError.*
+import prototype.server.core.therapist.domain.TherapistScopes
 import prototype.server.support.InMemoryEventStore
 import prototype.shared.events.PrototypeEvent
+import prototype.shared.therapist.TherapistCreated
 
 import persistent4s.CommandRuntime
 

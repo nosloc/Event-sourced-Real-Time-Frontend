@@ -6,11 +6,16 @@ import cats.effect.{IO, Resource}
 import cats.effect.testing.scalatest.AsyncIOSpec
 
 import prototype.api.Role
-import prototype.server.core.therapist.domain.{TherapistCreated, TherapistScopes}
+import prototype.server.core.therapist.domain.TherapistScopes
 import prototype.server.support.EventEnvelopes
 import prototype.shared.events.PrototypeEvent
+import prototype.shared.therapist.{
+  TherapistCreated,
+  TherapistInconsistency,
+  TherapistState
+}
 
-import persistent4s.{EventEnvelope, EventTypeName, ProjectionStateAlreadyExists}
+import persistent4s.{EventEnvelope, EventTypeName}
 
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -32,9 +37,12 @@ class TherapistProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matche
 
   private val company = UUID.fromString("13ddd512-9f19-4af3-b5a9-af79bd82411e")
 
+  private val created =
+    TherapistCreated("abc", "Ann", "Lee", company, Role.NEUROPSYCHOLOGIST)
+
   private val envelope: EventEnvelope[PrototypeEvent] =
     EventEnvelopes.of(
-      TherapistCreated("abc", "Ann", "Lee", company, Role.NEUROPSYCHOLOGIST),
+      created,
       Set(TherapistScopes.Therapist("abc").toTag),
       EventTypeName.of[TherapistCreated]
     )
@@ -53,8 +61,6 @@ class TherapistProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matche
       .handle(Some(existing), envelope)
       .attempt
       .asserting { result =>
-        result shouldBe Left(
-          ProjectionStateAlreadyExists(EventTypeName.of[TherapistCreated])
-        )
+        result shouldBe Left(TherapistInconsistency.AlreadyExists(created))
       }
   }

@@ -1,4 +1,4 @@
-package prototype.server.core.patient.domain
+package prototype.shared.patient
 
 import java.time.LocalDate
 import java.util.UUID

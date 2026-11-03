@@ -6,11 +6,9 @@ import cats.syntax.all.*
 import prototype.api.*
 import prototype.server.core.therapist.commands.CreateTherapist
 import prototype.server.core.therapist.domain.TherapistError.*
-import prototype.server.core.therapist.persistence.{
-  TherapistRepository,
-  TherapistState
-}
+import prototype.server.core.therapist.persistence.TherapistRepository
 import prototype.shared.events.PrototypeEvent
+import prototype.shared.therapist.TherapistState
 
 import persistent4s.CommandRuntime
 

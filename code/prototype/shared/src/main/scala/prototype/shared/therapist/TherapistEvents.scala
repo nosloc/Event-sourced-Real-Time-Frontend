@@ -1,4 +1,4 @@
-package prototype.server.core.therapist.domain
+package prototype.shared.therapist
 
 import java.util.UUID
 

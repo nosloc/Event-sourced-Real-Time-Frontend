@@ -5,13 +5,12 @@ import java.util.UUID
 import prototype.api.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*
-import prototype.server.core.patient.domain.{PatientCreated, PatientScopes}
-import prototype.server.core.therapist.domain.{
-  TherapistCreated,
-  TherapistScopes
-}
+import prototype.server.core.patient.domain.PatientScopes
+import prototype.server.core.therapist.domain.TherapistScopes
 import prototype.shared.appointment.*
 import prototype.shared.events.PrototypeEvent
+import prototype.shared.patient.PatientCreated
+import prototype.shared.therapist.TherapistCreated
 
 import persistent4s.EventSourcedCommandHandler
 

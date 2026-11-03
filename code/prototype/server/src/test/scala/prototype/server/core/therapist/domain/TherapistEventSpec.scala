@@ -4,6 +4,7 @@ import java.util.UUID
 
 import prototype.api.Role
 import prototype.server.core.PrototypeEventCodec
+import prototype.shared.therapist.TherapistCreated
 
 import persistent4s.EventTypeName
 import persistent4s.circe.FutureEventVersion

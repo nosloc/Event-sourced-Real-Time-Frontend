@@ -6,11 +6,16 @@ import java.util.UUID
 import cats.effect.{IO, Resource}
 import cats.effect.testing.scalatest.AsyncIOSpec
 
-import prototype.server.core.patient.domain.{PatientCreated, PatientScopes}
+import prototype.server.core.patient.domain.PatientScopes
 import prototype.server.support.EventEnvelopes
 import prototype.shared.events.PrototypeEvent
+import prototype.shared.patient.{
+  PatientCreated,
+  PatientInconsistency,
+  PatientState
+}
 
-import persistent4s.{EventEnvelope, EventTypeName, ProjectionStateAlreadyExists}
+import persistent4s.{EventEnvelope, EventTypeName}
 
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -33,9 +38,11 @@ class PatientProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
   private val id = UUID.fromString("070874c8-5296-452e-8c91-cfaf54385932")
   private val born = LocalDate.of(1987, 4, 12)
 
+  private val created = PatientCreated(id, "Camille", "Rochat", born)
+
   private val envelope: EventEnvelope[PrototypeEvent] =
     EventEnvelopes.of(
-      PatientCreated(id, "Camille", "Rochat", born),
+      created,
       Set(PatientScopes.Patient(id).toTag, PatientScopes.PatientUnique(()).toTag),
       EventTypeName.of[PatientCreated]
     )
@@ -52,8 +59,6 @@ class PatientProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers
       .handle(Some(existing), envelope)
       .attempt
       .asserting { result =>
-        result shouldBe Left(
-          ProjectionStateAlreadyExists(EventTypeName.of[PatientCreated])
-        )
+        result shouldBe Left(PatientInconsistency.AlreadyExists(created))
       }
   }

@@ -5,11 +5,9 @@ import cats.effect.IO
 import prototype.api.*
 import prototype.server.core.patient.commands.CreatePatient
 import prototype.server.core.patient.domain.PatientError.*
-import prototype.server.core.patient.persistence.{
-  PatientRepository,
-  PatientState
-}
+import prototype.server.core.patient.persistence.PatientRepository
 import prototype.shared.events.PrototypeEvent
+import prototype.shared.patient.PatientState
 
 import persistent4s.CommandRuntime
 

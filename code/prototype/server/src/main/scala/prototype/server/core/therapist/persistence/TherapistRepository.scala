@@ -2,6 +2,8 @@ package prototype.server.core.therapist.persistence
 
 import cats.effect.{IO, Resource}
 
+import prototype.shared.therapist.TherapistState
+
 import persistent4s.postgres.{DerivedPostgresRepository, PostgresTable}
 
 import skunk.Session

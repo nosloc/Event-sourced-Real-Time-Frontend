@@ -4,6 +4,8 @@ import java.util.UUID
 
 import cats.effect.{IO, Resource}
 
+import prototype.shared.patient.PatientState
+
 import persistent4s.postgres.{DerivedPostgresRepository, PostgresTable}
 
 import skunk.Session
