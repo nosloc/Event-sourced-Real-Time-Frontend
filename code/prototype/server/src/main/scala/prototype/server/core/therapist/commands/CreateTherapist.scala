@@ -3,7 +3,7 @@ package prototype.server.core.therapist.commands
 import java.util.UUID
 
 import prototype.api.Role
-import prototype.events.PrototypeEvent
+import prototype.shared.events.PrototypeEvent
 import prototype.server.core.company.domain.{CompanyCreated, CompanyScopes}
 import prototype.server.core.therapist.domain.{
   TherapistCreated,

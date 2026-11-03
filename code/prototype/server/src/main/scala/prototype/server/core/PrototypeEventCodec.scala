@@ -1,7 +1,7 @@
 package prototype.server.core
 
-import prototype.appointment.AppointmentEvent
-import prototype.events.PrototypeEvent
+import prototype.shared.appointment.AppointmentEvent
+import prototype.shared.events.PrototypeEvent
 import prototype.server.core.company.domain.CompanyEvent
 import prototype.server.core.patient.domain.PatientEvent
 import prototype.server.core.therapist.domain.TherapistEvent

@@ -1,9 +1,9 @@
-package prototype.appointment
+package prototype.shared.appointment
 
 import java.util.UUID
 
 import prototype.api.{AppointmentType, EventMessage, PrestationStatus}
-import prototype.events.PrototypeEvent
+import prototype.shared.events.PrototypeEvent
 
 import io.circe.{parser, Decoder, Encoder}
 

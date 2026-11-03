@@ -1,7 +1,7 @@
 package prototype.client.appointments
 
 import prototype.api.*
-import prototype.appointment.*
+import prototype.shared.appointment.*
 
 import org.scalajs.dom
 

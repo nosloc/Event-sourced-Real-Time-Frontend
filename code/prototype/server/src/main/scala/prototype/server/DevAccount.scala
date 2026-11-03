@@ -7,13 +7,13 @@ import scala.concurrent.duration.*
 import cats.effect.IO
 
 import prototype.api.*
-import prototype.events.PrototypeEvent
 import prototype.server.core.company.commands.CreateCompany
 import prototype.server.core.company.domain.CompanyError
 import prototype.server.core.company.domain.CompanyError.*
 import prototype.server.core.therapist.commands.CreateTherapist
 import prototype.server.core.therapist.domain.TherapistError
 import prototype.server.core.therapist.domain.TherapistError.*
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.CommandRuntime
 

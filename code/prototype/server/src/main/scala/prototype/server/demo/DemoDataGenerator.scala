@@ -9,7 +9,6 @@ import cats.effect.syntax.all.*
 import cats.syntax.all.*
 
 import prototype.api.{AppointmentType, PrestationStatus, TimeRange}
-import prototype.events.PrototypeEvent
 import prototype.server.core.appointment.commands.{
   CreateAppointment,
   CreatePrestation,
@@ -22,6 +21,7 @@ import prototype.server.core.patient.commands.CreatePatient
 import prototype.server.core.patient.persistence.PatientRepository
 import prototype.server.core.therapist.commands.CreateTherapist
 import prototype.server.core.therapist.persistence.TherapistRepository
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.CommandRuntime
 

@@ -1,4 +1,4 @@
-package prototype.appointment
+package prototype.shared.appointment
 
 import java.util.UUID
 

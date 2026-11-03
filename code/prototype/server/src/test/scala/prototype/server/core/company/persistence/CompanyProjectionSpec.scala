@@ -5,7 +5,7 @@ import java.util.UUID
 import cats.effect.{IO, Resource}
 import cats.effect.testing.scalatest.AsyncIOSpec
 
-import prototype.events.PrototypeEvent
+import prototype.shared.events.PrototypeEvent
 import prototype.server.core.company.domain.{CompanyCreated, CompanyScopes}
 import prototype.server.support.EventEnvelopes
 

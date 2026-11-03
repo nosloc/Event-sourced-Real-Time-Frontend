@@ -1,9 +1,12 @@
-package prototype.appointment
+package prototype.shared.appointment
 
 import java.util.UUID
 
 import prototype.api.*
-import prototype.appointment.AppointmentInconsistency.{AlreadyExists, NotFound}
+import prototype.shared.appointment.AppointmentInconsistency.{
+  AlreadyExists,
+  NotFound
+}
 
 /** The appointment fold, shared by the server projection and the browser.
   * `Left` when the event does not fit the state (see

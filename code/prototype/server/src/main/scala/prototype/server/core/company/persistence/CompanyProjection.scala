@@ -4,7 +4,7 @@ import java.util.UUID
 
 import cats.effect.IO
 
-import prototype.events.PrototypeEvent
+import prototype.shared.events.PrototypeEvent
 import prototype.server.core.company.domain.CompanyCreated
 
 import persistent4s.ExactlyOnceEventSourcedProjection

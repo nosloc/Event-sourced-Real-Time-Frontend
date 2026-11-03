@@ -9,8 +9,6 @@ import cats.effect.IO
 import cats.syntax.all.*
 
 import prototype.api.*
-import prototype.appointment.AppointmentState
-import prototype.events.PrototypeEvent
 import prototype.server.core.appointment.commands.{
   CreateAppointment,
   CreatePrestation,
@@ -25,6 +23,8 @@ import prototype.server.core.appointment.persistence.{
   AppointmentProjection,
   AppointmentRepository
 }
+import prototype.shared.appointment.AppointmentState
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.{
   CommandRuntime,

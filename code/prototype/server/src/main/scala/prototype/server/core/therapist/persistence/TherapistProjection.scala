@@ -4,8 +4,8 @@ import java.util.UUID
 
 import cats.effect.IO
 
-import prototype.events.PrototypeEvent
 import prototype.server.core.therapist.domain.TherapistCreated
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.ExactlyOnceEventSourcedProjection
 

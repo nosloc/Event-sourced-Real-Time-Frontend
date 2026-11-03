@@ -1,4 +1,4 @@
-package prototype
+package prototype.shared
 
 object Greeting: 
   def greet(name: String): String = 

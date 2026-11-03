@@ -4,13 +4,13 @@ import cats.effect.IO
 import cats.syntax.all.*
 
 import prototype.api.*
-import prototype.events.PrototypeEvent
 import prototype.server.core.therapist.commands.CreateTherapist
 import prototype.server.core.therapist.domain.TherapistError.*
 import prototype.server.core.therapist.persistence.{
   TherapistRepository,
   TherapistState
 }
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.CommandRuntime
 

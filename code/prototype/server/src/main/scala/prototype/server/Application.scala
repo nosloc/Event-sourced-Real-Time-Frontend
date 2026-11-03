@@ -6,9 +6,7 @@ import cats.effect.*
 
 import fs2.concurrent.Topic
 
-import prototype.Greeting
 import prototype.api.*
-import prototype.events.PrototypeEvent
 import prototype.server.auth.*
 import prototype.server.config.AppConfig
 import prototype.server.config.syntax.loadIO
@@ -41,6 +39,8 @@ import prototype.server.eventfeed.{
   EventFeedRoutes,
   EventStoreServiceImpl
 }
+import prototype.shared.Greeting
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.EventEnvelope
 import persistent4s.monitoring.MonitoringServer

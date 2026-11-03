@@ -1,9 +1,9 @@
-package prototype.appointment
+package prototype.shared.appointment
 
-/** An appointment event that does not fit the state it is applied to. Each
-  * side decides what it means: the server holds every appointment, so it is an
-  * error there; the browser holds one therapist's appointments, so a missing
-  * one is normal. An exception, so the server can fail with it as it is.
+/** An appointment event that does not fit the state it is applied to. Each side
+  * decides what it means: the server holds every appointment, so it is an error
+  * there; the browser holds one therapist's appointments, so a missing one is
+  * normal. An exception, so the server can fail with it as it is.
   */
 enum AppointmentInconsistency(message: String) extends Exception(message):
 

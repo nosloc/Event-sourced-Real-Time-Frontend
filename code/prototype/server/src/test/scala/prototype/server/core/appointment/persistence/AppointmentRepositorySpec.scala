@@ -9,9 +9,9 @@ import prototype.api.{
   AppointmentType,
   PrestationStatus
 }
-import prototype.appointment.{AppointmentState, PrestationRow}
 import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.support.{PostgresSuite, TestDatabase}
+import prototype.shared.appointment.{AppointmentState, PrestationRow}
 
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers

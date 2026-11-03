@@ -2,10 +2,10 @@ package prototype.server.core.appointment.commands
 
 import java.util.UUID
 
-import prototype.appointment.*
-import prototype.events.PrototypeEvent
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*
+import prototype.shared.appointment.*
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.EventSourcedCommandHandler
 

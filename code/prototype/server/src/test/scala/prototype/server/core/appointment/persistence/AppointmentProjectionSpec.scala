@@ -7,11 +7,11 @@ import prototype.api.{
   AppointmentType,
   PrestationStatus
 }
-import prototype.appointment.*
-import prototype.events.PrototypeEvent
 import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.support.EventEnvelopes
+import prototype.shared.appointment.*
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.{EventEnvelope, EventTypeName}
 

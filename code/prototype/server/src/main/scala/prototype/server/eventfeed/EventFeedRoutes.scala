@@ -6,7 +6,7 @@ import cats.effect.IO
 
 import fs2.Stream
 
-import prototype.StreamOpened
+import prototype.shared.StreamOpened
 
 import org.http4s.{HttpRoutes, ServerSentEvent}
 import org.http4s.dsl.io.*

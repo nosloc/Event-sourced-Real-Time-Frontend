@@ -11,11 +11,11 @@ import prototype.api.{
   PrestationStatus
 }
 import prototype.api.PrestationStatus.*
-import prototype.appointment.*
 import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*
 import prototype.server.support.HandlerWorld
+import prototype.shared.appointment.*
 
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers

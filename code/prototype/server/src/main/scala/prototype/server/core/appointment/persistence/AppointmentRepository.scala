@@ -6,8 +6,8 @@ import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 
 import prototype.api.{AppointmentType, PrestationStatus}
-import prototype.appointment.{AppointmentState, PrestationRow}
-import prototype.appointment.given
+import prototype.shared.appointment.{AppointmentState, PrestationRow}
+import prototype.shared.appointment.given
 
 import persistent4s.postgres.{PostgresAtomicRepository, PostgresRepositoryTable}
 

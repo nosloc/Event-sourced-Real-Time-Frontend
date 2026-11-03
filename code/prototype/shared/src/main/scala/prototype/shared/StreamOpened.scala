@@ -1,4 +1,4 @@
-package prototype
+package prototype.shared
 
 /** The first message of each event stream, sent once the server is subscribed:
   * from then on, no new event can be missed. A named event, so it does not reach

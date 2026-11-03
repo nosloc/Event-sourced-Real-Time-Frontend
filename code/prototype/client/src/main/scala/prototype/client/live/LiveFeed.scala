@@ -2,7 +2,7 @@ package prototype.client.live
 
 import com.raquo.laminar.api.L.*
 import org.scalajs.dom
-import prototype.StreamOpened
+import prototype.shared.StreamOpened
 import prototype.api.EventMessage
 import smithy4s.Blob
 import smithy4s.json.Json

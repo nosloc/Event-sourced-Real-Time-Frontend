@@ -3,7 +3,7 @@ package prototype.server.core.company.api
 import cats.effect.*
 
 import prototype.api.*
-import prototype.events.PrototypeEvent
+import prototype.shared.events.PrototypeEvent
 import prototype.server.core.company.commands.CreateCompany
 import prototype.server.core.company.domain.CompanyError.*
 import prototype.server.core.company.persistence.{

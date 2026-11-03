@@ -1,7 +1,7 @@
 package prototype.client.appointments
 
 import prototype.api.EventMessage
-import prototype.appointment.AppointmentEvent
+import prototype.shared.appointment.AppointmentEvent
 
 import org.scalajs.dom
 

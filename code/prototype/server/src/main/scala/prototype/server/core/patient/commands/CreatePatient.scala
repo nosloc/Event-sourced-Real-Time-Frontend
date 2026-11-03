@@ -3,13 +3,13 @@ package prototype.server.core.patient.commands
 import java.time.LocalDate
 import java.util.UUID
 
-import prototype.events.PrototypeEvent
 import prototype.server.core.patient.domain.{
   PatientCreated,
   PatientError,
   PatientScopes
 }
 import prototype.server.core.patient.domain.PatientError.*
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.EventSourcedCommandHandler
 

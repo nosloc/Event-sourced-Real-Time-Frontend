@@ -3,7 +3,7 @@ package prototype.server.core.company.commands
 import java.util.UUID
 
 import prototype.api.*
-import prototype.events.PrototypeEvent
+import prototype.shared.events.PrototypeEvent
 import prototype.server.core.company.domain.{
   CompanyCreated,
   CompanyError,

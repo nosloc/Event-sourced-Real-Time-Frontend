@@ -3,7 +3,7 @@ package prototype.server.core.appointment.commands
 import java.util.UUID
 
 import prototype.api.AppointmentType
-import prototype.appointment.{
+import prototype.shared.appointment.{
   AppointmentCreated,
   AppointmentDeleted,
   AppointmentUpdated,

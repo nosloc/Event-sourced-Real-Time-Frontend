@@ -3,8 +3,8 @@ package prototype.server.core.appointment.commands
 import java.util.UUID
 
 import prototype.api.AppointmentType
-import prototype.appointment.*
 import prototype.server.core.appointment.AppointmentFixtures.*
+import prototype.shared.appointment.*
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

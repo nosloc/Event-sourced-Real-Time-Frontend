@@ -4,10 +4,10 @@ import java.time.Instant
 import java.util.UUID
 
 import prototype.api.AppointmentType
-import prototype.appointment.AppointmentCreated
-import prototype.events.PrototypeEvent
 import prototype.server.core.PrototypeEventCodec
 import prototype.server.support.EventEnvelopes
+import prototype.shared.appointment.AppointmentCreated
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.{EventTypeName, Tag}
 

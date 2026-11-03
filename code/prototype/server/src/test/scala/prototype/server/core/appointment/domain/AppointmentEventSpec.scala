@@ -6,9 +6,9 @@ import prototype.api.{
   AppointmentType,
   PrestationStatus
 }
-import prototype.appointment.*
-import prototype.events.PrototypeEvent
 import prototype.server.core.PrototypeEventCodec
+import prototype.shared.appointment.*
+import prototype.shared.events.PrototypeEvent
 
 import persistent4s.EventTypeName
 import persistent4s.circe.FutureEventVersion

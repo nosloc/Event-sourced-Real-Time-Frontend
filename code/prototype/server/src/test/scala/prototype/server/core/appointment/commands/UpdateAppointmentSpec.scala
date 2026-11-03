@@ -8,7 +8,6 @@ import prototype.api.{
   AppointmentType,
   TimeRange
 }
-import prototype.appointment.*
 import prototype.server.core.appointment.AppointmentFixtures.*
 import prototype.server.core.appointment.domain.*
 import prototype.server.core.appointment.domain.AppointmentError.*
@@ -16,6 +15,7 @@ import prototype.server.core.patient.domain.PatientScopes
 import prototype.server.core.therapist.domain.TherapistScopes
 import prototype.server.support.HandlerWorld
 import prototype.server.support.HandlerWorld.{patient1, patient2}
+import prototype.shared.appointment.*
 
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
