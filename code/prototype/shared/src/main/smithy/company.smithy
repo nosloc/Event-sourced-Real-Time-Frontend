@@ -58,6 +58,9 @@ list Companies {
 structure ListCompaniesOutput {
     @required
     companies: Companies
+
+    @required
+    globalPosition: Long
 }
 
 structure GetCompanyInput {

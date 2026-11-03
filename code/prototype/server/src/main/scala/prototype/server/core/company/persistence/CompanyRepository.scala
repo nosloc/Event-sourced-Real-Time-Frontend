@@ -14,7 +14,14 @@ final class CompanyRepository private (pool: Resource[IO, Session[IO]])
     extends DerivedPostgresRepository[IO, UUID, CompanyState](
       pool,
       CompanyRepository.table
-    )
+    ):
+
+  /** Returns all companies, with the projection position. */
+  def allCompanies: IO[(List[CompanyState], Long)] =
+    readWithCursor(CompanyProjectionName)(session => query.run(session))
+      .map { case (companies, cursor) =>
+        (companies, cursor.globalPosition)
+      }
 
 object CompanyRepository:
 

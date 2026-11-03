@@ -50,10 +50,9 @@ class CompanyServiceImpl(
     yield CreateCompanyOutput(CompanyId(id))
 
   override def listCompanies(): IO[ListCompaniesOutput] =
-    companies.all.map(companies =>
-      ListCompaniesOutput(companies.map(fromState))
+    companies.allCompanies.map((companies, position) =>
+      ListCompaniesOutput(companies.map(fromState), position)
     )
-
   override def getCompany(companyId: CompanyId): IO[GetCompanyOutput] =
     companies.find(companyId.value).flatMap {
       case Some(company) => IO.pure(GetCompanyOutput(fromState(company)))

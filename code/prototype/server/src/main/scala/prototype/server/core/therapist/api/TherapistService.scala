@@ -33,9 +33,12 @@ class TherapistServiceImpl(
 
   // Sorted by id: the list is shown to users and a projection has no stable order
   override def listTherapists(): IO[ListTherapistsOutput] =
-    therapists.all
-      .map(_.sortBy(_.therapistId).map(fromState))
-      .map(ListTherapistsOutput.apply)
+    therapists.allTherapists.map((therapists, position) =>
+      ListTherapistsOutput(
+        therapists.sortBy(_.therapistId).map(fromState),
+        position
+      )
+    )
 
   override def getTherapist(therapistId: TherapistId): IO[GetTherapistOutput] =
     therapists.find(therapistId.value).flatMap {

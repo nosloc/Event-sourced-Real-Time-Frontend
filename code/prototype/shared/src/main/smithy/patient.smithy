@@ -102,6 +102,9 @@ structure PatientNotFound {
 structure ListPatientsOutput {
     @required
     patients: Patients
+
+    @required
+    globalPosition: Long
 }
 
 @uuidFormat

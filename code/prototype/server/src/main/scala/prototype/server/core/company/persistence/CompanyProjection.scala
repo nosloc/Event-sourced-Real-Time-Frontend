@@ -14,6 +14,8 @@ import prototype.shared.events.PrototypeEvent
 
 import persistent4s.ExactlyOnceEventSourcedProjection
 
+val CompanyProjectionName: String = "company-projection"
+
 final case class CompanyProjection(protected val repository: CompanyRepository)
     extends ExactlyOnceEventSourcedProjection[
       IO,
@@ -22,7 +24,7 @@ final case class CompanyProjection(protected val repository: CompanyRepository)
       CompanyState
     ]:
 
-  override val name: String = "company-projection"
+  override val name: String = CompanyProjectionName
 
   private val evolve
       : (Option[CompanyState], CompanyEvent) => IO[Option[CompanyState]] =

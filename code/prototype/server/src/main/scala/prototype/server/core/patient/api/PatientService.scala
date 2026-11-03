@@ -54,9 +54,10 @@ class PatientServiceImpl(
 
   // Sorted by last then first name: a projection has no stable order
   override def listPatients(): IO[ListPatientsOutput] =
-    patients.all.map(all =>
+    patients.allPatients.map((patients, position) =>
       ListPatientsOutput(
-        all.sortBy(p => (p.lastName, p.firstName)).map(fromState)
+        patients.sortBy(p => (p.lastName, p.firstName)).map(fromState),
+        position
       )
     )
 

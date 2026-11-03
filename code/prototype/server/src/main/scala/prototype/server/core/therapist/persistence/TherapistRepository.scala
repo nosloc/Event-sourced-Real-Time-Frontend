@@ -18,7 +18,14 @@ final class TherapistRepository private (pool: Resource[IO, Session[IO]])
     extends DerivedPostgresRepository[IO, String, TherapistState](
       pool,
       TherapistRepository.table
-    )
+    ):
+
+  /** Returns all therapists, with the projection position. */
+  def allTherapists: IO[(List[TherapistState], Long)] =
+    readWithCursor(TherapistProjectionName)(session => query.run(session))
+      .map { case (therapists, cursor) =>
+        (therapists, cursor.globalPosition)
+      }
 
 object TherapistRepository:
 

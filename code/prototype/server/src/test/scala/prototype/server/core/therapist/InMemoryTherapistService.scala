@@ -16,7 +16,7 @@ final class InMemoryTherapistService private (
 
   override def listTherapists(): IO[ListTherapistsOutput] =
     therapists.get.map(all =>
-      ListTherapistsOutput(all.values.toList.sortBy(_.therapistId.value))
+      ListTherapistsOutput(all.values.toList.sortBy(_.therapistId.value), 0L)
     )
 
   override def getTherapist(therapistId: TherapistId): IO[GetTherapistOutput] =

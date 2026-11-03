@@ -12,6 +12,8 @@ import prototype.shared.therapist.{
 
 import persistent4s.ExactlyOnceEventSourcedProjection
 
+val TherapistProjectionName: String = "therapist-projection"
+
 final case class TherapistProjection(
     protected val repository: TherapistRepository
 ) extends ExactlyOnceEventSourcedProjection[
@@ -21,7 +23,7 @@ final case class TherapistProjection(
       TherapistState
     ]:
 
-  override val name: String = "therapist-projection"
+  override val name: String = TherapistProjectionName
 
   private val evolve
       : (Option[TherapistState], TherapistEvent) => IO[Option[TherapistState]] =
