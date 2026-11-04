@@ -1,14 +1,16 @@
 package prototype.client.views.timetable
 
-import prototype.api.*
 import scala.scalajs.js.Date
-import com.raquo.laminar.api.L.*
-import prototype.client.views.timetable.TimetableModel.*
+
+import prototype.api.*
 import prototype.client.Api
 import prototype.client.Api.ApiCall
+import prototype.client.appointments.LiveAppointmentsForTherapist
 import prototype.client.live.LiveFeed
 import prototype.client.live.LiveFeed.FeedMessage
-import prototype.client.appointments.LiveAppointmentsForTherapist
+import prototype.client.views.timetable.TimetableModel.*
+
+import com.raquo.laminar.api.L.*
 
 object TimetableView:
   def apply(

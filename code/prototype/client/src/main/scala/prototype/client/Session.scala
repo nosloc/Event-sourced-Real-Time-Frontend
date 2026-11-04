@@ -1,8 +1,9 @@
 package prototype.client
 
-import com.raquo.laminar.api.L.*
 import prototype.api.Token
+
 import com.raquo.airstream.web.WebStorageVar
+import com.raquo.laminar.api.L.*
 
 object Session:
 

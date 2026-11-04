@@ -1,11 +1,13 @@
 package prototype.client.live
 
-import com.raquo.laminar.api.L.*
 import cats.effect.IO
-import prototype.client.Api
+
 import prototype.api.EventMessage
+import prototype.client.Api
 import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.live.LiveModel.Input
+
+import com.raquo.laminar.api.L.*
 
 /** A value kept up to date from the server's events, for one key at a time.
   * Its snapshot is loaded once the stream has subscribed, and again after a

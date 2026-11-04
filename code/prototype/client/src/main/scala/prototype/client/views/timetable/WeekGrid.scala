@@ -1,10 +1,12 @@
 package prototype.client.views.timetable
 
-import com.raquo.laminar.api.L.*
-import prototype.client.views.timetable.TimetableModel.*
 import scala.scalajs.js.Date
+
 import prototype.api.*
 import prototype.client.ErrorMessages.errorToMessage
+import prototype.client.views.timetable.TimetableModel.*
+
+import com.raquo.laminar.api.L.*
 
 object WeekGrid:
 

@@ -1,18 +1,23 @@
 package prototype.client.views.timetable
 
-import com.raquo.laminar.api.L.*
-import cats.effect.*
-import prototype.api.*
-import prototype.client.Api.ApiCall
-import prototype.client.Api
 import scala.scalajs.js.Date
-import smithy4s.time.Timestamp
+
+import cats.effect.*
+
+import prototype.api.*
+import prototype.client.{
+  Api,
+  ErrorMessages
+}
+import prototype.client.Api.ApiCall
 import prototype.client.views.components.{
   FormRow,
-  PopoverPicker,
-  PopoverMultiPicker
+  PopoverMultiPicker,
+  PopoverPicker
 }
-import prototype.client.ErrorMessages
+
+import com.raquo.laminar.api.L.*
+import smithy4s.time.Timestamp
 
 object AppointmentForm:
   // Used to represent the form state on save

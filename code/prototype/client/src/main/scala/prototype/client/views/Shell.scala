@@ -1,20 +1,23 @@
 package prototype.client.views
 
-import com.raquo.laminar.api.L.*
-import prototype.client.Pages.Page
-import prototype.client.AppRouter
+import prototype.api.*
+import prototype.client.{
+  Api,
+  AppRouter,
+  Session
+}
+import prototype.client.Api.ApiCall
 import prototype.client.Pages.{
-  HomePage,
-  TimetablePage,
   AdminPage,
   DashboardPage,
-  EventSourcingPage
+  EventSourcingPage,
+  HomePage,
+  Page,
+  TimetablePage
 }
-import prototype.client.Session
-import prototype.client.Api
-import prototype.client.Api.ApiCall
-import prototype.api.*
 import prototype.client.views.components.UserInfo
+
+import com.raquo.laminar.api.L.*
 
 object Shell:
 

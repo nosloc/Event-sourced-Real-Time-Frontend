@@ -1,13 +1,19 @@
 package prototype.client.views.timetable
 
-import com.raquo.laminar.api.L.*
 import prototype.api.*
-import prototype.client.Api
+import prototype.client.{
+  Api,
+  ErrorMessages,
+  InvalidInput
+}
 import prototype.client.Api.ApiCall
-import prototype.client.views.components.Icons
-import prototype.client.views.components.PopoverPicker
+import prototype.client.views.components.{
+  Icons,
+  PopoverPicker
+}
 import prototype.shared.appointment.StatusTransitions.verifyStatusChange
-import prototype.client.{ErrorMessages, InvalidInput}
+
+import com.raquo.laminar.api.L.*
 
 /** The prestations of one appointment: a table (label, quantity, unit price,
   * total, status, actions), an add row and a back button. Shown in place of the
@@ -149,7 +155,7 @@ object PrestationsView:
       .map {
         case (Pending.Stale(_)) =>
           Some(
-            s"Someone changed the status concurrently. Cancel your change to see the current status."
+            "Someone changed the status concurrently. Cancel your change to see the current status."
           )
         case _ => None
       }

@@ -1,8 +1,9 @@
 package prototype.client.views.admin
 
-import com.raquo.laminar.api.L.*
 import prototype.api.*
 import prototype.client.views.components.{PopoverPicker, SearchBox}
+
+import com.raquo.laminar.api.L.*
 
 object TherapistsTab:
 

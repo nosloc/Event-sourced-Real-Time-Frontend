@@ -1,7 +1,8 @@
 package prototype.client.views.timetable
 
-import prototype.api.*
 import scala.scalajs.js.Date
+
+import prototype.api.*
 
 object TimetableModel:
   case class AppointmentWithDate(appointment: Appointment, date: Date)

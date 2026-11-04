@@ -1,7 +1,8 @@
 package prototype.client.views.components
 
-import com.raquo.laminar.api.L.*
 import prototype.client.views.components.PopoverPicker.*
+
+import com.raquo.laminar.api.L.*
 
 /** Like `PopoverPicker`, but several values can be picked. The list is the
   * same native `popover`, and it stays open while rows are toggled (it closes

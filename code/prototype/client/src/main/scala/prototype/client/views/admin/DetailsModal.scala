@@ -1,7 +1,8 @@
 package prototype.client.views.admin
 
-import com.raquo.laminar.api.L.*
 import prototype.client.views.components.Modal
+
+import com.raquo.laminar.api.L.*
 
 /** Shows every field of the selected row, the id included. The tab owns
   * `selectedVar`: clicking a row sets it, closing the modal clears it.

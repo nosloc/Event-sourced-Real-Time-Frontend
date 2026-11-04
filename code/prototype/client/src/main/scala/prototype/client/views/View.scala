@@ -1,13 +1,13 @@
 package prototype.client.views
 
-import com.raquo.laminar.api.L.*
+import prototype.client.{AppRouter, Session}
 import prototype.client.Pages.*
 import prototype.client.views.admin.AdminView
 import prototype.client.views.dashboard.DashboardView
 import prototype.client.views.eventsourcing.EventSourcingView
 import prototype.client.views.timetable.*
 
-import prototype.client.{AppRouter, Session}
+import com.raquo.laminar.api.L.*
 
 object View:
 

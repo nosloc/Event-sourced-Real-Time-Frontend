@@ -1,10 +1,11 @@
 package prototype.client.views.components
 
+import scala.annotation.unused
 import scala.scalajs.js
 import scala.scalajs.js.annotation.*
-import org.scalajs.dom
-import scala.annotation.unused
+
 import com.raquo.laminar.api.L.*
+import org.scalajs.dom
 
 object chartJS:
 

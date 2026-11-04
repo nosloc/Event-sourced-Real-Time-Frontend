@@ -1,16 +1,17 @@
 package prototype.client
 
-import org.scalajs.dom
-import org.http4s.Uri
-import prototype.api.*
-import smithy4s.http4s.SimpleRestJsonBuilder
 import cats.effect.*
-import org.http4s.dom.FetchClientBuilder
 import cats.effect.unsafe.implicits.global
-import org.scalajs.macrotaskexecutor.MacrotaskExecutor.Implicits.global
+
+import prototype.api.*
 import prototype.client.auth.AuthMiddleware
 
 import com.raquo.laminar.api.L.*
+import org.http4s.Uri
+import org.http4s.dom.FetchClientBuilder
+import org.scalajs.dom
+import org.scalajs.macrotaskexecutor.MacrotaskExecutor.Implicits.global
+import smithy4s.http4s.SimpleRestJsonBuilder
 
 object Api:
   sealed trait ApiState[+R]

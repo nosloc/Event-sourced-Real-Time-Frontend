@@ -1,11 +1,14 @@
 package prototype.client.views.admin
 
-import com.raquo.laminar.api.L.*
 import prototype.api.DemoDataAlreadyGenerated
-import prototype.client.Api
+import prototype.client.{
+  Api,
+  ErrorMessages
+}
 import prototype.client.Api.ApiCall
-import prototype.client.ErrorMessages
 import prototype.client.views.admin.DemoDataModal.Outcome
+
+import com.raquo.laminar.api.L.*
 
 object AdminView:
 

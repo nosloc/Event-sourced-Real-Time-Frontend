@@ -1,10 +1,11 @@
 package prototype.client.views.admin
 
-import com.raquo.laminar.api.L.*
 import prototype.api.*
 import prototype.client.Api
 import prototype.client.views.admin.TherapistForm.TherapistFormState
 import prototype.client.views.components.Modal
+
+import com.raquo.laminar.api.L.*
 
 object CreateTherapistModal:
   def apply(

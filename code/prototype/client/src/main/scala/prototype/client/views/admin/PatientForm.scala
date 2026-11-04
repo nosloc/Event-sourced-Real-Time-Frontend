@@ -1,13 +1,18 @@
 package prototype.client.views.admin
 
-import com.raquo.laminar.api.L.*
-import cats.effect.*
-import prototype.client.Api.ApiCall
-import prototype.client.Api
-import prototype.client.views.components.FormRow
-import prototype.client.ErrorMessages
-import smithy4s.time.LocalDate
 import scala.util.Try
+
+import cats.effect.*
+
+import prototype.client.{
+  Api,
+  ErrorMessages
+}
+import prototype.client.Api.ApiCall
+import prototype.client.views.components.FormRow
+
+import com.raquo.laminar.api.L.*
+import smithy4s.time.LocalDate
 
 object PatientForm:
   // Used to represent the form state on save

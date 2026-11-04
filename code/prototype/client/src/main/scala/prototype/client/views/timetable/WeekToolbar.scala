@@ -1,8 +1,10 @@
 package prototype.client.views.timetable
 
-import com.raquo.laminar.api.L.*
-import prototype.client.views.timetable.TimetableModel.*
 import scala.scalajs.js.Date
+
+import prototype.client.views.timetable.TimetableModel.*
+
+import com.raquo.laminar.api.L.*
 
 object WeekToolbar:
   def apply(

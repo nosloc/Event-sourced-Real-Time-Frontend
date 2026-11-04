@@ -1,8 +1,9 @@
 package prototype.client.views.admin
 
-import com.raquo.laminar.api.L.*
 import prototype.api.*
 import prototype.client.views.components.Modal
+
+import com.raquo.laminar.api.L.*
 
 /** The result of "Generate demo data", shown in a modal once the server has
   * answered: what was created, or that the data already existed.

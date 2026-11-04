@@ -1,10 +1,11 @@
 package prototype.client.views.timetable
 
-import com.raquo.laminar.api.L.*
-import prototype.client.Api.*
 import prototype.api.*
+import prototype.client.Api.*
 import prototype.client.views.components.PopoverPicker
 import prototype.client.views.components.PopoverPicker.Item
+
+import com.raquo.laminar.api.L.*
 
 /** Choose a therapist by trigram: the generic picker fed with the therapists,
   * shown as "First Last (trigram)" and as the trigram on the closed button.

@@ -1,11 +1,13 @@
 package prototype.client.views.dashboard
 
-import com.raquo.laminar.api.L.*
-import prototype.api.*
 import java.util.UUID
+
+import prototype.api.*
 import prototype.client.views.admin.RemoteList
 import prototype.client.views.components.PopoverPicker
 import prototype.client.views.components.PopoverPicker.Item
+
+import com.raquo.laminar.api.L.*
 
 object DashboardView:
   enum DashboardType:

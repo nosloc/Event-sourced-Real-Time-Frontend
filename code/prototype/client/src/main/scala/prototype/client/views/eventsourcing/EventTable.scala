@@ -1,7 +1,8 @@
 package prototype.client.views.eventsourcing
 
-import com.raquo.laminar.api.L.*
 import prototype.api.EventMessage
+
+import com.raquo.laminar.api.L.*
 
 /** The events shown, newest first: position, time, type, tags. The row that
   * just arrived is highlighted; clicking a row selects it.

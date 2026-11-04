@@ -1,9 +1,10 @@
 package prototype.client.views.eventsourcing
 
-import com.raquo.laminar.api.L.*
 import prototype.client.views.components.{Icons, PopoverPicker}
 import prototype.client.views.eventsourcing.EventSourcingModel.*
 import prototype.client.views.eventsourcing.EventSourcingModel.EventSourcingPage.LivePage
+
+import com.raquo.laminar.api.L.*
 
 /** Rows per page, the range shown, then newest / newer / older / oldest. The
   * tab owns the state: the pager only shows it and calls back.

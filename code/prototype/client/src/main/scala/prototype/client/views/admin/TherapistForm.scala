@@ -1,12 +1,16 @@
 package prototype.client.views.admin
 
-import com.raquo.laminar.api.L.*
 import cats.effect.*
+
 import prototype.api.*
+import prototype.client.{
+  Api,
+  ErrorMessages
+}
 import prototype.client.Api.ApiCall
-import prototype.client.Api
 import prototype.client.views.components.{FormRow, PopoverPicker}
-import prototype.client.ErrorMessages
+
+import com.raquo.laminar.api.L.*
 
 object TherapistForm:
   // Used to represent the form state on save

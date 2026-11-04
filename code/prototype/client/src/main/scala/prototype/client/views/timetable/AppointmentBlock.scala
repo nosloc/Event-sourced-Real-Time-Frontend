@@ -1,7 +1,8 @@
 package prototype.client.views.timetable
 
-import com.raquo.laminar.api.L.*
 import prototype.api.*
+
+import com.raquo.laminar.api.L.*
 
 object AppointmentBlock:
   def apply(

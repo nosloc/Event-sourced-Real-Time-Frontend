@@ -1,15 +1,19 @@
 package prototype.client.auth
 
 import cats.effect.*
+
 import prototype.api.*
-import smithy4s.http4s.*
-import smithy4s.Hints
-import org.http4s.client.Client
 import prototype.client.Session
+
+import org.http4s.{
+  AuthScheme,
+  Credentials,
+  Status
+}
+import org.http4s.client.Client
 import org.http4s.headers.Authorization
-import org.http4s.Credentials
-import org.http4s.AuthScheme
-import org.http4s.Status
+import smithy4s.Hints
+import smithy4s.http4s.*
 
 case class NoTokenFoundException()
     extends Exception("No token found in session")

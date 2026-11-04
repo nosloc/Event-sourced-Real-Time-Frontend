@@ -3,10 +3,11 @@ package prototype.client.views.eventsourcing
 import scala.scalajs.js
 import scala.scalajs.js.Date
 
-import com.raquo.laminar.api.L.*
 import prototype.api.EventMessage
 import prototype.client.views.components.Modal
 import prototype.client.views.timetable.dateToString
+
+import com.raquo.laminar.api.L.*
 
 /** Every field of the selected event, its content as indented JSON. The tab
   * owns `selectedVar`: clicking a row sets it, closing the modal clears it.

@@ -1,7 +1,8 @@
 package prototype.client
 
-import org.scalajs.dom
 import prototype.api.*
+
+import org.scalajs.dom
 
 /** An error found by the client itself before anything is sent (for example a
   * quantity that is not a number); its text is shown as it is.

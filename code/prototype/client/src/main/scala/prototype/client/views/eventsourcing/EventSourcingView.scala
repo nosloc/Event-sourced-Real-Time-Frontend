@@ -1,14 +1,18 @@
 package prototype.client.views.eventsourcing
 
-import com.raquo.laminar.api.L.*
 import prototype.api.EventMessage
-import EventSourcingModel.*
-import EventSourcingModel.EventSourcingPage.*
+import prototype.client.{
+  Api,
+  ErrorMessages
+}
 import prototype.client.Api.ApiCall
-import prototype.client.Api
-import prototype.client.ErrorMessages
 import prototype.client.live.LiveFeed
 import prototype.client.live.LiveFeed.FeedMessage
+
+import com.raquo.laminar.api.L.*
+
+import EventSourcingModel.*
+import EventSourcingModel.EventSourcingPage.*
 
 /** The events of the event store, live: the newest ones as they are written,
   * and older pages on demand. Holds the state; the rules are in

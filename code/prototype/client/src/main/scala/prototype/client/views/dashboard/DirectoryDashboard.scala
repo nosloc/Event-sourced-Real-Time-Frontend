@@ -1,15 +1,20 @@
 package prototype.client.views.dashboard
 
-import com.raquo.laminar.api.L.*
-import scala.scalajs.js.JSConverters.*
-import scala.scalajs.js
-import prototype.api.*
 import java.util.UUID
+
+import scala.scalajs.js
+import scala.scalajs.js.JSConverters.*
+
+import prototype.api.*
+import prototype.client.{
+  Api,
+  ErrorMessages
+}
 import prototype.client.Api.ApiCall
-import prototype.client.Api
 import prototype.client.views.components.StatBox
 import prototype.client.views.components.chartJS.*
-import prototype.client.ErrorMessages
+
+import com.raquo.laminar.api.L.*
 
 object DirectoryDashboard:
   def apply(selectedCompanyS: Signal[Option[UUID]]): HtmlElement =

@@ -1,11 +1,13 @@
 package prototype.client.views.timetable
 
-import com.raquo.laminar.api.L.*
 import scala.scalajs.js.Date
+
 import prototype.api.*
 import prototype.client.Api
 import prototype.client.views.components.Modal
 import prototype.client.views.timetable.AppointmentForm.AppointmentFormState
+
+import com.raquo.laminar.api.L.*
 
 object CreateAppointmentModal:
   def apply(

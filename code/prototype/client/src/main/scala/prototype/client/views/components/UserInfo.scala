@@ -1,10 +1,11 @@
 package prototype.client.views.components
 
 import prototype.api.*
-import com.raquo.laminar.api.L.*
-import prototype.client.Api.ApiCall
 import prototype.client.Api
+import prototype.client.Api.ApiCall
 import prototype.client.ErrorMessages.errorToMessage
+
+import com.raquo.laminar.api.L.*
 
 object UserInfo:
   def apply(

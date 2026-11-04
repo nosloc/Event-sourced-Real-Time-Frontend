@@ -1,12 +1,15 @@
 package prototype.client.views.timetable
 
-import com.raquo.laminar.api.L.*
 import prototype.api.*
+import prototype.client.{
+  Api,
+  ErrorMessages
+}
 import prototype.client.Api.ApiCall
-import prototype.client.Api
 import prototype.client.views.components.Modal
 import prototype.client.views.timetable.AppointmentForm.AppointmentFormState
-import prototype.client.ErrorMessages
+
+import com.raquo.laminar.api.L.*
 
 object AppointmentModal:
   def apply(
