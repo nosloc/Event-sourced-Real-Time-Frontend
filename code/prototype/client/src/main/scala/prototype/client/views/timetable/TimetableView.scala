@@ -100,7 +100,7 @@ object TimetableView:
       LiveFeed.bind(feed),
       // The selected appointment left the list (deleted, or no longer the
       // therapist's): forget it, so the modal does not come back by itself
-      selectedAppointmentS.changes.filter(_.isEmpty).mapTo(None)
+      selectedAppointmentS.distinct.changes.filter(_.isEmpty).mapTo(None)
         --> selectedAppointmentIdVar,
       cls := "timetable",
       div(
