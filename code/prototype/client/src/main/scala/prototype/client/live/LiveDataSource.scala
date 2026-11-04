@@ -43,17 +43,6 @@ final class LiveDataSource[K, A, E](
         key.changes.filterWith(opened)
       )
 
-  private def loadInput(k: K): EventStream[LiveModel.Input[K, A, E]] =
-    EventStream
-      .fromValue(Input.Started(k))
-      .mergeWith(
-        Api.stream(load(k)).map {
-          case Right((value, position)) =>
-            Input.Loaded(k, value, position)
-          case Left(error) => Input.Failed(k, error)
-        }
-      )
-
   private val receivedInput: EventStream[LiveModel.Input[K, A, E]] =
     feed.events
       .collect { case FeedMessage.Event(message) => message }
@@ -62,10 +51,19 @@ final class LiveDataSource[K, A, E](
       )
       .collectSome
 
-  // The state of the live value
+  // The state of the live value: the loads (a status per reload, for the latest
+  // key only) and the events received, folded by `LiveModel.step`
   private val stateVar: Signal[LiveModel.State[K, A, E]] =
     reloadKey
-      .flatMapSwitch(loadInput)
+      .flatMapWithStatus(k => Api.stream(load(k)))
+      .map {
+        case Pending(k) =>
+          Input.Started(k)
+        case Resolved(k, Right((value, position)), _) =>
+          Input.Loaded(k, value, position)
+        case Resolved(k, Left(error), _) =>
+          Input.Failed(k, error)
+      }
       .mergeWith(receivedInput)
       .scanLeft(LiveModel.initial[K, A, E])(LiveModel.step(evolve))
 
