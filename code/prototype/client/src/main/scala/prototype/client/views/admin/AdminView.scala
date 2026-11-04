@@ -9,6 +9,8 @@ import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.views.admin.DemoDataModal.Outcome
 
 import com.raquo.laminar.api.L.*
+import prototype.client.therapists.LiveTherapists
+import prototype.client.patients.LivePatients
 
 object AdminView:
 
@@ -42,18 +44,15 @@ object AdminView:
     val showCreatePatientVar: Var[Boolean] = Var(false)
 
     val companies = LiveCompanies(feed)
-    val therapists =
-      RemoteList(Api.therapists.listTherapists().map(_.therapists))
-    val patients = RemoteList(Api.patients.listPatients().map(_.patients))
+    val therapists = LiveTherapists(feed)
+
+    val patients = LivePatients(feed)
 
     val demoData = DemoData()
-    def reloadAll(): Unit =
-      therapists.reload()
-      patients.reload()
 
     // Same rule as the server: only the dev account exists. Hidden until the
     // therapists have loaded, so it never flashes on a page that has data
-    val onlyDevS: Signal[Boolean] = therapists.itemsVar.signal.map(
+    val onlyDevS: Signal[Boolean] = therapists.valuesS.map(
       _.exists(_.forall(_.therapistId.value == DevTherapistId))
     )
     // Kept on screen (disabled) while it runs and while the results are shown,
@@ -67,13 +66,14 @@ object AdminView:
 
     div(
       LiveFeed.bind(feed),
+
       // Keep the lists loaded, even if the user is on another tab.
       companies.keepLoaded,
-
-      cls := "admin",
       therapists.keepLoaded,
       patients.keepLoaded,
-      renderHead(demoData, showButtonS, () => reloadAll()),
+
+      cls := "admin",
+      renderHead(demoData, showButtonS),
       child.maybe <-- demoData.errorVar.signal.map(
         _.map(msg => div(cls := "banner banner--error", msg))
       ),
@@ -95,34 +95,33 @@ object AdminView:
           )
         case Section.Therapists =>
           TherapistsTab(
-            therapists,
+            therapists.valuesS,
+            therapists.errorS,
             companies.valuesS.map(_.getOrElse(Nil)),
             showCreateTherapistVar
           )
         case Section.Patients =>
-          PatientsTab(patients, showCreatePatientVar)
+          PatientsTab(patients.valuesS, patients.errorS, showCreatePatientVar)
       }
     )
   end apply
 
   private def renderHead(
       demoData: DemoData,
-      showButtonS: Signal[Boolean],
-      reloadAll: () => Unit
+      showButtonS: Signal[Boolean]
   ): HtmlElement =
     div(
       cls := "admin__head",
       h1("Administration"),
       child.maybe <-- showButtonS.map(
-        Option.when(_)(renderGenerateButton(demoData, reloadAll))
+        Option.when(_)(renderGenerateButton(demoData))
       )
     )
 
   // The button stays on screen until the run is over, so the request can live
   // on it
   private def renderGenerateButton(
-      demoData: DemoData,
-      reloadAll: () => Unit
+      demoData: DemoData
   ): HtmlElement =
     button(
       typ := "button",
@@ -141,16 +140,12 @@ object AdminView:
           demoData.errorVar.set(None)
         case Api.Success(output) =>
           demoData.generatingVar.set(false)
-          reloadAll()
           demoData.outcomeVar.set(Some(Outcome.Generated(output)))
         case Api.Error(DemoDataAlreadyGenerated()) =>
           demoData.generatingVar.set(false)
-          reloadAll()
           demoData.outcomeVar.set(Some(Outcome.AlreadyGenerated))
         case Api.Error(error) =>
           demoData.generatingVar.set(false)
-          // A failed run may have written part of the data
-          reloadAll()
           demoData.errorVar.set(Some(ErrorMessages.errorToMessage(error)))
       }
     )

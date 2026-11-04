@@ -4,10 +4,12 @@ import prototype.api.*
 import prototype.client.views.components.SearchBox
 
 import com.raquo.laminar.api.L.*
+import prototype.client.ErrorMessages
 
 object PatientsTab:
   def apply(
-      patients: RemoteList[Patient],
+      patientsS: Signal[Option[List[Patient]]],
+      errorS: Signal[Option[Throwable]],
       showCreatePatientModalVar: Var[Boolean]
   ): HtmlElement =
     val searchVar: Var[String] = Var("")
@@ -20,13 +22,13 @@ object PatientsTab:
       ),
       AdminTable[Patient](
         headers = List("Last name", "First name", "Date of birth"),
-        itemsS = patients.itemsVar.signal,
+        itemsS = patientsS,
         cellsOf = p => List(p.lastName, p.firstName, p.dateOfBirth.toString),
         onSelect = p => selectedVar.set(Some(p)),
         searchS = searchVar.signal,
-        errorS = patients.errorVar.signal
+        errorS = errorS.map(_.map(ErrorMessages.errorToMessage))
       ),
-      CreatePatientModal(showCreatePatientModalVar, patients),
+      CreatePatientModal(showCreatePatientModalVar),
       DetailsModal[Patient](
         selectedVar,
         "Patient",

@@ -10,7 +10,6 @@ import com.raquo.laminar.api.L.*
 object CreateTherapistModal:
   def apply(
       showCreateTherapistModalVar: Var[Boolean],
-      therapists: RemoteList[Therapist],
       companies: Signal[List[Company]]
   ): Mod[HtmlElement] =
     child.maybe <-- showCreateTherapistModalVar.signal.map(isOpen =>
@@ -33,7 +32,6 @@ object CreateTherapistModal:
             companyListS = companies,
             onSuccess = () => {
               showCreateTherapistModalVar.set(false)
-              therapists.reload()
             },
             onCancel = () => showCreateTherapistModalVar.set(false)
           )

@@ -1,6 +1,5 @@
 package prototype.client.views.admin
 
-import prototype.api.*
 import prototype.client.Api
 import prototype.client.views.admin.PatientForm.PatientFormState
 import prototype.client.views.components.Modal
@@ -9,8 +8,7 @@ import com.raquo.laminar.api.L.*
 
 object CreatePatientModal:
   def apply(
-      showCreatePatientModalVar: Var[Boolean],
-      patients: RemoteList[Patient]
+      showCreatePatientModalVar: Var[Boolean]
   ): Mod[HtmlElement] =
     child.maybe <-- showCreatePatientModalVar.signal.map(isOpen =>
       Option.when(isOpen) {
@@ -29,7 +27,6 @@ object CreatePatientModal:
               ),
             onSuccess = () => {
               showCreatePatientModalVar.set(false)
-              patients.reload()
             },
             onCancel = () => showCreatePatientModalVar.set(false)
           )

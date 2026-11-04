@@ -4,6 +4,7 @@ import prototype.api.*
 import prototype.client.views.components.{PopoverPicker, SearchBox}
 
 import com.raquo.laminar.api.L.*
+import prototype.client.ErrorMessages
 
 object TherapistsTab:
 
@@ -17,8 +18,9 @@ object TherapistsTab:
       company.fold("…")(c => s"${c.name} (${c.address.city})")
 
   def apply(
-      therapists: RemoteList[Therapist],
-      companies: Signal[List[Company]],
+      therapistsS: Signal[Option[List[Therapist]]],
+      errorS: Signal[Option[Throwable]],
+      companiesS: Signal[List[Company]],
       showCreateTherapistModalVar: Var[Boolean]
   ): HtmlElement =
     // None means every role; the filter is done in the browser
@@ -28,8 +30,8 @@ object TherapistsTab:
 
     // The role filter first, then the table filters by the search text
     val rowsS: Signal[Option[List[TherapistRow]]] =
-      therapists.itemsVar.signal
-        .combineWith(roleFilterVar.signal, companies)
+      therapistsS
+        .combineWith(roleFilterVar.signal, companiesS)
         .map { case (items, roleFilter, companyList) =>
           items.map(
             _.filter(t => roleFilter.forall(_ == t.role)).map(t =>
@@ -70,12 +72,12 @@ object TherapistsTab:
           ),
         onSelect = row => selectedVar.set(Some(row)),
         searchS = searchVar.signal,
-        errorS = therapists.errorVar.signal,
+        errorS = errorS.map(_.map(ErrorMessages.errorToMessage)),
         emptyTextS = roleFilterVar.signal.map(
           _.fold("Nothing here yet.")(_ => "No therapist has this role.")
         )
       ),
-      CreateTherapistModal(showCreateTherapistModalVar, therapists, companies),
+      CreateTherapistModal(showCreateTherapistModalVar, companiesS),
       DetailsModal[TherapistRow](
         selectedVar,
         "Therapist",
