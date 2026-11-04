@@ -1,7 +1,8 @@
 package prototype.shared.company
 
 import java.util.UUID
-import prototype.api.{Company, CompanyId, Address}
+
+import prototype.api.{Address, Company, CompanyId}
 
 /** A company as the projection stores it and the browser folds it (see
   * `CompanyEvolve`).

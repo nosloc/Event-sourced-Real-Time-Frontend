@@ -21,14 +21,6 @@ class PatientServiceImpl(
 
   private val logger = Slf4jLogger.getLogger[IO]
 
-  private def fromState(state: PatientState): Patient =
-    Patient(
-      PatientId(state.patientId),
-      state.firstName,
-      state.lastName,
-      LocalDate.fromJava(state.dateOfBirth)
-    )
-
   // The id is generated here, like the company's. Names are not logged: they
   // identify a person.
   override def createPatient(
@@ -56,13 +48,13 @@ class PatientServiceImpl(
   override def listPatients(): IO[ListPatientsOutput] =
     patients.allPatients.map((patients, position) =>
       ListPatientsOutput(
-        patients.sortBy(p => (p.lastName, p.firstName)).map(fromState),
+        patients.sortBy(p => (p.lastName, p.firstName)).map(PatientState.toPatient),
         position
       )
     )
 
   override def getPatient(patientId: PatientId): IO[GetPatientOutput] =
     patients.find(patientId.value).flatMap {
-      case Some(state) => IO.pure(GetPatientOutput(fromState(state)))
+      case Some(state) => IO.pure(GetPatientOutput(PatientState.toPatient(state)))
       case None        => IO.raiseError(PatientNotFound(patientId))
     }

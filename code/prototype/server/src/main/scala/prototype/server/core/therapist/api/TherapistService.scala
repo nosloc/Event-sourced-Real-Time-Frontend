@@ -22,27 +22,18 @@ class TherapistServiceImpl(
 
   // The role is stored as its name: a name nobody can read back means the
   // stored data is corrupted, not that the caller did something wrong
-  private def fromState(state: TherapistState): Therapist =
-    Therapist(
-      state.firstName,
-      state.lastName,
-      TherapistId(state.therapistId),
-      CompanyId(state.companyId),
-      state.role
-    )
-
   // Sorted by id: the list is shown to users and a projection has no stable order
   override def listTherapists(): IO[ListTherapistsOutput] =
     therapists.allTherapists.map((therapists, position) =>
       ListTherapistsOutput(
-        therapists.sortBy(_.therapistId).map(fromState),
+        therapists.sortBy(_.therapistId).map(TherapistState.toTherapist),
         position
       )
     )
 
   override def getTherapist(therapistId: TherapistId): IO[GetTherapistOutput] =
     therapists.find(therapistId.value).flatMap {
-      case Some(state) => IO.pure(GetTherapistOutput(fromState(state)))
+      case Some(state) => IO.pure(GetTherapistOutput(TherapistState.toTherapist(state)))
       case None        => IO.raiseError(TherapistNotFound(therapistId))
     }
 
