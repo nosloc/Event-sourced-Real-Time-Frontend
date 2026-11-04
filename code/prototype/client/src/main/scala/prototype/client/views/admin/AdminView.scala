@@ -6,11 +6,11 @@ import prototype.client.Api.ApiCall
 import prototype.client.companies.LiveCompanies
 import prototype.client.live.LiveFeed
 import prototype.client.live.LiveFeed.FeedMessage
+import prototype.client.patients.LivePatients
+import prototype.client.therapists.LiveTherapists
 import prototype.client.views.admin.DemoDataModal.Outcome
 
 import com.raquo.laminar.api.L.*
-import prototype.client.therapists.LiveTherapists
-import prototype.client.patients.LivePatients
 
 object AdminView:
 

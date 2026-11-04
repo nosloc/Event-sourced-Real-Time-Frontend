@@ -1,10 +1,10 @@
 package prototype.client.views.admin
 
 import prototype.api.*
+import prototype.client.ErrorMessages
 import prototype.client.views.components.SearchBox
 
 import com.raquo.laminar.api.L.*
-import prototype.client.ErrorMessages
 
 object PatientsTab:
   def apply(
