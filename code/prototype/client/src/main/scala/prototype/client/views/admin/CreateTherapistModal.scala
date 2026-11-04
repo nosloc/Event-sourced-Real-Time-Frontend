@@ -11,7 +11,7 @@ object CreateTherapistModal:
   def apply(
       showCreateTherapistModalVar: Var[Boolean],
       therapists: RemoteList[Therapist],
-      companies: RemoteList[Company]
+      companies: Signal[List[Company]]
   ): Mod[HtmlElement] =
     child.maybe <-- showCreateTherapistModalVar.signal.map(isOpen =>
       Option.when(isOpen) {
@@ -30,7 +30,7 @@ object CreateTherapistModal:
                 draft.companyId,
                 draft.role
               ),
-            companyListS = companies.itemsVar.signal.map(_.getOrElse(Nil)),
+            companyListS = companies,
             onSuccess = () => {
               showCreateTherapistModalVar.set(false)
               therapists.reload()

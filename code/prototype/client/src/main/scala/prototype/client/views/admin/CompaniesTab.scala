@@ -1,13 +1,15 @@
 package prototype.client.views.admin
 
 import prototype.api.*
+import prototype.client.ErrorMessages
 import prototype.client.views.components.SearchBox
 
 import com.raquo.laminar.api.L.*
 
 object CompaniesTab:
   def apply(
-      companies: RemoteList[Company],
+      companies: Signal[Option[List[Company]]],
+      errorS: Signal[Option[Throwable]],
       showCreateCompanyModalVar: Var[Boolean]
   ): HtmlElement =
     val searchVar: Var[String] = Var("")
@@ -20,13 +22,13 @@ object CompaniesTab:
       ),
       AdminTable[Company](
         headers = List("Name", "Address"),
-        itemsS = companies.itemsVar.signal,
+        itemsS = companies,
         cellsOf = c => List(c.name, addressText(c.address)),
         onSelect = c => selectedVar.set(Some(c)),
         searchS = searchVar.signal,
-        errorS = companies.errorVar.signal
+        errorS = errorS.map(_.map(ErrorMessages.errorToMessage))
       ),
-      CreateCompanyModal(showCreateCompanyModalVar, companies),
+      CreateCompanyModal(showCreateCompanyModalVar),
       DetailsModal[Company](
         selectedVar,
         "Company",

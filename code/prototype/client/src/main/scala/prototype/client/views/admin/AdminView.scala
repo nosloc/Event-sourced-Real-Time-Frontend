@@ -1,11 +1,11 @@
 package prototype.client.views.admin
 
 import prototype.api.DemoDataAlreadyGenerated
-import prototype.client.{
-  Api,
-  ErrorMessages
-}
+import prototype.client.{Api, ErrorMessages}
 import prototype.client.Api.ApiCall
+import prototype.client.companies.LiveCompanies
+import prototype.client.live.LiveFeed
+import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.views.admin.DemoDataModal.Outcome
 
 import com.raquo.laminar.api.L.*
@@ -32,19 +32,22 @@ object AdminView:
   private val DevTherapistId = "dev"
 
   def apply(): HtmlElement =
+
+    // The feed of events from the server
+    val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
+
     val sectionVar: Var[Section] = Var(Section.Companies)
     val showCreateCompanyVar: Var[Boolean] = Var(false)
     val showCreateTherapistVar: Var[Boolean] = Var(false)
     val showCreatePatientVar: Var[Boolean] = Var(false)
 
-    val companies = RemoteList(Api.companies.listCompanies().map(_.companies))
+    val companies = LiveCompanies(feed)
     val therapists =
       RemoteList(Api.therapists.listTherapists().map(_.therapists))
     val patients = RemoteList(Api.patients.listPatients().map(_.patients))
 
     val demoData = DemoData()
     def reloadAll(): Unit =
-      companies.reload()
       therapists.reload()
       patients.reload()
 
@@ -63,8 +66,11 @@ object AdminView:
       .distinct
 
     div(
-      cls := "admin",
+      LiveFeed.bind(feed),
+      // Keep the lists loaded, even if the user is on another tab.
       companies.keepLoaded,
+
+      cls := "admin",
       therapists.keepLoaded,
       patients.keepLoaded,
       renderHead(demoData, showButtonS, () => reloadAll()),
@@ -82,9 +88,17 @@ object AdminView:
       ),
       child <-- sectionVar.signal.map {
         case Section.Companies =>
-          CompaniesTab(companies, showCreateCompanyVar)
+          CompaniesTab(
+            companies.valuesS,
+            companies.errorS,
+            showCreateCompanyVar
+          )
         case Section.Therapists =>
-          TherapistsTab(therapists, companies, showCreateTherapistVar)
+          TherapistsTab(
+            therapists,
+            companies.valuesS.map(_.getOrElse(Nil)),
+            showCreateTherapistVar
+          )
         case Section.Patients =>
           PatientsTab(patients, showCreatePatientVar)
       }

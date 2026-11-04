@@ -18,7 +18,7 @@ object TherapistsTab:
 
   def apply(
       therapists: RemoteList[Therapist],
-      companies: RemoteList[Company],
+      companies: Signal[List[Company]],
       showCreateTherapistModalVar: Var[Boolean]
   ): HtmlElement =
     // None means every role; the filter is done in the browser
@@ -29,14 +29,11 @@ object TherapistsTab:
     // The role filter first, then the table filters by the search text
     val rowsS: Signal[Option[List[TherapistRow]]] =
       therapists.itemsVar.signal
-        .combineWith(roleFilterVar.signal, companies.itemsVar.signal)
+        .combineWith(roleFilterVar.signal, companies)
         .map { case (items, roleFilter, companyList) =>
           items.map(
             _.filter(t => roleFilter.forall(_ == t.role)).map(t =>
-              TherapistRow(
-                t,
-                companyList.flatMap(_.find(_.companyId == t.companyId))
-              )
+              TherapistRow(t, companyList.find(_.companyId == t.companyId))
             )
           )
         }
