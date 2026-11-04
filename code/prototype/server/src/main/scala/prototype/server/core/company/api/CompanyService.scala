@@ -20,18 +20,6 @@ class CompanyServiceImpl(
 
   private val logger = Slf4jLogger.getLogger[IO]
 
-  private def fromState(state: CompanyState): Company =
-    Company(
-      CompanyId(state.companyId),
-      state.name,
-      Address(
-        state.addressStreet,
-        state.addressNumber,
-        state.addressCity,
-        state.addressState
-      )
-    )
-
   override def createCompany(
       name: String,
       address: Address
@@ -51,10 +39,11 @@ class CompanyServiceImpl(
 
   override def listCompanies(): IO[ListCompaniesOutput] =
     companies.allCompanies.map((companies, position) =>
-      ListCompaniesOutput(companies.map(fromState), position)
+      ListCompaniesOutput(companies.map(CompanyState.toCompany), position)
     )
   override def getCompany(companyId: CompanyId): IO[GetCompanyOutput] =
     companies.find(companyId.value).flatMap {
-      case Some(company) => IO.pure(GetCompanyOutput(fromState(company)))
-      case None          => IO.raiseError(CompanyNotFound())
+      case Some(company) =>
+        IO.pure(GetCompanyOutput(CompanyState.toCompany(company)))
+      case None => IO.raiseError(CompanyNotFound())
     }
