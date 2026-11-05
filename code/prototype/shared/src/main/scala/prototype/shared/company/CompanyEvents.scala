@@ -3,7 +3,7 @@ package prototype.shared.company
 import java.util.UUID
 
 import prototype.api.EventMessage
-import prototype.shared.events.PrototypeEvent
+import prototype.shared.events.{EventType, PrototypeEvent}
 
 import io.circe.{Decoder, Encoder}
 
@@ -42,6 +42,12 @@ final case class CompanyCreated(
 
 object CompanyEvent:
 
+  // The decoder of each company event, by type name
+  private val decoders: EventType.Decoders[CompanyEvent] =
+    Map(
+      EventType.decoder[CompanyCreated]
+    )
+
   /** The company event in an event message, read by its type name (P4S stores
     * an event under its class name). None: not a company event. Some(Left): a
     * company event whose payload does not decode.
@@ -49,7 +55,4 @@ object CompanyEvent:
   def decode(
       message: EventMessage
   ): Option[Either[io.circe.Error, CompanyEvent]] =
-    message.eventType match
-      case "CompanyCreated" =>
-        Some(io.circe.parser.decode[CompanyCreated](message.payload))
-      case _ => None
+    decoders.get(message.eventType).map(_(message.payload))

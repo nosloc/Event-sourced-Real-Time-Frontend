@@ -6,9 +6,9 @@ import prototype.api.{
   EventMessage,
   Role
 }
-import prototype.shared.events.PrototypeEvent
+import prototype.shared.events.{EventType, PrototypeEvent}
 
-import io.circe.{parser, Decoder, Encoder}
+import io.circe.{Decoder, Encoder}
 
 // The stored JSON is the role's name, e.g. "PHYSICIAN"
 given Encoder[Role] = Encoder[String].contramap(_.stringValue)
@@ -30,6 +30,12 @@ final case class TherapistCreated(
 
 object TherapistEvent:
 
+  // The decoder of each therapist event, by type name
+  private val decoders: EventType.Decoders[TherapistEvent] =
+    Map(
+      EventType.decoder[TherapistCreated]
+    )
+
   /** The therapist event in an event message, read by its type name (P4S stores
     * an event under its class name). None: not a therapist event. Some(Left): a
     * therapist event whose payload does not decode.
@@ -37,7 +43,4 @@ object TherapistEvent:
   def decode(
       message: EventMessage
   ): Option[Either[io.circe.Error, TherapistEvent]] =
-    message.eventType match
-      case "TherapistCreated" =>
-        Some(parser.decode[TherapistCreated](message.payload))
-      case _ => None
+    decoders.get(message.eventType).map(_(message.payload))

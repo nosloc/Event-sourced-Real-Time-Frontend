@@ -3,9 +3,9 @@ package prototype.shared.appointment
 import java.util.UUID
 
 import prototype.api.{AppointmentType, EventMessage, PrestationStatus}
-import prototype.shared.events.PrototypeEvent
+import prototype.shared.events.{EventType, PrototypeEvent}
 
-import io.circe.{parser, Decoder, Encoder}
+import io.circe.{Decoder, Encoder}
 
 // The stored JSON is the status name, e.g. "TO_BILL"
 given Encoder[PrestationStatus] = Encoder[String].contramap(_.stringValue)
@@ -27,6 +27,19 @@ sealed trait AppointmentEvent extends PrototypeEvent:
 
 object AppointmentEvent:
 
+  // The decoder of each appointment event, by type name
+  private val decoders: EventType.Decoders[AppointmentEvent] =
+    Map(
+      EventType.decoder[AppointmentCreated],
+      EventType.decoder[AppointmentUpdated],
+      EventType.decoder[AppointmentDeleted],
+      EventType.decoder[PrestationCreated],
+      EventType.decoder[PrestationStatusUpdated],
+      EventType.decoder[PrestationDeleted],
+      EventType.decoder[TherapistAddedToAppointment],
+      EventType.decoder[PatientAddedToAppointment]
+    )
+
   /** The appointment event in an event message, read by its type name (P4S
     * stores an event under its class name). None: not an appointment event.
     * Some(Left): an appointment event whose payload does not decode.
@@ -34,25 +47,7 @@ object AppointmentEvent:
   def decode(
       message: EventMessage
   ): Option[Either[io.circe.Error, AppointmentEvent]] =
-    message.eventType match
-      case "AppointmentCreated" =>
-        Some(parser.decode[AppointmentCreated](message.payload))
-      case "AppointmentUpdated" =>
-        Some(parser.decode[AppointmentUpdated](message.payload))
-      case "AppointmentDeleted" =>
-        Some(parser.decode[AppointmentDeleted](message.payload))
-      case "PrestationCreated" =>
-        Some(parser.decode[PrestationCreated](message.payload))
-      case "PrestationStatusUpdated" =>
-        Some(parser.decode[PrestationStatusUpdated](message.payload))
-      case "PrestationDeleted" =>
-        Some(parser.decode[PrestationDeleted](message.payload))
-      case "TherapistAddedToAppointment" =>
-        Some(parser.decode[TherapistAddedToAppointment](message.payload))
-      case "PatientAddedToAppointment" =>
-        Some(parser.decode[PatientAddedToAppointment](message.payload))
-      case _ => None
-  end decode
+    decoders.get(message.eventType).map(_(message.payload))
 end AppointmentEvent
 
 final case class AppointmentCreated(
