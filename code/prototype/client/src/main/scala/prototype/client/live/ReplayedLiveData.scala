@@ -55,7 +55,7 @@ final class ReplayedLiveData[K, A, E](
 
   // The state of the live value: the loads (a status per reload, for the latest
   // key only) and the events received, folded by `LiveModel.step`
-  private val stateVar: Signal[LiveModel.State[K, A, E]] =
+  private val stateS: Signal[LiveModel.State[K, A, E]] =
     reloadKey
       .flatMapWithStatus(k => Api.stream(load(k)))
       .map {
@@ -71,9 +71,9 @@ final class ReplayedLiveData[K, A, E](
 
   // Exposed state: read separately, so a failed reload can show its error
   // next to the value still on screen
-  override val valueS: Signal[Option[A]] = stateVar.signal.map(_.value)
-  override val loadingS: Signal[Boolean] = stateVar.signal.map(_.loading)
-  override val errorS: Signal[Option[Throwable]] = stateVar.signal.map(_.error)
+  override val valueS: Signal[Option[A]] = stateS.map(_.value)
+  override val loadingS: Signal[Boolean] = stateS.map(_.loading)
+  override val errorS: Signal[Option[Throwable]] = stateS.map(_.error)
 
 object ReplayedLiveData:
 

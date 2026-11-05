@@ -2,7 +2,7 @@ package prototype.client.appointments
 
 import prototype.api.*
 import prototype.client.Api
-import prototype.client.live.{LiveData, ReplayedLiveData, LiveFeed}
+import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData}
 import prototype.shared.appointment.*
 
 import com.raquo.laminar.api.L.*

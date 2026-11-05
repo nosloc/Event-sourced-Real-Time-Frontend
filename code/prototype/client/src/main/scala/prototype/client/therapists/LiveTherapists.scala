@@ -2,7 +2,7 @@ package prototype.client.therapists
 
 import prototype.api.Therapist
 import prototype.client.Api
-import prototype.client.live.{LiveData, ReplayedLiveData, LiveFeed}
+import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData}
 import prototype.shared.therapist.TherapistEvent
 
 import com.raquo.laminar.api.L.*

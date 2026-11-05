@@ -2,7 +2,7 @@ package prototype.client.companies
 
 import prototype.api.Company
 import prototype.client.Api
-import prototype.client.live.{LiveFeed, LiveData, ReplayedLiveData}
+import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData}
 import prototype.shared.company.CompanyEvent
 
 import com.raquo.laminar.api.L.*
