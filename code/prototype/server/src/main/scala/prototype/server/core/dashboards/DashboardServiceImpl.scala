@@ -21,8 +21,8 @@ object DashboardServiceImpl:
           companyId: CompanyId
       ): IO[GetBillingDashboardOutput] =
         for
-          therapists <- getCompanyTherapists(companyId)
-          companyAppointments <- getCompanyAppointments(therapists)
+          (therapists, _) <- getCompanyTherapists(companyId)
+          (companyAppointments, _) <- getCompanyAppointments(therapists)
           now <- IO.realTimeInstant
         yield BillingDashboard(companyAppointments, now)
 
@@ -30,8 +30,8 @@ object DashboardServiceImpl:
           companyId: CompanyId
       ): IO[GetDirectoryDashboardOutput] =
         for
-          therapists <- getCompanyTherapists(companyId)
-          companyAppointments <- getCompanyAppointments(therapists)
+          (therapists, _) <- getCompanyTherapists(companyId)
+          (companyAppointments, _) <- getCompanyAppointments(therapists)
           now <- IO.realTimeInstant
         yield DirectoryDashboard(therapists, companyAppointments, now)
 
@@ -41,31 +41,50 @@ object DashboardServiceImpl:
           date: LocalDate
       ): IO[GetActivityDashboardOutput] =
         for
-          therapists <- getCompanyTherapists(companyId)
-          companyAppointments <- getCompanyAppointments(therapists)
-        yield ActivityDashboard(therapists, companyAppointments, unit, date)
+          (therapists, therapistsPosition) <- getCompanyTherapists(companyId)
+          (companyAppointments, appointmentsPosition) <-
+            getCompanyAppointments(therapists)
+        yield ActivityDashboard(
+          therapists,
+          companyAppointments,
+          unit,
+          date,
+          // Each read has its own position: the dashboard is only as recent as
+          // the oldest of them
+          (therapistsPosition :: appointmentsPosition.toList).min
+        )
 
+      // The therapists of the company, with the position of the read
       private def getCompanyTherapists(
           companyId: CompanyId
-      ): IO[List[Therapist]] =
+      ): IO[(List[Therapist], Long)] =
         // Fails with CompanyNotFound if the company does not exist
         companyService.getCompany(companyId) *>
-          therapistService.listTherapists().map { therapists =>
-            therapists.therapists.filter(_.companyId == companyId)
+          therapistService.listTherapists().map { output =>
+            (
+              output.therapists.filter(_.companyId == companyId),
+              output.globalPosition
+            )
           }
       end getCompanyTherapists
+      // The appointments of the company, read one therapist at a time, with
+      // the oldest position of those reads (None: no therapist, no read)
       private def getCompanyAppointments(
           companyTherapists: List[Therapist]
-      ): IO[List[Appointment]] =
+      ): IO[(List[Appointment], Option[Long])] =
         companyTherapists
           .map(_.therapistId)
           .traverse(
             appointmentService.listTherapistAppointments(_)
           )
-          .map(_.flatMap(_.appointments))
-          // An appointment with two therapists of the company is listed once
-          // per therapist, so it is kept only once
-          .map(_.distinctBy(_.appointmentId))
+          .map(outputs =>
+            (
+              // An appointment with two therapists of the company is listed
+              // once per therapist, so it is kept only once
+              outputs.flatMap(_.appointments).distinctBy(_.appointmentId),
+              outputs.map(_.globalPosition).minOption
+            )
+          )
       end getCompanyAppointments
 
     })

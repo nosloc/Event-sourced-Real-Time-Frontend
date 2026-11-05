@@ -6,6 +6,7 @@ import prototype.api.*
 import prototype.client.Api
 import prototype.client.live.{LiveData, RefreshedLiveData}
 import prototype.client.live.LiveFeed.FeedMessage
+import prototype.shared.dashboards.ActivityDashboardEvents
 import prototype.shared.events.DomainEvent
 
 import com.raquo.laminar.api.L.*
@@ -29,10 +30,8 @@ object LiveActivityDashboard:
       periodUnitS: Signal[PeriodUnit],
       periodDayS: Signal[LocalDate]
   ): LiveData[(PeriodUnit, GetActivityDashboardOutput)] =
-    // TODO: Only the id should invalidate previous data, not the period or the day
     val keyS: Signal[Key] =
       companyIdS.combineWith(periodUnitS, periodDayS).map(Key.apply)
-
     new RefreshedLiveData[
       Key,
       (PeriodUnit, GetActivityDashboardOutput),
@@ -47,8 +46,12 @@ object LiveActivityDashboard:
             unit = key.periodUnit,
             date = key.periodDay
           )
-          // TODO: global position is not returned by the API yet, so we just use 0L for now
-          .map(response => ((key.periodUnit, response), 0L)),
-      triggerRefresh = _ => true // TODO: for now every event triggers a refresh
+          .map(response =>
+            ((key.periodUnit, response), response.globalPosition)
+          ),
+      triggerRefresh =
+        message => ActivityDashboardEvents.types.contains(message.eventType),
+      invalidatePrevious = (oldKey, newKey) =>
+        oldKey.companyId != newKey.companyId
     )
 end LiveActivityDashboard

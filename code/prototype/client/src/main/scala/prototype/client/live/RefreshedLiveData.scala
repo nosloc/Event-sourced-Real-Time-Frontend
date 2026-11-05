@@ -11,9 +11,11 @@ import com.raquo.laminar.api.L.*
 /** A `LiveData` kept up to date by reloading it from the server, for one key at
   * a time: once the stream has subscribed, again after a reconnect or a key
   * change while the stream is open, and on every event `triggerRefresh`
-  * accepts. The events themselves are not applied: they only say that the
-  * value is out of date. While a reload runs, and after it fails, the previous
-  * value stays; a new key drops it. Nothing runs until one of its signals is
+  * accepts. The events themselves are not applied: they only say that the value
+  * is out of date. While a reload runs, and after it fails, the previous value
+  * stays; a new key drops it, unless `invalidatePrevious(old, new)` is false:
+  * the old value still stands for the new key while it loads (for example the
+  * same company over another period). Nothing runs until one of its signals is
   * read.
   *
   * For now a new reload cancels the one in flight, and the position returned by
@@ -26,7 +28,8 @@ final class RefreshedLiveData[K, A, E](
     feed: EventBus[FeedMessage],
     key: Signal[K],
     load: K => IO[(A, Long)],
-    triggerRefresh: EventMessage => Boolean
+    triggerRefresh: EventMessage => Boolean,
+    invalidatePrevious: (K, K) => Boolean = (_: K, _: K) => true
 ) extends LiveData[A]:
 
   private case class State(
@@ -62,17 +65,27 @@ final class RefreshedLiveData[K, A, E](
       .flatMapWithStatus(k => Api.stream(load(k)))
       .scanLeft(initialState) { (state, status) =>
         status match
-          case Pending(k) if state.key.contains(k) =>
-            state.copy(loading = true, error = None)
-          case Pending(k) =>
+          case Pending(k)
+              if state.key
+                .exists(old => k != old && invalidatePrevious(old, k)) =>
             state.copy(
               key = Some(k),
               value = None,
               loading = true,
               error = None
             )
+          case Pending(k) =>
+            state.copy(
+              key = Some(k),
+              loading = true,
+              error = None
+            )
           case Resolved(_, Right((value, _)), _) =>
-            state.copy(value = Some(value), loading = false, error = None)
+            state.copy(
+              value = Some(value),
+              loading = false,
+              error = None
+            )
           case Resolved(_, Left(error), _) =>
             state.copy(loading = false, error = Some(error))
       }

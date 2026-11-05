@@ -152,6 +152,11 @@ structure GetActivityDashboardOutput {
     // The chosen period and the 5 before it, oldest first
     @required
     evolution: PeriodCounts
+
+    // Up to date with the events up to this position: the oldest of the reads
+    // the dashboard was computed from
+    @required
+    globalPosition: Long
 }
 
 structure PeriodCount {

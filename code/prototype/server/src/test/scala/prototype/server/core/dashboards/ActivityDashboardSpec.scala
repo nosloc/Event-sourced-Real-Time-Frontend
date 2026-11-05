@@ -14,10 +14,10 @@ class ActivityDashboardSpec extends AnyFlatSpec with Matchers:
   private val therapists = List(therapist("arb"), therapist("mdp"), therapist("tst"))
 
   private def week(day: String, appointments: List[Appointment]) =
-    ActivityDashboard(therapists, appointments, PeriodUnit.WEEK, date(day))
+    ActivityDashboard(therapists, appointments, PeriodUnit.WEEK, date(day), 0L)
 
   private def month(day: String, appointments: List[Appointment]) =
-    ActivityDashboard(therapists, appointments, PeriodUnit.MONTH, date(day))
+    ActivityDashboard(therapists, appointments, PeriodUnit.MONTH, date(day), 0L)
 
   "A week" should "run from Monday to Sunday around the given day" in {
     // 2026-10-14 is a Wednesday

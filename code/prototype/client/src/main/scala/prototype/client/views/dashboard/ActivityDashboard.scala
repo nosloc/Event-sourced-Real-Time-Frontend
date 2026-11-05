@@ -56,7 +56,8 @@ object ActivityDashboard:
   ): HtmlElement =
     val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
 
-    // A new company or period drops the figures shown until the new ones arrive
+    // A new company drops the figures shown until the new ones arrive; a new
+    // period keeps them on screen while it loads
     val dashboard: LiveData[Answer] = LiveActivityDashboard(
       feed,
       companyIdS,
@@ -64,8 +65,7 @@ object ActivityDashboard:
       selectedPeriodDayVar.signal
     )
 
-    // The period shown is the one the server answered with: the arrows step
-    // from its first and last day, so months of different lengths need no maths
+    // The period shown is the one the server answered with
     val periodS: Signal[Option[(LocalDate, LocalDate)]] =
       dashboard.valueS.map(_.map((_, out) => (out.periodStart, out.periodEnd)))
 
@@ -94,6 +94,13 @@ object ActivityDashboard:
       selectedPeriodDayVar: Var[LocalDate],
       periodS: Signal[Option[(LocalDate, LocalDate)]]
   ): HtmlElement =
+    // The arrows step from the day asked for, not from the period on screen:
+    // that one stays while the next loads, so a quick second click would step
+    // from it again and be lost
+    def stepBy(periods: Int): Mod[Button] =
+      onClick.compose(_.sample(selectedPeriodUnitVar.signal)) --> { unit =>
+        selectedPeriodDayVar.update(day => stepDay(day, unit, periods))
+      }
     div(
       cls := "dash__toolbar",
       PopoverPicker(
@@ -112,13 +119,7 @@ object ActivityDashboard:
         cls := "btn",
         aria.label := "Previous period",
         "‹",
-        disabled <-- periodS.map(_.isEmpty),
-        onClick.compose(_.sample(periodS)) --> {
-          // The day before the period is in the previous one
-          case Some((start, _)) =>
-            selectedPeriodDayVar.set(LocalDate(start.epochDay - 1))
-          case None => ()
-        }
+        stepBy(-1)
       ),
       span(
         cls := "dash__period",
@@ -132,16 +133,19 @@ object ActivityDashboard:
         cls := "btn",
         aria.label := "Next period",
         "›",
-        disabled <-- periodS.map(_.isEmpty),
-        onClick.compose(_.sample(periodS)) --> {
-          // The day after the period is in the next one
-          case Some((_, end)) =>
-            selectedPeriodDayVar.set(LocalDate(end.epochDay + 1))
-          case None => ()
-        }
+        stepBy(1)
       )
     )
   end renderPeriodSelector
+
+  // The same day, some weeks or months later (or earlier): java.time keeps it
+  // in the right month, Jan 31 + 1 month is Feb 28
+  private def stepDay(day: LocalDate, unit: PeriodUnit, by: Int): LocalDate =
+    val javaDay = java.time.LocalDate.ofEpochDay(day.epochDay)
+    val stepped = unit match
+      case WEEK  => javaDay.plusWeeks(by)
+      case MONTH => javaDay.plusMonths(by)
+    LocalDate(stepped.toEpochDay)
 
   // The charts get a signal of their config, not a fixed one: they stay on
   // the page and update() when the period changes

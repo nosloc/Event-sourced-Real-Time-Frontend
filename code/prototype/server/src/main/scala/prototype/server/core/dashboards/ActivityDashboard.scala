@@ -22,7 +22,8 @@ object ActivityDashboard:
       therapists: List[Therapist],
       companyAppointments: List[Appointment],
       unit: PeriodUnit,
-      date: LocalDate
+      date: LocalDate,
+      globalPosition: Long
   ): GetActivityDashboardOutput =
     val period = periodOf(unit, date.toJava)
     val inPeriod = appointmentsIn(companyAppointments, period)
@@ -35,7 +36,8 @@ object ActivityDashboard:
       patientsSeen = inPeriod.flatMap(_.patientIds).distinct.size,
       busiestTherapist = getBusiestTherapist(perTherapist),
       perTherapist = perTherapist,
-      evolution = getEvolution(companyAppointments, unit, period)
+      evolution = getEvolution(companyAppointments, unit, period),
+      globalPosition = globalPosition
     )
   end apply
 
@@ -87,7 +89,8 @@ object ActivityDashboard:
   private def periodOf(unit: PeriodUnit, day: JavaLocalDate): Period =
     unit match
       case PeriodUnit.WEEK =>
-        val monday = day.`with`(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val monday =
+          day.`with`(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         Period(monday, monday.plusDays(6))
       case PeriodUnit.MONTH =>
         Period(
