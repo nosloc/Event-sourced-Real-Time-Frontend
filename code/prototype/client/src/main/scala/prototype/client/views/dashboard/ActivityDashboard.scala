@@ -7,11 +7,10 @@ import scala.scalajs.js.JSConverters.*
 
 import prototype.api.*
 import prototype.api.PeriodUnit.*
-import prototype.client.{
-  Api,
-  ErrorMessages
-}
-import prototype.client.Api.ApiCall
+import prototype.client.ErrorMessages
+import prototype.client.dashboards.LiveActivityDashboard
+import prototype.client.live.{LiveData, LiveFeed}
+import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.views.components.*
 import prototype.client.views.components.chartJS.*
 
@@ -30,69 +29,65 @@ object ActivityDashboard:
     // Any day inside the period shown: the server works out the week or month
     val selectedPeriodDayVar: Var[LocalDate] = Var(LocalDate.now())
 
-    // Keep the last answer to avoid flickering when changing the period or company
-    val answerVar: Var[Option[Answer]] = Var(None)
-    val errorVar: Var[Option[Throwable]] = Var(None)
+    div(
+      cls := "dash",
+      child <-- selectedCompanySignal.splitOption(
+        (_, companyIdS) =>
+          renderCompanyDashboard(
+            companyIdS,
+            selectedPeriodUnitVar,
+            selectedPeriodDayVar
+          ),
+        p(
+          cls := "dash__empty",
+          "Select a company to see the activity dashboard."
+        )
+      )
+    )
+  end apply
+
+  // Built once a company is selected, and kept while it changes. The feed is
+  // opened here, not above: a live value first read after the stream opened
+  // would never load
+  private def renderCompanyDashboard(
+      companyIdS: Signal[UUID],
+      selectedPeriodUnitVar: Var[PeriodUnit],
+      selectedPeriodDayVar: Var[LocalDate]
+  ): HtmlElement =
+    val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
+
+    // A new company or period drops the figures shown until the new ones arrive
+    val dashboard: LiveData[Answer] = LiveActivityDashboard(
+      feed,
+      companyIdS,
+      selectedPeriodUnitVar.signal,
+      selectedPeriodDayVar.signal
+    )
 
     // The period shown is the one the server answered with: the arrows step
     // from its first and last day, so months of different lengths need no maths
     val periodS: Signal[Option[(LocalDate, LocalDate)]] =
-      answerVar.signal.map(_.map((_, out) => (out.periodStart, out.periodEnd)))
-
-    val requestS: Signal[Option[(UUID, PeriodUnit, LocalDate)]] =
-      selectedCompanySignal
-        .combineWith(selectedPeriodUnitVar.signal, selectedPeriodDayVar.signal)
-        .map((company, unit, day) => company.map(id => (id, unit, day)))
-
-    val stateS: Signal[Api.ApiState[Answer]] =
-      requestS.flatMapSwitch {
-        case Some((companyId, unit, day)) =>
-          ApiCall
-            .fromIOCall(
-              Api.dashboards
-                .getActivityDashboard(CompanyId(companyId), unit, day),
-              out => (unit, out)
-            )
-            .stateS
-        case None => Val(Api.Loading)
-      }
+      dashboard.valueS.map(_.map((_, out) => (out.periodStart, out.periodEnd)))
 
     div(
       cls := "dash",
-      // The figures of the previous company must not stay on screen
-      selectedCompanySignal --> { _ => answerVar.set(None) },
-      stateS --> {
-        case Api.Success(answer) =>
-          answerVar.set(Some(answer))
-          errorVar.set(None)
-        case Api.Error(error) =>
-          errorVar.set(Some(error))
-        case Api.Loading =>
-          // Keep the previous answer to avoid flickering
-          ()
-      },
+      LiveFeed.bind(feed),
       renderPeriodSelector(
         selectedPeriodUnitVar,
         selectedPeriodDayVar,
         periodS
       ),
-      child.maybe <-- errorVar.signal.map(
+      child.maybe <-- dashboard.errorS.map(
         _.map(error =>
           div(cls := "dash__error", ErrorMessages.errorToMessage(error))
         )
       ),
-      child <-- answerVar.signal.splitOption(
+      child <-- dashboard.valueS.splitOption(
         (_, answerS) => renderAnswer(answerS),
-        p(
-          cls := "dash__empty",
-          child.text <-- selectedCompanySignal.map {
-            case None    => "Select a company to see the activity dashboard."
-            case Some(_) => "Loading activity dashboard..."
-          }
-        )
+        p(cls := "dash__empty", "Loading activity dashboard...")
       )
     )
-  end apply
+  end renderCompanyDashboard
 
   private def renderPeriodSelector(
       selectedPeriodUnitVar: Var[PeriodUnit],
