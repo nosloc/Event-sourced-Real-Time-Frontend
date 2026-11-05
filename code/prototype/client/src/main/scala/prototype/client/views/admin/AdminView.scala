@@ -52,7 +52,7 @@ object AdminView:
 
     // Same rule as the server: only the dev account exists. Hidden until the
     // therapists have loaded, so it never flashes on a page that has data
-    val onlyDevS: Signal[Boolean] = therapists.valuesS.map(
+    val onlyDevS: Signal[Boolean] = therapists.valueS.map(
       _.exists(_.forall(_.therapistId.value == DevTherapistId))
     )
     // Kept on screen (disabled) while it runs and while the results are shown,
@@ -89,19 +89,19 @@ object AdminView:
       child <-- sectionVar.signal.map {
         case Section.Companies =>
           CompaniesTab(
-            companies.valuesS,
+            companies.valueS,
             companies.errorS,
             showCreateCompanyVar
           )
         case Section.Therapists =>
           TherapistsTab(
-            therapists.valuesS,
+            therapists.valueS,
             therapists.errorS,
-            companies.valuesS.map(_.getOrElse(Nil)),
+            companies.valueS.map(_.getOrElse(Nil)),
             showCreateTherapistVar
           )
         case Section.Patients =>
-          PatientsTab(patients.valuesS, patients.errorS, showCreatePatientVar)
+          PatientsTab(patients.valueS, patients.errorS, showCreatePatientVar)
       }
     )
   end apply

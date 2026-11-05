@@ -2,7 +2,7 @@ package prototype.client.therapists
 
 import prototype.api.Therapist
 import prototype.client.Api
-import prototype.client.live.{KeylessLiveDataSource, LiveFeed}
+import prototype.client.live.{LiveData, ReplayedLiveData, LiveFeed}
 import prototype.shared.therapist.TherapistEvent
 
 import com.raquo.laminar.api.L.*
@@ -10,8 +10,8 @@ import com.raquo.laminar.api.L.*
 object LiveTherapists:
   def apply(
       feed: EventBus[LiveFeed.FeedMessage]
-  ): KeylessLiveDataSource[List[Therapist], TherapistEvent] =
-    KeylessLiveDataSource[List[Therapist], TherapistEvent](
+  ): LiveData[List[Therapist]] =
+    ReplayedLiveData.keyless[List[Therapist], TherapistEvent](
       feed = feed,
       load = Api.therapists
         .listTherapists()

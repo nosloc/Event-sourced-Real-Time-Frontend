@@ -2,7 +2,7 @@ package prototype.client.companies
 
 import prototype.api.Company
 import prototype.client.Api
-import prototype.client.live.{KeylessLiveDataSource, LiveFeed}
+import prototype.client.live.{LiveFeed, LiveData, ReplayedLiveData}
 import prototype.shared.company.CompanyEvent
 
 import com.raquo.laminar.api.L.*
@@ -10,8 +10,8 @@ import com.raquo.laminar.api.L.*
 object LiveCompanies:
   def apply(
       feed: EventBus[LiveFeed.FeedMessage]
-  ): KeylessLiveDataSource[List[Company], CompanyEvent] =
-    KeylessLiveDataSource[List[Company], CompanyEvent](
+  ): LiveData[List[Company]] =
+    ReplayedLiveData.keyless[List[Company], CompanyEvent](
       feed = feed,
       load = Api.companies
         .listCompanies()

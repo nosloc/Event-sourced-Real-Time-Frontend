@@ -9,23 +9,24 @@ import prototype.client.live.LiveModel.Input
 
 import com.raquo.laminar.api.L.*
 
-/** A value kept up to date from the server's events, for one key at a time. Its
-  * snapshot is loaded once the stream has subscribed, and again after a
-  * reconnect or a key change while the stream is open. The events received are
-  * applied with `evolve`, in the order received: those received during the load
-  * are not lost, and those already in the snapshot are not applied twice (see
-  * `LiveModel.step`). Nothing runs until one of its signals is read.
+/** A `LiveData` kept up to date by replaying the server's events in the
+  * browser, for one key at a time. Its snapshot is loaded once the stream has
+  * subscribed, and again after a reconnect or a key change while the stream is
+  * open. The events received are applied with `evolve`, in the order received:
+  * those received during the load are not lost, and those already in the
+  * snapshot are not applied twice (see `LiveModel.step`). Nothing runs until
+  * one of its signals is read.
   *
   * K is the type of the key (for example a therapist), A the type of the value,
   * E the type of the events `decode` keeps.
   */
-final class LiveDataSource[K, A, E](
+final class ReplayedLiveData[K, A, E](
     feed: EventBus[FeedMessage],
     key: Signal[K],
     load: K => IO[(A, Long)],
     decode: EventMessage => Option[E],
     evolve: (K, A, E) => A
-):
+) extends LiveData[A]:
 
   private val opened: Signal[Boolean] =
     feed.events
@@ -34,7 +35,8 @@ final class LiveDataSource[K, A, E](
         case FeedMessage.Closed => false
       }
       .startWith(false)
-  // Is reload needed
+  // The key to load, each time a snapshot is needed: when the stream opens
+  // (first time or reconnect), and when the key changes while it is open
   private val reloadKey: EventStream[K] =
     feed.events
       .collect { case FeedMessage.Opened => () }
@@ -69,13 +71,27 @@ final class LiveDataSource[K, A, E](
 
   // Exposed state: read separately, so a failed reload can show its error
   // next to the value still on screen
-  val valuesS: Signal[Option[A]] = stateVar.signal.map(_.value)
-  val loadingS: Signal[Boolean] = stateVar.signal.map(_.loading)
-  val errorS: Signal[Option[Throwable]] = stateVar.signal.map(_.error)
+  override val valueS: Signal[Option[A]] = stateVar.signal.map(_.value)
+  override val loadingS: Signal[Boolean] = stateVar.signal.map(_.loading)
+  override val errorS: Signal[Option[Throwable]] = stateVar.signal.map(_.error)
 
-  /** Mount this on an element that stays on screen. The signals are lazy, so a
-    * source nothing reads stops: the feed does not keep the events it sends
-    * meanwhile, and a source first read after the stream opened never loads.
+object ReplayedLiveData:
+
+  /** A `ReplayedLiveData` for a value that does not depend on a key, such as a
+    * list shown whole (the companies of the admin tab). It is a keyed one with
+    * a constant key, so it loads, replays and reloads exactly the same way;
+    * only the key is gone from `load` and `evolve`.
     */
-  def keepLoaded: Mod[HtmlElement] =
-    valuesS --> Observer.empty
+  def keyless[A, E](
+      feed: EventBus[FeedMessage],
+      load: IO[(A, Long)],
+      decode: EventMessage => Option[E],
+      evolve: (A, E) => A
+  ): ReplayedLiveData[Unit, A, E] =
+    new ReplayedLiveData[Unit, A, E](
+      feed = feed,
+      key = Signal.fromValue(()),
+      load = _ => load,
+      decode = decode,
+      evolve = (_, value, event) => evolve(value, event)
+    )

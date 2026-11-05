@@ -2,10 +2,7 @@ package prototype.client.appointments
 
 import prototype.api.*
 import prototype.client.Api
-import prototype.client.live.{
-  LiveDataSource,
-  LiveFeed
-}
+import prototype.client.live.{LiveData, ReplayedLiveData, LiveFeed}
 import prototype.shared.appointment.*
 
 import com.raquo.laminar.api.L.*
@@ -14,8 +11,8 @@ object LiveAppointmentsForTherapist:
   def apply(
       feed: EventBus[LiveFeed.FeedMessage],
       therapistIdS: Signal[String]
-  ): LiveDataSource[String, List[Appointment], AppointmentEvent] =
-    new LiveDataSource[String, List[Appointment], AppointmentEvent](
+  ): LiveData[List[Appointment]] =
+    new ReplayedLiveData[String, List[Appointment], AppointmentEvent](
       feed = feed,
       key = therapistIdS,
       load = therapistId =>

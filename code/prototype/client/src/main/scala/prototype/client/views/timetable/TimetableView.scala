@@ -45,11 +45,11 @@ object TimetableView:
     // first load, or a new therapist. A reload keeps the grid on screen.
     val showSkeletonS: Signal[Boolean] =
       allAppointments.loadingS
-        .combineWith(allAppointments.valuesS)
+        .combineWith(allAppointments.valueS)
         .map((loading, kept) => loading && kept.isEmpty)
 
     val appointmentsForCurrentWeekS: Signal[WeekAppointments] =
-      allAppointments.valuesS
+      allAppointments.valueS
         .combineWith(weekDaysS)
         .map { case (appointments, weekDays) =>
           val appointmentsWithDate = appointments
@@ -76,7 +76,7 @@ object TimetableView:
     val selectedAppointmentIdVar: Var[Option[AppointmentId]] = Var(None)
 
     val selectedAppointmentS: Signal[Option[Appointment]] =
-      selectedAppointmentIdVar.signal.combineWith(allAppointments.valuesS).map {
+      selectedAppointmentIdVar.signal.combineWith(allAppointments.valueS).map {
         case (Some(selectedId), Some(appointments)) =>
           appointments.find(_.appointmentId == selectedId)
         case _ => None
