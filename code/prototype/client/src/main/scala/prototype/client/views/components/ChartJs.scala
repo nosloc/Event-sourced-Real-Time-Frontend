@@ -51,8 +51,18 @@ object chartJS:
       )
     )
 
+  // No animation, on the first draw or on updates: in a live view the figures
+  // change in place, without a transition to wait for
   private def copyConfig(config: ChartConfig): ChartConfig =
-    js.Object.assign(js.Dynamic.literal(), config).asInstanceOf[ChartConfig]
+    val options = js.Object.assign(
+      js.Dynamic.literal(),
+      config.options.getOrElse(js.Dynamic.literal()),
+      js.Dynamic.literal(animation = false)
+    )
+    val overrides = js.Dynamic.literal(options = options)
+    js.Object
+      .assign(js.Dynamic.literal(), config, overrides)
+      .asInstanceOf[ChartConfig]
 
   // For charts of counts: the y axis starts at 0 and has whole numbers only
   def integerAxisOptions(): js.Object =
