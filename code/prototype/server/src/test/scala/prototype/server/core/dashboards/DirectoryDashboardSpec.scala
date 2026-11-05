@@ -24,7 +24,7 @@ class DirectoryDashboardSpec extends AnyFlatSpec with Matchers:
       appointment("2026-10-02", List("mdp"), List(2, 3))
     )
 
-    val result = DirectoryDashboard(therapists, appointments, now)
+    val result = DirectoryDashboard(therapists, appointments, now, 0L)
 
     result.therapists shouldBe 3
     result.appointments shouldBe 2
@@ -32,7 +32,7 @@ class DirectoryDashboardSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "count the therapists per role" in {
-    val result = DirectoryDashboard(therapists, Nil, now)
+    val result = DirectoryDashboard(therapists, Nil, now, 0L)
 
     result.therapistsPerRole.toSet shouldBe Set(
       RoleCount(Role.PSYCHOLOGIST, 2),
@@ -47,7 +47,7 @@ class DirectoryDashboardSpec extends AnyFlatSpec with Matchers:
       appointment("2026-10-03", List("arb", "mdp"), List(3))
     )
 
-    val result = DirectoryDashboard(therapists, appointments, now)
+    val result = DirectoryDashboard(therapists, appointments, now, 0L)
 
     result.patientsPerTherapist shouldBe List(
       TherapistCount(TherapistId("arb"), 3),
@@ -59,7 +59,7 @@ class DirectoryDashboardSpec extends AnyFlatSpec with Matchers:
   it should "ignore therapists of other companies in patients per therapist" in {
     val appointments = List(appointment("2026-10-01", List("arb", "out"), List(1)))
 
-    val result = DirectoryDashboard(therapists, appointments, now)
+    val result = DirectoryDashboard(therapists, appointments, now, 0L)
 
     result.patientsPerTherapist.map(_.therapistId.value) shouldBe List("arb", "mdp", "tst")
   }
@@ -67,21 +67,21 @@ class DirectoryDashboardSpec extends AnyFlatSpec with Matchers:
   "Active patients" should "include a patient with an appointment in the future" in {
     val appointments = List(appointment("2026-10-20", patients = List(1)))
 
-    DirectoryDashboard(therapists, appointments, now).activePatients shouldBe 1
+    DirectoryDashboard(therapists, appointments, now, 0L).activePatients shouldBe 1
   }
 
   it should "include one whose last appointment ended less than 7 days ago" in {
     // Ended on the 10th at 11:00, now is the 16th at 12:00: 6 days and 1 hour
     val appointments = List(appointment("2026-10-10", patients = List(1)))
 
-    DirectoryDashboard(therapists, appointments, now).activePatients shouldBe 1
+    DirectoryDashboard(therapists, appointments, now, 0L).activePatients shouldBe 1
   }
 
   it should "leave out one whose last appointment ended more than 7 days ago" in {
     // Ended on the 9th at 11:00: 7 days and 1 hour before now
     val appointments = List(appointment("2026-10-09", patients = List(1)))
 
-    DirectoryDashboard(therapists, appointments, now).activePatients shouldBe 0
+    DirectoryDashboard(therapists, appointments, now, 0L).activePatients shouldBe 0
   }
 
   it should "count a patient once, whatever the number of appointments" in {
@@ -90,20 +90,20 @@ class DirectoryDashboardSpec extends AnyFlatSpec with Matchers:
       appointment("2026-10-20", patients = List(1))
     )
 
-    DirectoryDashboard(therapists, appointments, now).activePatients shouldBe 1
+    DirectoryDashboard(therapists, appointments, now, 0L).activePatients shouldBe 1
   }
 
   it should "still count a patient seen long ago as seen, but not active" in {
     val appointments = List(appointment("2026-01-05", patients = List(1)))
 
-    val result = DirectoryDashboard(therapists, appointments, now)
+    val result = DirectoryDashboard(therapists, appointments, now, 0L)
 
     result.patientsSeen shouldBe 1
     result.activePatients shouldBe 0
   }
 
   it should "give zeros for a company with no therapist and no appointment" in {
-    val result = DirectoryDashboard(Nil, Nil, now)
+    val result = DirectoryDashboard(Nil, Nil, now, 0L)
 
     result.therapists shouldBe 0
     result.appointments shouldBe 0

@@ -99,6 +99,11 @@ structure GetDirectoryDashboardOutput {
 
     @required
     patientsPerTherapist: TherapistCounts
+
+    // Up to date with the events up to this position: the oldest of the reads
+    // the dashboard was computed from
+    @required
+    globalPosition: Long
 }
 
 structure RoleCount {
@@ -190,6 +195,11 @@ structure GetBillingDashboardOutput {
     // The last 52 weeks ending with the current one, oldest first
     @required
     weekly: WeeklyAmounts
+
+    // Up to date with the events up to this position: the oldest of the reads
+    // the dashboard was computed from
+    @required
+    globalPosition: Long
 }
 
 structure AmountPerStatus {

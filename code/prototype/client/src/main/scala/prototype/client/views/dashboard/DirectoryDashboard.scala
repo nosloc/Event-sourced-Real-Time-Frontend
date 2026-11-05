@@ -6,11 +6,10 @@ import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 
 import prototype.api.*
-import prototype.client.{
-  Api,
-  ErrorMessages
-}
-import prototype.client.Api.ApiCall
+import prototype.client.ErrorMessages
+import prototype.client.dashboards.LiveDirectoryDashboard
+import prototype.client.live.{LiveData, LiveFeed}
+import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.views.components.StatBox
 import prototype.client.views.components.chartJS.*
 
@@ -18,40 +17,47 @@ import com.raquo.laminar.api.L.*
 
 object DirectoryDashboard:
   def apply(selectedCompanyS: Signal[Option[UUID]]): HtmlElement =
-    val dataS: ApiCall[GetDirectoryDashboardOutput] =
-      ApiCall(
-        selectedCompanyS.flatMapSwitch {
-          case Some(companyId) =>
-            ApiCall
-              .fromIOCallSimple(
-                Api.dashboards.getDirectoryDashboard(CompanyId(companyId))
-              )
-              .stateS
-          case None => Val(Api.Loading)
-        }
-      )
     div(
-      child <-- dataS.stateS.combineWith(selectedCompanyS).map {
-        case (Api.Loading, None) =>
-          div(
-            cls := "dash__empty",
-            "Select a company to see the directory dashboard."
-          )
-        case (Api.Loading, Some(_)) =>
-          div(
-            cls := "dash__empty",
-            "Loading directory dashboard..."
-          )
-        case (Api.Error(error), _) =>
-          div(cls := "dash__error", ErrorMessages.errorToMessage(error))
-        case (Api.Success(data), _) =>
-          renderDirectoryDashboard(data)
-      }
+      cls := "dash",
+      child <-- selectedCompanyS.splitOption(
+        (_, companyIdS) => renderCompanyDashboard(companyIdS),
+        div(
+          cls := "dash__empty",
+          "Select a company to see the directory dashboard."
+        )
+      )
     )
   end apply
 
+  // Built once a company is selected, and kept while it changes. The feed is
+  // opened here, not above: a live value first read after the stream opened
+  // would never load
+  private def renderCompanyDashboard(companyIdS: Signal[UUID]): HtmlElement =
+    val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
+
+    // A new company drops the figures shown until the new ones arrive
+    val dashboard: LiveData[GetDirectoryDashboardOutput] =
+      LiveDirectoryDashboard(feed, companyIdS)
+
+    div(
+      cls := "dash",
+      LiveFeed.bind(feed),
+      child.maybe <-- dashboard.errorS.map(
+        _.map(error =>
+          div(cls := "dash__error", ErrorMessages.errorToMessage(error))
+        )
+      ),
+      child <-- dashboard.valueS.splitOption(
+        (_, dataS) => renderDirectoryDashboard(dataS),
+        div(cls := "dash__empty", "Loading directory dashboard...")
+      )
+    )
+  end renderCompanyDashboard
+
+  // Takes a signal, not a fixed value: on a live update the figures and the
+  // charts change in place instead of being built again
   private def renderDirectoryDashboard(
-      data: GetDirectoryDashboardOutput
+      dataS: Signal[GetDirectoryDashboardOutput]
   ): HtmlElement =
     div(
       cls := "dash",
@@ -59,19 +65,19 @@ object DirectoryDashboard:
         cls := "dash__stats",
         StatBox(
           statLabel = "Total Therapists",
-          valueS = Val(data.therapists.toString)
+          valueS = dataS.map(_.therapists.toString)
         ),
         StatBox(
           statLabel = "Patients Seen",
-          valueS = Val(data.patientsSeen.toString)
+          valueS = dataS.map(_.patientsSeen.toString)
         ),
         StatBox(
           statLabel = "Active Patients",
-          valueS = Val(data.activePatients.toString)
+          valueS = dataS.map(_.activePatients.toString)
         ),
         StatBox(
           statLabel = "Total Appointments",
-          valueS = Val(data.appointments.toString)
+          valueS = dataS.map(_.appointments.toString)
         )
       ),
       div(
@@ -80,19 +86,20 @@ object DirectoryDashboard:
           cls := "dash__card panel",
           h3(cls := "dash__card-title", "Therapists per Role"),
           chartCanvas(
-            Val(therapistsPerRoleChartConfig(data.therapistsPerRole))
+            dataS.map(d => therapistsPerRoleChartConfig(d.therapistsPerRole))
           )
         ),
         div(
           cls := "dash__card panel",
           h3(cls := "dash__card-title", "Patients per Therapist"),
           chartCanvas(
-            Val(patientsPerTherapistChartConfig(data.patientsPerTherapist))
+            dataS.map(d =>
+              patientsPerTherapistChartConfig(d.patientsPerTherapist)
+            )
           )
         )
       )
     )
-
   end renderDirectoryDashboard
 
   private def therapistsPerRoleChartConfig(

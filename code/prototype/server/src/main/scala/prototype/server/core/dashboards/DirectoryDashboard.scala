@@ -9,7 +9,8 @@ object DirectoryDashboard:
   def apply(
       therapists: List[Therapist],
       companyAppointments: List[Appointment],
-      now: Instant
+      now: Instant,
+      globalPosition: Long
   ): GetDirectoryDashboardOutput =
     val patientIds = getCompanyPatientIds(companyAppointments)
     val activePatients = getActivePatients(companyAppointments, now)
@@ -25,7 +26,8 @@ object DirectoryDashboard:
       activePatients = activePatients.size,
       appointments = companyAppointments.size,
       therapistsPerRole = therapistsPerRole,
-      patientsPerTherapist = patientsPerTherapist
+      patientsPerTherapist = patientsPerTherapist,
+      globalPosition = globalPosition
     )
   end apply
 

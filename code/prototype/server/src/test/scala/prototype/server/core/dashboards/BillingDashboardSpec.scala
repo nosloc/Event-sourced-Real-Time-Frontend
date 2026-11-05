@@ -21,12 +21,12 @@ class BillingDashboardSpec extends AnyFlatSpec with Matchers:
       appointment("2026-10-02", prestations = List(prestation(TO_BILL, 1, 30f), prestation(BILLED, 3, 10f), prestation(CANCELLED, 1, 80f)))
     )
 
-    BillingDashboard(appointments, now).amountPerStatus shouldBe
+    BillingDashboard(appointments, now, 0L).amountPerStatus shouldBe
       AmountPerStatus(toBill = 130f, billed = 30f, paid = 200f, cancelled = 80f)
   }
 
   it should "be all zeros without a prestation" in {
-    BillingDashboard(List(appointment("2026-10-01")), now).amountPerStatus shouldBe
+    BillingDashboard(List(appointment("2026-10-01")), now, 0L).amountPerStatus shouldBe
       AmountPerStatus(0f, 0f, 0f, 0f)
   }
 
@@ -36,7 +36,7 @@ class BillingDashboardSpec extends AnyFlatSpec with Matchers:
     val done = appointment("2026-08-01", prestations = List(prestation(PAID)))
     val empty = appointment("2026-07-01")
 
-    val result = BillingDashboard(List(newer, done, empty, older), now).oldestToBill
+    val result = BillingDashboard(List(newer, done, empty, older), now, 0L).oldestToBill
 
     result.map(_.appointmentId) shouldBe List(older.appointmentId, newer.appointmentId)
     result.map(_.date) shouldBe List(date("2026-09-01"), date("2026-10-01"))
@@ -48,7 +48,7 @@ class BillingDashboardSpec extends AnyFlatSpec with Matchers:
       prestations = List(prestation(TO_BILL, 2, 25f), prestation(BILLED, 1, 500f))
     )
 
-    BillingDashboard(List(appt), now).oldestToBill.map(_.amount) shouldBe List(50f)
+    BillingDashboard(List(appt), now, 0L).oldestToBill.map(_.amount) shouldBe List(50f)
   }
 
   it should "keep the type and the therapists of the appointment" in {
@@ -59,7 +59,7 @@ class BillingDashboardSpec extends AnyFlatSpec with Matchers:
       prestations = List(prestation(TO_BILL))
     )
 
-    val item = BillingDashboard(List(appt), now).oldestToBill.head
+    val item = BillingDashboard(List(appt), now, 0L).oldestToBill.head
 
     item.appointmentType shouldBe AppointmentType.COUPLE
     item.therapistIds shouldBe appt.therapistIds
@@ -70,14 +70,14 @@ class BillingDashboardSpec extends AnyFlatSpec with Matchers:
       appointment(f"2026-09-$i%02d", prestations = List(prestation(TO_BILL)))
     )
 
-    val result = BillingDashboard(appointments, now).oldestToBill
+    val result = BillingDashboard(appointments, now, 0L).oldestToBill
 
     result should have size 5
     result.map(_.date) shouldBe (1 to 5).toList.map(i => date(f"2026-09-$i%02d"))
   }
 
   "The weekly amounts" should "cover 52 weeks, oldest first, ending with the current week" in {
-    val weekly = BillingDashboard(Nil, now).weekly
+    val weekly = BillingDashboard(Nil, now, 0L).weekly
 
     weekly should have size 52
     weekly.last.weekStart shouldBe date("2026-10-12")
@@ -91,7 +91,7 @@ class BillingDashboardSpec extends AnyFlatSpec with Matchers:
       appointment("2026-10-06", prestations = List(prestation(PAID, 1, 70f)))
     )
 
-    val weekly = BillingDashboard(appointments, now).weekly
+    val weekly = BillingDashboard(appointments, now, 0L).weekly
 
     weekly.last shouldBe WeeklyAmount(date("2026-10-12"), toBill = 10f, billed = 20f, paid = 30f)
     weekly(50) shouldBe WeeklyAmount(date("2026-10-05"), toBill = 0f, billed = 0f, paid = 70f)
@@ -102,7 +102,7 @@ class BillingDashboardSpec extends AnyFlatSpec with Matchers:
       appointment("2026-10-13", prestations = List(prestation(CANCELLED, 1, 999f)))
     )
 
-    BillingDashboard(appointments, now).weekly.last shouldBe
+    BillingDashboard(appointments, now, 0L).weekly.last shouldBe
       WeeklyAmount(date("2026-10-12"), 0f, 0f, 0f)
   }
 
@@ -112,7 +112,7 @@ class BillingDashboardSpec extends AnyFlatSpec with Matchers:
       appointment("2026-10-12", hour = 0, minute = 30, prestations = List(prestation(PAID, 1, 7f))) // Monday
     )
 
-    val weekly = BillingDashboard(appointments, now).weekly
+    val weekly = BillingDashboard(appointments, now, 0L).weekly
 
     weekly(50).paid shouldBe 5f
     weekly(51).paid shouldBe 7f
@@ -123,5 +123,5 @@ class BillingDashboardSpec extends AnyFlatSpec with Matchers:
       appointment("2025-10-13", prestations = List(prestation(PAID, 1, 100f)))
     )
 
-    BillingDashboard(appointments, now).weekly.map(_.paid).sum shouldBe 0f
+    BillingDashboard(appointments, now, 0L).weekly.map(_.paid).sum shouldBe 0f
   }

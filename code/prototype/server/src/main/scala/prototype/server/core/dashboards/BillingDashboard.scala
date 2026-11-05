@@ -15,12 +15,14 @@ object BillingDashboard:
 
   def apply(
       companyAppointments: List[Appointment],
-      now: Instant
+      now: Instant,
+      globalPosition: Long
   ): GetBillingDashboardOutput =
     GetBillingDashboardOutput(
       amountPerStatus = getAmountPerStatus(companyAppointments),
       oldestToBill = getOldestToBill(companyAppointments),
-      weekly = getWeeklyAmounts(companyAppointments, now)
+      weekly = getWeeklyAmounts(companyAppointments, now),
+      globalPosition = globalPosition
     )
   end apply
 

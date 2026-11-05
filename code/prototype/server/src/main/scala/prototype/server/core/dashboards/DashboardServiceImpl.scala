@@ -21,19 +21,30 @@ object DashboardServiceImpl:
           companyId: CompanyId
       ): IO[GetBillingDashboardOutput] =
         for
-          (therapists, _) <- getCompanyTherapists(companyId)
-          (companyAppointments, _) <- getCompanyAppointments(therapists)
+          (therapists, therapistsPosition) <- getCompanyTherapists(companyId)
+          (companyAppointments, appointmentsPosition) <-
+            getCompanyAppointments(therapists)
           now <- IO.realTimeInstant
-        yield BillingDashboard(companyAppointments, now)
+        yield BillingDashboard(
+          companyAppointments,
+          now,
+          oldest(therapistsPosition, appointmentsPosition)
+        )
 
       override def getDirectoryDashboard(
           companyId: CompanyId
       ): IO[GetDirectoryDashboardOutput] =
         for
-          (therapists, _) <- getCompanyTherapists(companyId)
-          (companyAppointments, _) <- getCompanyAppointments(therapists)
+          (therapists, therapistsPosition) <- getCompanyTherapists(companyId)
+          (companyAppointments, appointmentsPosition) <-
+            getCompanyAppointments(therapists)
           now <- IO.realTimeInstant
-        yield DirectoryDashboard(therapists, companyAppointments, now)
+        yield DirectoryDashboard(
+          therapists,
+          companyAppointments,
+          now,
+          oldest(therapistsPosition, appointmentsPosition)
+        )
 
       override def getActivityDashboard(
           companyId: CompanyId,
@@ -49,10 +60,16 @@ object DashboardServiceImpl:
           companyAppointments,
           unit,
           date,
-          // Each read has its own position: the dashboard is only as recent as
-          // the oldest of them
-          (therapistsPosition :: appointmentsPosition.toList).min
+          oldest(therapistsPosition, appointmentsPosition)
         )
+
+      // Each read has its own position: a dashboard is only as recent as the
+      // oldest of them (no appointment position: the company has no therapist)
+      private def oldest(
+          therapistsPosition: Long,
+          appointmentsPosition: Option[Long]
+      ): Long =
+        appointmentsPosition.fold(therapistsPosition)(_.min(therapistsPosition))
 
       // The therapists of the company, with the position of the read
       private def getCompanyTherapists(

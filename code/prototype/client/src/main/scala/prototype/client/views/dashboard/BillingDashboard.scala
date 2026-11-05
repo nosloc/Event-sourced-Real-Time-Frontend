@@ -6,11 +6,10 @@ import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 
 import prototype.api.*
-import prototype.client.{
-  Api,
-  ErrorMessages
-}
-import prototype.client.Api.ApiCall
+import prototype.client.ErrorMessages
+import prototype.client.dashboards.LiveBillingDashboard
+import prototype.client.live.{LiveData, LiveFeed}
+import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.views.components.*
 import prototype.client.views.components.chartJS.*
 
@@ -20,57 +19,66 @@ import smithy4s.time.LocalDate
 object BillingDashboard:
 
   def apply(selectedCompanyS: Signal[Option[UUID]]): HtmlElement =
-    val dataS: ApiCall[GetBillingDashboardOutput] =
-      ApiCall(
-        selectedCompanyS.flatMapSwitch {
-          case Some(companyId) =>
-            ApiCall
-              .fromIOCallSimple(
-                Api.dashboards.getBillingDashboard(CompanyId(companyId))
-              )
-              .stateS
-          case None => Val(Api.Loading)
-        }
-      )
     div(
       cls := "dash",
-      child <-- dataS.stateS.combineWith(selectedCompanyS).map {
-        case (Api.Loading, None) =>
-          p(
-            cls := "dash__empty",
-            "Select a company to see the billing dashboard."
-          )
-        case (Api.Loading, Some(_)) =>
-          p(cls := "dash__empty", "Loading billing dashboard...")
-        case (Api.Error(error), _) =>
-          div(cls := "dash__error", ErrorMessages.errorToMessage(error))
-        case (Api.Success(data), _) =>
-          renderBillingDashboard(data)
-      }
+      child <-- selectedCompanyS.splitOption(
+        (_, companyIdS) => renderCompanyDashboard(companyIdS),
+        p(
+          cls := "dash__empty",
+          "Select a company to see the billing dashboard."
+        )
+      )
     )
   end apply
 
+  // Built once a company is selected, and kept while it changes. The feed is
+  // opened here, not above: a live value first read after the stream opened
+  // would never load
+  private def renderCompanyDashboard(companyIdS: Signal[UUID]): HtmlElement =
+    val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
+
+    // A new company drops the figures shown until the new ones arrive
+    val dashboard: LiveData[GetBillingDashboardOutput] =
+      LiveBillingDashboard(feed, companyIdS)
+
+    div(
+      cls := "dash",
+      LiveFeed.bind(feed),
+      child.maybe <-- dashboard.errorS.map(
+        _.map(error =>
+          div(cls := "dash__error", ErrorMessages.errorToMessage(error))
+        )
+      ),
+      child <-- dashboard.valueS.splitOption(
+        (_, dataS) => renderBillingDashboard(dataS),
+        p(cls := "dash__empty", "Loading billing dashboard...")
+      )
+    )
+  end renderCompanyDashboard
+
+  // Takes a signal, not a fixed value: on a live update the figures and the
+  // chart change in place instead of being built again
   private def renderBillingDashboard(
-      data: GetBillingDashboardOutput
+      dataS: Signal[GetBillingDashboardOutput]
   ): HtmlElement =
     div(
       cls := "dash",
       div(
         cls := "dash__stats",
-        StatBox("To bill", Val(chf(data.amountPerStatus.toBill))),
-        StatBox("Billed", Val(chf(data.amountPerStatus.billed))),
-        StatBox("Paid", Val(chf(data.amountPerStatus.paid))),
-        StatBox("Cancelled", Val(chf(data.amountPerStatus.cancelled)))
+        StatBox("To bill", dataS.map(d => chf(d.amountPerStatus.toBill))),
+        StatBox("Billed", dataS.map(d => chf(d.amountPerStatus.billed))),
+        StatBox("Paid", dataS.map(d => chf(d.amountPerStatus.paid))),
+        StatBox("Cancelled", dataS.map(d => chf(d.amountPerStatus.cancelled)))
       ),
       div(
         cls := "dash__card panel",
         h3(cls := "dash__card-title", "Oldest Appointments to Bill"),
-        renderOldestToBill(data.oldestToBill)
+        child <-- dataS.map(d => renderOldestToBill(d.oldestToBill))
       ),
       div(
         cls := "dash__card panel",
         h3(cls := "dash__card-title", "Cumulative Amounts, Last 52 Weeks"),
-        chartCanvas(Val(weeklyChartConfig(data.weekly)))
+        chartCanvas(dataS.map(d => weeklyChartConfig(d.weekly)))
       )
     )
   end renderBillingDashboard
