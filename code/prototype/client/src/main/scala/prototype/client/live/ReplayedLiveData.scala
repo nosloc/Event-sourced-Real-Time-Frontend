@@ -45,7 +45,7 @@ final class ReplayedLiveData[K, A, E](
         key.changes.filterWith(opened)
       )
 
-  private val receivedInput: EventStream[LiveModel.Input[K, A, E]] =
+  private val receivedInput: EventStream[Input[K, A, E]] =
     feed.events
       .collect { case FeedMessage.Event(message) => message }
       .map(message =>
