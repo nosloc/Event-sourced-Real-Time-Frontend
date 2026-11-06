@@ -4,7 +4,7 @@ object RefreshModel:
   type Position = Long
 
   enum Input[+K, +A]:
-    case Opened
+    case Opened(key: K)
     case EventArrived(position: Position)
     case Loaded(key: K, value: A, position: Position)
     case Failed(key: K, error: Throwable)
@@ -33,27 +33,28 @@ object RefreshModel:
       phase = Phase.Idle
     )
 
-  def step[K, A](
+  def step[K, A](invalidatePrevious: (K, K) => Boolean)(
       state: State[K, A],
-      input: Input[K, A],
-      invalidatePrevious: (K, K) => Boolean
+      input: Input[K, A]
   ): (State[K, A], Option[K]) =
     import Input.*
     input match
-      case Opened =>
+      // The stream opened on a key the model does not have yet (the first
+      // open): the same as a key change
+      case Opened(key) if !state.key.contains(key) =>
+        step(invalidatePrevious)(state, KeyChanged(key))
+
+      case Opened(key) =>
         state.phase match
           case Phase.Idle =>
-            state.key match
-              case Some(k) =>
-                (
-                  state.copy(
-                    loading = true,
-                    error = None,
-                    phase = Phase.InFlight(None)
-                  ),
-                  Some(k)
-                )
-              case None => (state, None)
+            (
+              state.copy(
+                loading = true,
+                error = None,
+                phase = Phase.InFlight(None)
+              ),
+              Some(key)
+            )
           case Phase.InFlight(pending) =>
             (
               state.copy(phase =
@@ -82,13 +83,14 @@ object RefreshModel:
               case None    => position
             (state.copy(phase = Phase.InFlight(Some(newPos))), None)
 
-      case Loaded(key, _, _) if !state.key.contains(key) => (state, None)
+      case Loaded(key, _, _) if !state.key.contains(key) =>
+        (state, None)
 
       case Loaded(key, value, position) =>
         // An answer older than the value on screen does not replace it, but
         // still ends the load
         val answered =
-          if position >= state.position then
+          if state.value.isEmpty || position >= state.position then
             state.copy(value = Some(value), error = None, position = position)
           else state.copy(error = None)
         state.phase match
