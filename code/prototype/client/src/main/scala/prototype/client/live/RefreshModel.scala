@@ -155,25 +155,14 @@ object RefreshModel:
               None
             )
           case Phase.InFlight(Some(_)) =>
-            state.key match
-              case None =>
-                (
-                  state.copy(
-                    loading = false,
-                    error = Some(error),
-                    phase = Phase.Idle
-                  ),
-                  None
-                )
-              case Some(k) =>
-                (
-                  state.copy(
-                    loading = true,
-                    error = Some(error),
-                    phase = Phase.InFlight(None)
-                  ),
-                  Some(k)
-                )
+            (
+              state.copy(
+                loading = true,
+                error = Some(error),
+                phase = Phase.InFlight(None)
+              ),
+              Some(key)
+            )
       // Launch a reload, and invalidate previous state if needed
       case KeyChanged(key) =>
         val newState =
