@@ -7,7 +7,6 @@ import prototype.client.Api
 import prototype.client.live.{LiveData, RefreshedLiveData}
 import prototype.client.live.LiveFeed.FeedMessage
 import prototype.shared.dashboards.ActivityDashboardEvents
-import prototype.shared.events.DomainEvent
 
 import com.raquo.laminar.api.L.*
 import smithy4s.time.LocalDate
@@ -34,8 +33,7 @@ object LiveActivityDashboard:
       companyIdS.combineWith(periodUnitS, periodDayS).map(Key.apply)
     new RefreshedLiveData[
       Key,
-      (PeriodUnit, GetActivityDashboardOutput),
-      DomainEvent
+      (PeriodUnit, GetActivityDashboardOutput)
     ](
       feed = feed,
       key = keyS,
@@ -49,8 +47,8 @@ object LiveActivityDashboard:
           .map(response =>
             ((key.periodUnit, response), response.globalPosition)
           ),
-      triggerRefresh =
-        message => ActivityDashboardEvents.types.contains(message.eventType),
+      triggerRefresh = message =>
+        ActivityDashboardEvents.types.contains(message.eventType),
       invalidatePrevious = (oldKey, newKey) =>
         oldKey.companyId != newKey.companyId
     )

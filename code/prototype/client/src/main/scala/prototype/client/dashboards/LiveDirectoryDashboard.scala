@@ -7,7 +7,6 @@ import prototype.client.Api
 import prototype.client.live.{LiveData, RefreshedLiveData}
 import prototype.client.live.LiveFeed.FeedMessage
 import prototype.shared.dashboards.DirectoryDashboardEvents
-import prototype.shared.events.DomainEvent
 
 import com.raquo.laminar.api.L.*
 
@@ -20,7 +19,7 @@ object LiveDirectoryDashboard:
       feed: EventBus[FeedMessage],
       companyIdS: Signal[UUID]
   ): LiveData[GetDirectoryDashboardOutput] =
-    new RefreshedLiveData[UUID, GetDirectoryDashboardOutput, DomainEvent](
+    new RefreshedLiveData[UUID, GetDirectoryDashboardOutput](
       feed = feed,
       key = companyIdS,
       load = companyId =>

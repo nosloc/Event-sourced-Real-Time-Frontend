@@ -23,8 +23,7 @@ import com.raquo.laminar.api.L.*
   * and the model stays waiting for it, so build a new instance rather than
   * reading a stopped one again (the dashboards build one per company).
   *
-  * K is the type of the key (for example a company), A the type of the value, E
-  * the type of the events (unused for now).
+  * K is the type of the key (for example a company), A the type of the value.
   *
   * @param feed
   *   the real time feed of events
@@ -38,7 +37,7 @@ import com.raquo.laminar.api.L.*
   *   tell if a new key invalidate the previous shown value (delete it from the
   *   screen), or keep it until the `load` completes
   */
-final class RefreshedLiveData[K, A, E](
+final class RefreshedLiveData[K, A](
     feed: EventBus[FeedMessage],
     key: Signal[K],
     load: K => IO[(A, Long)],
