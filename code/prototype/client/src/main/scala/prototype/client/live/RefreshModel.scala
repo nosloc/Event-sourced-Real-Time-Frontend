@@ -11,9 +11,26 @@ object RefreshModel:
     case KeyChanged(key: K)
 
   enum Phase:
+    // Nothing is happening
     case Idle
+    // Waiting for an answer, `pending` is the highest position seen while the load is happening
     case InFlight(pending: Option[Position])
 
+  /** The refresh model
+    *
+    * @param key
+    *   the actual key (None at the start)
+    * @param value
+    *   the value displayed
+    * @param loading
+    *   true if a new value is being loaded
+    * @param error
+    *   the error that occurred
+    * @param position
+    *   the position of the currently displayed value
+    * @param phase
+    *   which phase the model is in
+    */
   final case class State[K, A](
       key: Option[K],
       value: Option[A],
@@ -33,6 +50,18 @@ object RefreshModel:
       phase = Phase.Idle
     )
 
+  /** How the model evolves based on the current state and the input
+    *
+    * @param invalidatePrevious
+    *   on a key change, whether the value gets invalidated
+    * @param state
+    *   the current state of the model
+    * @param input
+    *   the input that triggered the evolve
+    *
+    * @return
+    *   the evolved state and the key that need a reload, or None if no reload
+    */
   def step[K, A](invalidatePrevious: (K, K) => Boolean)(
       state: State[K, A],
       input: Input[K, A]
@@ -44,6 +73,7 @@ object RefreshModel:
       case Opened(key) if !state.key.contains(key) =>
         step(invalidatePrevious)(state, KeyChanged(key))
 
+      // The reconnect case, trigger a reload if in Idle, or store it as pending
       case Opened(key) =>
         state.phase match
           case Phase.Idle =>
@@ -63,6 +93,7 @@ object RefreshModel:
               None
             )
 
+      // When an event arrives, trigger a refresh or store it as pending
       case EventArrived(position) =>
         state.phase match
           case Phase.Idle =>
@@ -83,9 +114,12 @@ object RefreshModel:
               case None    => position
             (state.copy(phase = Phase.InFlight(Some(newPos))), None)
 
+      // Ignore a result that doesn't match the current key
       case Loaded(key, _, _) if !state.key.contains(key) =>
         (state, None)
 
+      // Ignore the result if in Idle, take the value otherwise.
+      // Trigger the pending load if any
       case Loaded(key, value, position) =>
         // An answer older than the value on screen does not replace it, but
         // still ends the load
@@ -103,8 +137,11 @@ object RefreshModel:
               Some(key)
             )
 
+      // Ignore failure if the key doesn't match the current one
       case Failed(key, _) if !state.key.contains(key) => (state, None)
 
+      // Ignore the failure if in Idle,
+      // Otherwise store the error and launch the pending refresh if any
       case Failed(key, error) =>
         state.phase match
           case Phase.Idle           => (state, None)
@@ -137,7 +174,7 @@ object RefreshModel:
                   ),
                   Some(k)
                 )
-
+      // Launch a reload, and invalidate previous state if needed
       case KeyChanged(key) =>
         val newState =
           state.copy(

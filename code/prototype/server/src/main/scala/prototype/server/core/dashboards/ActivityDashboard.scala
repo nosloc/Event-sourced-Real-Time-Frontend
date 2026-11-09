@@ -28,6 +28,7 @@ object ActivityDashboard:
     val period = periodOf(unit, date.toJava)
     val inPeriod = appointmentsIn(companyAppointments, period)
     val perTherapist = getPerTherapist(therapists, inPeriod)
+    val evolution = getEvolution(companyAppointments, unit, period)
 
     GetActivityDashboardOutput(
       periodStart = toSmithyDate(period.start),
@@ -36,7 +37,7 @@ object ActivityDashboard:
       patientsSeen = inPeriod.flatMap(_.patientIds).distinct.size,
       busiestTherapist = getBusiestTherapist(perTherapist),
       perTherapist = perTherapist,
-      evolution = getEvolution(companyAppointments, unit, period),
+      evolution = evolution,
       globalPosition = globalPosition
     )
   end apply

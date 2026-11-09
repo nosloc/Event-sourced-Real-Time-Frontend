@@ -21,7 +21,7 @@ object DirectoryDashboard:
       cls := "dash",
       child <-- selectedCompanyS.splitOption(
         (_, companyIdS) => renderCompanyDashboard(companyIdS),
-        div(
+        ifEmpty = div(
           cls := "dash__empty",
           "Select a company to see the directory dashboard."
         )
@@ -29,10 +29,9 @@ object DirectoryDashboard:
     )
   end apply
 
-  // Built once a company is selected, and kept while it changes. The feed is
-  // opened here, not above: a live value first read after the stream opened
-  // would never load
+  // Built once a company is selected, and kept while it changes.
   private def renderCompanyDashboard(companyIdS: Signal[UUID]): HtmlElement =
+    // The real time feed of events
     val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
 
     // A new company drops the figures shown until the new ones arrive
@@ -54,7 +53,7 @@ object DirectoryDashboard:
     )
   end renderCompanyDashboard
 
-  // Takes a signal, not a fixed value: on a live update the figures and the
+  // Takes a signal, so that on a live update the figures and the
   // charts change in place instead of being built again
   private def renderDirectoryDashboard(
       dataS: Signal[GetDirectoryDashboardOutput]

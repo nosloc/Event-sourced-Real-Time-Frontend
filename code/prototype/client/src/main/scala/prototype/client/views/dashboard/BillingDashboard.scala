@@ -18,12 +18,21 @@ import smithy4s.time.LocalDate
 
 object BillingDashboard:
 
-  def apply(selectedCompanyS: Signal[Option[UUID]]): HtmlElement =
+  /** Return the billing dashboard component
+    *
+    * @param selectedCompanyS
+    *   the signal of the selected company, None if no company is selected
+    * @return
+    *   the real time billing dashboard
+    */
+  def apply(
+      selectedCompanyS: Signal[Option[UUID]]
+  ): HtmlElement =
     div(
       cls := "dash",
       child <-- selectedCompanyS.splitOption(
         (_, companyIdS) => renderCompanyDashboard(companyIdS),
-        p(
+        ifEmpty = p(
           cls := "dash__empty",
           "Select a company to see the billing dashboard."
         )
@@ -31,13 +40,13 @@ object BillingDashboard:
     )
   end apply
 
-  // Built once a company is selected, and kept while it changes. The feed is
-  // opened here, not above: a live value first read after the stream opened
-  // would never load
-  private def renderCompanyDashboard(companyIdS: Signal[UUID]): HtmlElement =
+  // Built once a company is selected, and kept while it changes.
+  private def renderCompanyDashboard(
+      companyIdS: Signal[UUID]
+  ): HtmlElement =
     val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
 
-    // A new company drops the figures shown until the new ones arrive
+    // The billing dashboard
     val dashboard: LiveData[GetBillingDashboardOutput] =
       LiveBillingDashboard(feed, companyIdS)
 
@@ -51,12 +60,12 @@ object BillingDashboard:
       ),
       child <-- dashboard.valueS.splitOption(
         (_, dataS) => renderBillingDashboard(dataS),
-        p(cls := "dash__empty", "Loading billing dashboard...")
+        ifEmpty = p(cls := "dash__empty", "Loading billing dashboard...")
       )
     )
   end renderCompanyDashboard
 
-  // Takes a signal, not a fixed value: on a live update the figures and the
+  // Takes a signal, so that on a live update the figures and the
   // chart change in place instead of being built again
   private def renderBillingDashboard(
       dataS: Signal[GetBillingDashboardOutput]
@@ -83,6 +92,7 @@ object BillingDashboard:
     )
   end renderBillingDashboard
 
+  // A table showing the oldest prestations to bill
   private def renderOldestToBill(items: List[ToBillItem]): HtmlElement =
     if items.isEmpty then p(cls := "dash__empty", "Nothing left to bill.")
     else

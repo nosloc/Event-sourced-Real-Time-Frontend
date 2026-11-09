@@ -63,8 +63,7 @@ object DashboardServiceImpl:
           oldest(therapistsPosition, appointmentsPosition)
         )
 
-      // Each read has its own position: a dashboard is only as recent as the
-      // oldest of them (no appointment position: the company has no therapist)
+      // Each read has its own position, we only keep the oldest position between the two
       private def oldest(
           therapistsPosition: Long,
           appointmentsPosition: Option[Long]
@@ -75,7 +74,6 @@ object DashboardServiceImpl:
       private def getCompanyTherapists(
           companyId: CompanyId
       ): IO[(List[Therapist], Long)] =
-        // Fails with CompanyNotFound if the company does not exist
         companyService.getCompany(companyId) *>
           therapistService.listTherapists().map { output =>
             (
@@ -84,6 +82,7 @@ object DashboardServiceImpl:
             )
           }
       end getCompanyTherapists
+
       // The appointments of the company, read one therapist at a time, with
       // the oldest position of those reads (None: no therapist, no read)
       private def getCompanyAppointments(

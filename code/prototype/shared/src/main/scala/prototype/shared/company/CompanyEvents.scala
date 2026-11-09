@@ -49,8 +49,13 @@ object CompanyEvent:
     )
 
   /** The company event in an event message, read by its type name (P4S stores
-    * an event under its class name). None: not a company event. Some(Left): a
-    * company event whose payload does not decode.
+    * an event under its class name).
+    *
+    * @param message
+    *   the event message to decode
+    * @return
+    *   None: not a company event. Some(Left): a company event whose payload
+    *   does not decode. Some(Right): a company event whose payload decodes
     */
   def decode(
       message: EventMessage

@@ -4,11 +4,12 @@ import scala.reflect.ClassTag
 
 import io.circe.{parser, Decoder}
 
-/** The type name an event is stored under, and how to read it back. P4S stores
-  * an event under its simple class name (`EventTypeName.of`); P4S is on the JVM
-  * only, so the same rule is written here, for the browser too. Renaming an
-  * event class renames its type: the events already stored would then need an
-  * alias on the server.
+/** This part replicates how P4S generates the event type name. The type name of
+  * an Event is the simple name of its class, for example "AppointmentCreated".
+  * Decoders are a map from type name to a function that decodes the payload
+  * into the event. nameOf[E] returns the type name of E, for example
+  * "AppointmentCreated". decoder[E] returns a tuple of the type name of E and a
+  * function that decodes the payload into E.
   */
 object EventType:
 

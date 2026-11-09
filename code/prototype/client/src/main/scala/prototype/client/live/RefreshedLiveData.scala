@@ -10,25 +10,33 @@ import prototype.client.live.RefreshModel.Input
 import com.raquo.laminar.api.L.*
 
 /** A `LiveData` kept up to date by reloading it from the server, for one key at
-  * a time: once the stream has subscribed (the first load waits for it, and
-  * again after a reconnect), when the key changes, and on every event
-  * `triggerRefresh` accepts. The events themselves are not applied: they only
-  * say that the value is out of date. The rules are `RefreshModel.step`: one
-  * load in flight plus one pending (a burst of events gives at most two loads), an answer for
-  * another key is ignored, and an answer older than the value on screen does
-  * not replace it. While a reload runs, and after it fails, the previous value
-  * stays; a new key drops it, unless `invalidatePrevious(old, new)` is false:
-  * the old value still stands for the new key while it loads (for example the
-  * same company over another period).
+  * a time.
   *
-  * Nothing runs until one of its signals is read, and `keepLoaded` is optional:
-  * the loads run inside the chain that the signals read. If nothing reads it
-  * while a load is in flight, that load's answer is lost and the model stays
-  * waiting for it, so build a new instance rather than reading a stopped one
-  * again (the dashboards build one per company).
+  * The data is reloaded once the stream has subscribed, when the key changes,
+  * and on every event `triggerRefresh` accepts. The events themselves are not
+  * applied: they only say that the value is out of date. The rules are
+  * `RefreshModel.step`.
+  *
+  * Nothing runs until one of its signals is read, and `keepLoaded` is optional
+  * and can be used to keep the value up to date even if the signal isn't read.
+  * If nothing reads it while a load is in flight, that load's answer is lost
+  * and the model stays waiting for it, so build a new instance rather than
+  * reading a stopped one again (the dashboards build one per company).
   *
   * K is the type of the key (for example a company), A the type of the value, E
   * the type of the events (unused for now).
+  *
+  * @param feed
+  *   the real time feed of events
+  * @param key
+  *   the signal of the key
+  * @param load
+  *   how to get the refreshed value, and the corresponding global position
+  * @param triggerRefresh
+  *   tell if an event message trigger a refresh or not
+  * @param invalidatePrevious
+  *   tell if a new key invalidate the previous shown value (delete it from the
+  *   screen), or keep it until the `load` completes
   */
 final class RefreshedLiveData[K, A, E](
     feed: EventBus[FeedMessage],
@@ -38,17 +46,17 @@ final class RefreshedLiveData[K, A, E](
     invalidatePrevious: (K, K) => Boolean = (_: K, _: K) => true
 ) extends LiveData[A]:
 
-  // The stream opened, with the key at that moment: the first load waits for
-  // it, so that no event falls between the read and the subscription
+  // When the stream opened, input it with the current value of the key
   private val openedInput: EventStream[Input[K, A]] =
     feed.events.withCurrentValueOf(key).collect {
       case (FeedMessage.Opened, k) => Input.Opened(k)
     }
 
-  // Each new key (`changes` skips the first one, which comes with `Opened`)
+  // Each new key input (`changes` skips the first one, which comes with `Opened`)
   private val keyChangedInput: EventStream[Input[K, A]] =
     key.distinct.changes.map(Input.KeyChanged(_))
 
+  // Keep only the events that triggers a refresh
   private val eventArrivedInput: EventStream[Input[K, A]] =
     feed.events.collect {
       case FeedMessage.Event(message) if triggerRefresh(message) =>
@@ -58,7 +66,11 @@ final class RefreshedLiveData[K, A, E](
   // The answers of the loads, sent back into the model by `runLoads`
   private val loadResults: EventBus[Input[K, A]] = new EventBus
 
+  // Return a signal of:
+  // _1. the state of the refresh model
+  // _2. An option saying if a reload is need (Some(key)), or nothing is needed (None)
   private val stepResult: Signal[(RefreshModel.State[K, A], Option[K])] =
+    // All the inputs merged in a single EventStream
     EventStream
       .merge(
         openedInput,
@@ -70,8 +82,8 @@ final class RefreshedLiveData[K, A, E](
         (RefreshModel.initial[K, A], None)
       )((acc, input) => RefreshModel.step(invalidatePrevious)(acc._1, input))
 
-  // Runs each load the model asks for and sends its answer back into the model
-  // (a new transaction). It never emits: it is only there so that the loads
+  // Runs each load the model asks for and sends its answer back.
+  // It never emits: it is only there so that the loads
   // run while the state is read, without `keepLoaded`
   private val runLoads: Signal[Unit] =
     stepResult.changes
@@ -87,6 +99,7 @@ final class RefreshedLiveData[K, A, E](
       .mapToUnit
       .startWith(())
 
+  // Runs the loads whenever the state is read
   private val stateS: Signal[RefreshModel.State[K, A]] =
     stepResult.combineWithFn(runLoads)((result, _) => result._1)
 

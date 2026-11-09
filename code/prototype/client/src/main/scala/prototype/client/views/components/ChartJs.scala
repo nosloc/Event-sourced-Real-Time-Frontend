@@ -51,8 +51,7 @@ object chartJS:
       )
     )
 
-  // No animation, on the first draw or on updates: in a live view the figures
-  // change in place, without a transition to wait for
+  // No animation, on the first draw or on updates
   private def copyConfig(config: ChartConfig): ChartConfig =
     val options = js.Object.assign(
       js.Dynamic.literal(),

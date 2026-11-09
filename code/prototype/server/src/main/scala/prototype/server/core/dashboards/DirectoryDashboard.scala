@@ -6,6 +6,8 @@ import java.time.temporal.ChronoUnit
 import prototype.api.*
 
 object DirectoryDashboard:
+  private val activePeriodDays = 7
+
   def apply(
       therapists: List[Therapist],
       companyAppointments: List[Appointment],
@@ -44,7 +46,7 @@ object DirectoryDashboard:
       companyAppointments: List[Appointment],
       now: Instant
   ): List[PatientId] =
-    val since = now.minus(7, ChronoUnit.DAYS).getEpochSecond
+    val since = now.minus(activePeriodDays, ChronoUnit.DAYS).getEpochSecond
     companyAppointments
       .filter(_.timeRange.end.epochSecond >= since)
       .flatMap(_.patientIds)

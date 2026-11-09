@@ -27,8 +27,13 @@ object PatientEvent:
     )
 
   /** The patient event in an event message, read by its type name (P4S stores
-    * an event under its class name). None: not a patient event. Some(Left): a
-    * patient event whose payload does not decode.
+    * an event under its class name).
+    *
+    * @param message
+    *   the event message to decode
+    * @return
+    *   None: not a patient event. Some(Left): a patient event whose payload
+    *   does not decode. Some(Right): a patient event whose payload decodes
     */
   def decode(
       message: EventMessage

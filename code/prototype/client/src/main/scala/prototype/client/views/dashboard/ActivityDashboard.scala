@@ -19,10 +19,6 @@ import smithy4s.time.LocalDate
 
 object ActivityDashboard:
 
-  // What the server answered, with the unit it was asked for: the evolution
-  // chart labels its points by week or by month
-  private type Answer = (PeriodUnit, GetActivityDashboardOutput)
-
   def apply(selectedCompanySignal: Signal[Option[UUID]]): HtmlElement =
     val selectedPeriodUnitVar: Var[PeriodUnit] = Var(WEEK)
 
@@ -38,7 +34,7 @@ object ActivityDashboard:
             selectedPeriodUnitVar,
             selectedPeriodDayVar
           ),
-        p(
+        ifEmpty = p(
           cls := "dash__empty",
           "Select a company to see the activity dashboard."
         )
@@ -46,24 +42,23 @@ object ActivityDashboard:
     )
   end apply
 
-  // Built once a company is selected, and kept while it changes. The feed is
-  // opened here, not above: a live value first read after the stream opened
-  // would never load
+  // Built once a company is selected, and kept while it changes.
   private def renderCompanyDashboard(
       companyIdS: Signal[UUID],
       selectedPeriodUnitVar: Var[PeriodUnit],
       selectedPeriodDayVar: Var[LocalDate]
   ): HtmlElement =
+    // The real time event feed
     val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
 
-    // A new company drops the figures shown until the new ones arrive; a new
-    // period keeps them on screen while it loads
-    val dashboard: LiveData[Answer] = LiveActivityDashboard(
-      feed,
-      companyIdS,
-      selectedPeriodUnitVar.signal,
-      selectedPeriodDayVar.signal
-    )
+    // A tuple of the period unit and the response from the server
+    val dashboard: LiveData[(PeriodUnit, GetActivityDashboardOutput)] =
+      LiveActivityDashboard(
+        feed,
+        companyIdS,
+        selectedPeriodUnitVar.signal,
+        selectedPeriodDayVar.signal
+      )
 
     // The period shown is the one the server answered with
     val periodS: Signal[Option[(LocalDate, LocalDate)]] =
@@ -84,19 +79,17 @@ object ActivityDashboard:
       ),
       child <-- dashboard.valueS.splitOption(
         (_, answerS) => renderAnswer(answerS),
-        p(cls := "dash__empty", "Loading activity dashboard...")
+        ifEmpty = p(cls := "dash__empty", "Loading activity dashboard...")
       )
     )
   end renderCompanyDashboard
 
+  // Return the period picker (the period unit picker and the range picker)
   private def renderPeriodSelector(
       selectedPeriodUnitVar: Var[PeriodUnit],
       selectedPeriodDayVar: Var[LocalDate],
       periodS: Signal[Option[(LocalDate, LocalDate)]]
   ): HtmlElement =
-    // The arrows step from the day asked for, not from the period on screen:
-    // that one stays while the next loads, so a quick second click would step
-    // from it again and be lost
     def stepBy(periods: Int): Mod[Button] =
       onClick.compose(_.sample(selectedPeriodUnitVar.signal)) --> { unit =>
         selectedPeriodDayVar.update(day => stepDay(day, unit, periods))
@@ -138,8 +131,7 @@ object ActivityDashboard:
     )
   end renderPeriodSelector
 
-  // The same day, some weeks or months later (or earlier): java.time keeps it
-  // in the right month, Jan 31 + 1 month is Feb 28
+  // The same day, some `PeriodUnit` later
   private def stepDay(day: LocalDate, unit: PeriodUnit, by: Int): LocalDate =
     val javaDay = java.time.LocalDate.ofEpochDay(day.epochDay)
     val stepped = unit match
@@ -149,8 +141,10 @@ object ActivityDashboard:
 
   // The charts get a signal of their config, not a fixed one: they stay on
   // the page and update() when the period changes
-  private def renderAnswer(answerS: Signal[Answer]): HtmlElement =
-    val outS = answerS.map((_, out) => out)
+  private def renderAnswer(
+      dashboardS: Signal[(PeriodUnit, GetActivityDashboardOutput)]
+  ): HtmlElement =
+    val outS = dashboardS.map((_, out) => out)
     div(
       cls := "dash",
       div(
@@ -170,7 +164,7 @@ object ActivityDashboard:
           cls := "dash__card panel",
           h3(cls := "dash__card-title", "Evolution"),
           chartCanvas(
-            answerS.map((unit, out) => evolutionChartConfig(unit, out))
+            dashboardS.map((unit, out) => evolutionChartConfig(unit, out))
           )
         )
       )

@@ -2,10 +2,7 @@ package prototype.shared.therapist
 
 import java.util.UUID
 
-import prototype.api.{
-  EventMessage,
-  Role
-}
+import prototype.api.{EventMessage, Role}
 import prototype.shared.events.{EventType, PrototypeEvent}
 
 import io.circe.{Decoder, Encoder}
@@ -37,8 +34,13 @@ object TherapistEvent:
     )
 
   /** The therapist event in an event message, read by its type name (P4S stores
-    * an event under its class name). None: not a therapist event. Some(Left): a
-    * therapist event whose payload does not decode.
+    * an event under its class name).
+    *
+    * @param message
+    *   the event message to decode
+    * @return
+    *   None: not a therapist event. Some(Left): a therapist event whose payload
+    *   does not decode. Some(Right): a therapist event whose payload decodes
     */
   def decode(
       message: EventMessage
