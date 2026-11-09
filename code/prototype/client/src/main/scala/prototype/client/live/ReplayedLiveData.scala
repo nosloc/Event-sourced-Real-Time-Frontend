@@ -21,28 +21,20 @@ import com.raquo.laminar.api.L.*
   * E the type of the events `decode` keeps.
   */
 final class ReplayedLiveData[K, A, E](
-    feed: EventBus[FeedMessage],
+    feed: LiveFeed,
     key: Signal[K],
     load: K => IO[(A, Long)],
     decode: EventMessage => Option[E],
     evolve: (K, A, E) => A
 ) extends LiveData[A]:
 
-  private val opened: Signal[Boolean] =
-    feed.events
-      .collect {
-        case FeedMessage.Opened => true
-        case FeedMessage.Closed => false
-      }
-      .startWith(false)
   // The key to load, each time a snapshot is needed: when the stream opens
   // (first time or reconnect), and when the key changes while it is open
   private val reloadKey: EventStream[K] =
-    feed.events
-      .collect { case FeedMessage.Opened => () }
+    feed.openings
       .sample(key)
       .mergeWith(
-        key.changes.filterWith(opened)
+        key.changes.filterWith(feed.isOpenS)
       )
 
   private val receivedInput: EventStream[Input[K, A, E]] =
@@ -83,7 +75,7 @@ object ReplayedLiveData:
     * only the key is gone from `load` and `evolve`.
     */
   def keyless[A, E](
-      feed: EventBus[FeedMessage],
+      feed: LiveFeed,
       load: IO[(A, Long)],
       decode: EventMessage => Option[E],
       evolve: (A, E) => A

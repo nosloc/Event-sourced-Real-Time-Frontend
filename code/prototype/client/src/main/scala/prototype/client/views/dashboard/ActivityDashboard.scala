@@ -10,7 +10,6 @@ import prototype.api.PeriodUnit.*
 import prototype.client.ErrorMessages
 import prototype.client.dashboards.LiveActivityDashboard
 import prototype.client.live.{LiveData, LiveFeed}
-import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.views.components.*
 import prototype.client.views.components.chartJS.*
 
@@ -19,7 +18,10 @@ import smithy4s.time.LocalDate
 
 object ActivityDashboard:
 
-  def apply(selectedCompanySignal: Signal[Option[UUID]]): HtmlElement =
+  def apply(
+      feed: LiveFeed,
+      selectedCompanySignal: Signal[Option[UUID]]
+  ): HtmlElement =
     val selectedPeriodUnitVar: Var[PeriodUnit] = Var(WEEK)
 
     // Any day inside the period shown: the server works out the week or month
@@ -30,6 +32,7 @@ object ActivityDashboard:
       child <-- selectedCompanySignal.splitOption(
         (_, companyIdS) =>
           renderCompanyDashboard(
+            feed,
             companyIdS,
             selectedPeriodUnitVar,
             selectedPeriodDayVar
@@ -44,13 +47,11 @@ object ActivityDashboard:
 
   // Built once a company is selected, and kept while it changes.
   private def renderCompanyDashboard(
+      feed: LiveFeed,
       companyIdS: Signal[UUID],
       selectedPeriodUnitVar: Var[PeriodUnit],
       selectedPeriodDayVar: Var[LocalDate]
   ): HtmlElement =
-    // The real time event feed
-    val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
-
     // A tuple of the period unit and the response from the server
     val dashboard: LiveData[(PeriodUnit, GetActivityDashboardOutput)] =
       LiveActivityDashboard(
@@ -66,7 +67,6 @@ object ActivityDashboard:
 
     div(
       cls := "dash",
-      LiveFeed.bind(feed),
       renderPeriodSelector(
         selectedPeriodUnitVar,
         selectedPeriodDayVar,

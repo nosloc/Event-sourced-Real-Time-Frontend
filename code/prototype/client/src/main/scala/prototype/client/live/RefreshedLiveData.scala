@@ -38,7 +38,7 @@ import com.raquo.laminar.api.L.*
   *   screen), or keep it until the `load` completes
   */
 final class RefreshedLiveData[K, A](
-    feed: EventBus[FeedMessage],
+    feed: LiveFeed,
     key: Signal[K],
     load: K => IO[(A, Long)],
     triggerRefresh: EventMessage => Boolean,
@@ -47,9 +47,7 @@ final class RefreshedLiveData[K, A](
 
   // When the stream opened, input it with the current value of the key
   private val openedInput: EventStream[Input[K, A]] =
-    feed.events.withCurrentValueOf(key).collect {
-      case (FeedMessage.Opened, k) => Input.Opened(k)
-    }
+    feed.openings.withCurrentValueOf(key).map(Input.Opened(_))
 
   // Each new key input (`changes` skips the first one, which comes with `Opened`)
   private val keyChangedInput: EventStream[Input[K, A]] =

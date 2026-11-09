@@ -5,7 +5,6 @@ import prototype.client.{Api, ErrorMessages}
 import prototype.client.Api.ApiCall
 import prototype.client.companies.LiveCompanies
 import prototype.client.live.LiveFeed
-import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.patients.LivePatients
 import prototype.client.therapists.LiveTherapists
 import prototype.client.views.admin.DemoDataModal.Outcome
@@ -36,7 +35,7 @@ object AdminView:
   def apply(): HtmlElement =
 
     // The feed of events from the server
-    val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
+    val feed: LiveFeed = new LiveFeed
 
     val sectionVar: Var[Section] = Var(Section.Companies)
     val showCreateCompanyVar: Var[Boolean] = Var(false)
@@ -65,7 +64,7 @@ object AdminView:
       .distinct
 
     div(
-      LiveFeed.bind(feed),
+      feed.bind(),
 
       // Keep the lists loaded, even if the user is on another tab.
       companies.keepLoaded,

@@ -4,8 +4,7 @@ import java.util.UUID
 
 import prototype.api.*
 import prototype.client.Api
-import prototype.client.live.{LiveData, RefreshedLiveData}
-import prototype.client.live.LiveFeed.FeedMessage
+import prototype.client.live.{LiveData, LiveFeed, RefreshedLiveData}
 import prototype.shared.dashboards.ActivityDashboardEvents
 
 import com.raquo.laminar.api.L.*
@@ -24,7 +23,7 @@ object LiveActivityDashboard:
   )
 
   def apply(
-      feed: EventBus[FeedMessage],
+      feed: LiveFeed,
       companyIdS: Signal[UUID],
       periodUnitS: Signal[PeriodUnit],
       periodDayS: Signal[LocalDate]

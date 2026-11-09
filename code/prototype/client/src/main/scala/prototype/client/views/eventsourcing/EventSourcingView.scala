@@ -1,10 +1,7 @@
 package prototype.client.views.eventsourcing
 
 import prototype.api.EventMessage
-import prototype.client.{
-  Api,
-  ErrorMessages
-}
+import prototype.client.{Api, ErrorMessages}
 import prototype.client.Api.ApiCall
 import prototype.client.live.LiveFeed
 import prototype.client.live.LiveFeed.FeedMessage
@@ -22,7 +19,7 @@ object EventSourcingView:
 
   def apply(): HtmlElement =
 
-    val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
+    val feed: LiveFeed = new LiveFeed
 
     val showPageVar: Var[EventSourcingPage] = Var(LivePage)
     val liveEventsVar: Var[List[EventMessage]] = Var(List.empty)
@@ -161,7 +158,7 @@ object EventSourcingView:
         case None =>
           historyLoadingVar.set(false)
       },
-      LiveFeed.bind(feed),
+      feed.bind(),
       sizeChoiceVar.signal.changes --> { size => setPageSize(size) },
       div(
         cls := "event-sourcing__head",

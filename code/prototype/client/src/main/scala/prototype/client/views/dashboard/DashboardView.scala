@@ -3,7 +3,8 @@ package prototype.client.views.dashboard
 import java.util.UUID
 
 import prototype.api.*
-import prototype.client.views.admin.RemoteList
+import prototype.client.companies.LiveCompanies
+import prototype.client.live.{LiveData, LiveFeed}
 import prototype.client.views.components.PopoverPicker
 import prototype.client.views.components.PopoverPicker.Item
 
@@ -16,10 +17,9 @@ object DashboardView:
     case DIRECTORY
 
   def apply(): HtmlElement =
+    val feed: LiveFeed = new LiveFeed
     val selectedCompanyVar: Var[Option[UUID]] = Var(None)
-    val companiesS: RemoteList[Company] = RemoteList(
-      prototype.client.Api.companies.listCompanies().map(_.companies)
-    )
+    val companies: LiveData[List[Company]] = LiveCompanies(feed)
     val selectedDashboardVar: Var[Option[DashboardType]] = Var(None)
     val titleS: Signal[String] = selectedDashboardVar.signal.map {
       case None                          => "No Selected Dashboard"
@@ -28,8 +28,8 @@ object DashboardView:
       case Some(DashboardType.DIRECTORY) => "Directory Dashboard"
     }
     div(
-      companiesS.keepLoaded,
       cls := "dashboards",
+      feed.bind(),
       h1("Dashboards"),
       div(
         cls := "dashboards__layout",
@@ -39,18 +39,18 @@ object DashboardView:
           div(
             cls := "dashboards__head",
             h2(child.text <-- titleS, cls := "dashboards__title"),
-            renderCompanySelector(companiesS, selectedCompanyVar)
+            renderCompanySelector(companies.valueS, selectedCompanyVar)
           ),
           child <-- selectedDashboardVar.signal.map {
             case None                => renderNoDashboardSelected()
             case Some(dashboardType) =>
               dashboardType match
                 case DashboardType.BILLING =>
-                  BillingDashboard(selectedCompanyVar.signal)
+                  BillingDashboard(feed, selectedCompanyVar.signal)
                 case DashboardType.ACTIVITY =>
-                  ActivityDashboard(selectedCompanyVar.signal)
+                  ActivityDashboard(feed, selectedCompanyVar.signal)
                 case DashboardType.DIRECTORY =>
-                  DirectoryDashboard(selectedCompanyVar.signal)
+                  DirectoryDashboard(feed, selectedCompanyVar.signal)
           }
         )
       )
@@ -68,13 +68,13 @@ object DashboardView:
   end renderNoDashboardSelected
 
   private def renderCompanySelector(
-      companies: RemoteList[Company],
+      companiesS: Signal[Option[List[Company]]],
       selectedCompanyVar: Var[Option[UUID]]
   ): HtmlElement =
     PopoverPicker(
       id = "company-selector",
       label = "Select Company",
-      items = companies.itemsVar.signal
+      items = companiesS
         .map(
           _.map(_.map(c => Item[Option[UUID]](Some(c.companyId.value), c.name)))
             .getOrElse(Nil)

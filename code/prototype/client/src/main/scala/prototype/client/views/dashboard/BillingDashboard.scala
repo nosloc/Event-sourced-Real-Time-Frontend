@@ -9,7 +9,6 @@ import prototype.api.*
 import prototype.client.ErrorMessages
 import prototype.client.dashboards.LiveBillingDashboard
 import prototype.client.live.{LiveData, LiveFeed}
-import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.views.components.*
 import prototype.client.views.components.chartJS.*
 
@@ -26,12 +25,13 @@ object BillingDashboard:
     *   the real time billing dashboard
     */
   def apply(
+      feed: LiveFeed,
       selectedCompanyS: Signal[Option[UUID]]
   ): HtmlElement =
     div(
       cls := "dash",
       child <-- selectedCompanyS.splitOption(
-        (_, companyIdS) => renderCompanyDashboard(companyIdS),
+        (_, companyIdS) => renderCompanyDashboard(feed, companyIdS),
         ifEmpty = p(
           cls := "dash__empty",
           "Select a company to see the billing dashboard."
@@ -42,17 +42,15 @@ object BillingDashboard:
 
   // Built once a company is selected, and kept while it changes.
   private def renderCompanyDashboard(
+      feed: LiveFeed,
       companyIdS: Signal[UUID]
   ): HtmlElement =
-    val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
-
     // The billing dashboard
     val dashboard: LiveData[GetBillingDashboardOutput] =
       LiveBillingDashboard(feed, companyIdS)
 
     div(
       cls := "dash",
-      LiveFeed.bind(feed),
       child.maybe <-- dashboard.errorS.map(
         _.map(error =>
           div(cls := "dash__error", ErrorMessages.errorToMessage(error))

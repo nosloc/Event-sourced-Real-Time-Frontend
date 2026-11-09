@@ -9,18 +9,20 @@ import prototype.api.*
 import prototype.client.ErrorMessages
 import prototype.client.dashboards.LiveDirectoryDashboard
 import prototype.client.live.{LiveData, LiveFeed}
-import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.views.components.StatBox
 import prototype.client.views.components.chartJS.*
 
 import com.raquo.laminar.api.L.*
 
 object DirectoryDashboard:
-  def apply(selectedCompanyS: Signal[Option[UUID]]): HtmlElement =
+  def apply(
+      feed: LiveFeed,
+      selectedCompanyS: Signal[Option[UUID]]
+  ): HtmlElement =
     div(
       cls := "dash",
       child <-- selectedCompanyS.splitOption(
-        (_, companyIdS) => renderCompanyDashboard(companyIdS),
+        (_, companyIdS) => renderCompanyDashboard(feed, companyIdS),
         ifEmpty = div(
           cls := "dash__empty",
           "Select a company to see the directory dashboard."
@@ -30,17 +32,16 @@ object DirectoryDashboard:
   end apply
 
   // Built once a company is selected, and kept while it changes.
-  private def renderCompanyDashboard(companyIdS: Signal[UUID]): HtmlElement =
-    // The real time feed of events
-    val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
-
+  private def renderCompanyDashboard(
+      feed: LiveFeed,
+      companyIdS: Signal[UUID]
+  ): HtmlElement =
     // A new company drops the figures shown until the new ones arrive
     val dashboard: LiveData[GetDirectoryDashboardOutput] =
       LiveDirectoryDashboard(feed, companyIdS)
 
     div(
       cls := "dash",
-      LiveFeed.bind(feed),
       child.maybe <-- dashboard.errorS.map(
         _.map(error =>
           div(cls := "dash__error", ErrorMessages.errorToMessage(error))

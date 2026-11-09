@@ -9,7 +9,7 @@ import com.raquo.laminar.api.L.*
 
 object LiveAppointmentsForTherapist:
   def apply(
-      feed: EventBus[LiveFeed.FeedMessage],
+      feed: LiveFeed,
       therapistIdS: Signal[String]
   ): LiveData[List[Appointment]] =
     new ReplayedLiveData[String, List[Appointment], AppointmentEvent](

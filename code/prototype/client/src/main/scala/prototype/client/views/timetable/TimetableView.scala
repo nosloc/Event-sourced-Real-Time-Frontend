@@ -7,7 +7,6 @@ import prototype.client.Api
 import prototype.client.Api.ApiCall
 import prototype.client.appointments.LiveAppointmentsForTherapist
 import prototype.client.live.LiveFeed
-import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.views.timetable.TimetableModel.*
 
 import com.raquo.laminar.api.L.*
@@ -17,7 +16,7 @@ object TimetableView:
       username: String
   ): HtmlElement =
 
-    val feed: EventBus[FeedMessage] = new EventBus[FeedMessage]
+    val feed: LiveFeed = new LiveFeed
 
     val today = new Date()
     val weekOffsetVar = Var(0)
@@ -97,7 +96,7 @@ object TimetableView:
       )
 
     div(
-      LiveFeed.bind(feed),
+      feed.bind(),
       // The selected appointment left the list (deleted, or no longer the
       // therapist's): forget it, so the modal does not come back by itself
       selectedAppointmentS.distinct.changes.filter(_.isEmpty).mapTo(None)

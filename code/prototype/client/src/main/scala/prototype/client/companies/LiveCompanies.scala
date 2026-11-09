@@ -5,11 +5,9 @@ import prototype.client.Api
 import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData}
 import prototype.shared.company.CompanyEvent
 
-import com.raquo.laminar.api.L.*
-
 object LiveCompanies:
   def apply(
-      feed: EventBus[LiveFeed.FeedMessage]
+      feed: LiveFeed
   ): LiveData[List[Company]] =
     ReplayedLiveData.keyless[List[Company], CompanyEvent](
       feed = feed,
