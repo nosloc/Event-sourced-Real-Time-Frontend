@@ -167,3 +167,7 @@ Authorization: Bearer {{token}}
 # expected: 200 + the 10 oldest events after skipping 20, and the total
 GET http://127.0.0.1:9000/api/events?skip=20&take=10
 Authorization: Bearer {{token}}
+
+###
+GET http://127.0.0.1:9000/api/companies/17f53ed8-b8dc-4b79-b00d-15372467c69a/appointments
+Authorization: Bearer {{token}}

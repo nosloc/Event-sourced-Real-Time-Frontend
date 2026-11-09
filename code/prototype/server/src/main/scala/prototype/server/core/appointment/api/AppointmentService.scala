@@ -49,12 +49,16 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
   *   what the appointment projection publishes after each commit; it must be
   *   started with the same topic
   * @param therapists
-  *   used to tell an unknown therapist from one without appointments
+  *   used to tell an unknown therapist from one without appointments, and to
+  *   find the therapists of a company
+  * @param companies
+  *   used to tell an unknown company from one without appointments
   */
 class AppointmentServiceImpl(
     appointments: AppointmentRepository,
     updates: AppointmentProjection.Updates,
-    therapists: TherapistService[IO]
+    therapists: TherapistService[IO],
+    companies: CompanyService[IO]
 )(using runtime: CommandRuntime[IO, PrototypeEvent])
     extends AppointmentService[IO]:
 
@@ -147,6 +151,26 @@ class AppointmentServiceImpl(
           states.traverse(fromState).map((_, globalPosition))
         }
         .map(ListTherapistAppointmentsOutput.apply)
+
+  // Fails with CompanyNotFound if the company does not exist. The appointments
+  // of all the company's therapists are read at once, so the position is the
+  // one of that read
+  override def listCompanyAppointments(
+      companyId: CompanyId
+  ): IO[ListCompanyAppointmentsOutput] =
+    for
+      _ <- companies.getCompany(companyId)
+      therapistList <- therapists.listTherapists()
+      companyTherapists = therapistList.therapists
+        .filter(_.companyId == companyId)
+        .map(_.therapistId.value)
+      (companyAppointments, position) <- appointments.forTherapists(
+        companyTherapists
+      )
+    yield ListCompanyAppointmentsOutput(
+      companyAppointments.map(AppointmentState.toAppointment),
+      position
+    )
 
   override def getAppointment(
       appointmentId: AppointmentId

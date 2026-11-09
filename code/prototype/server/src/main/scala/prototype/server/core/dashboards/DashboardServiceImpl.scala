@@ -21,9 +21,9 @@ object DashboardServiceImpl:
           companyId: CompanyId
       ): IO[GetBillingDashboardOutput] =
         for
-          (therapists, therapistsPosition) <- getCompanyTherapists(companyId)
+          (_, therapistsPosition) <- getCompanyTherapists(companyId)
           (companyAppointments, appointmentsPosition) <-
-            getCompanyAppointments(therapists)
+            getCompanyAppointments(companyId)
           now <- IO.realTimeInstant
         yield BillingDashboard(
           companyAppointments,
@@ -37,7 +37,7 @@ object DashboardServiceImpl:
         for
           (therapists, therapistsPosition) <- getCompanyTherapists(companyId)
           (companyAppointments, appointmentsPosition) <-
-            getCompanyAppointments(therapists)
+            getCompanyAppointments(companyId)
           now <- IO.realTimeInstant
         yield DirectoryDashboard(
           therapists,
@@ -54,7 +54,7 @@ object DashboardServiceImpl:
         for
           (therapists, therapistsPosition) <- getCompanyTherapists(companyId)
           (companyAppointments, appointmentsPosition) <-
-            getCompanyAppointments(therapists)
+            getCompanyAppointments(companyId)
         yield ActivityDashboard(
           therapists,
           companyAppointments,
@@ -66,9 +66,9 @@ object DashboardServiceImpl:
       // Each read has its own position, we only keep the oldest position between the two
       private def oldest(
           therapistsPosition: Long,
-          appointmentsPosition: Option[Long]
+          appointmentsPosition: Long
       ): Long =
-        appointmentsPosition.fold(therapistsPosition)(_.min(therapistsPosition))
+        appointmentsPosition.min(therapistsPosition)
 
       // The therapists of the company, with the position of the read
       private def getCompanyTherapists(
@@ -83,24 +83,12 @@ object DashboardServiceImpl:
           }
       end getCompanyTherapists
 
-      // The appointments of the company, read one therapist at a time, with
-      // the oldest position of those reads (None: no therapist, no read)
+      // The appointments of the company, with the position of the read
       private def getCompanyAppointments(
-          companyTherapists: List[Therapist]
-      ): IO[(List[Appointment], Option[Long])] =
-        companyTherapists
-          .map(_.therapistId)
-          .traverse(
-            appointmentService.listTherapistAppointments(_)
-          )
-          .map(outputs =>
-            (
-              // An appointment with two therapists of the company is listed
-              // once per therapist, so it is kept only once
-              outputs.flatMap(_.appointments).distinctBy(_.appointmentId),
-              outputs.map(_.globalPosition).minOption
-            )
-          )
-      end getCompanyAppointments
+          companyId: CompanyId
+      ): IO[(List[Appointment], Long)] =
+        appointmentService
+          .listCompanyAppointments(companyId)
+          .map(output => (output.appointments, output.globalPosition))
 
     })

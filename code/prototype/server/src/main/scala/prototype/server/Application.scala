@@ -132,7 +132,8 @@ object App extends IOApp.Simple:
       appointmentServiceImpl = AppointmentServiceImpl(
         appointments,
         appointmentUpdates,
-        therapistServiceImpl
+        therapistServiceImpl,
+        companyService
       )(using events.commandRuntime)
       // Every stored event, published once for the open event streams
       publishedEvents <- Topic[IO, EventEnvelope[PrototypeEvent]].toResource

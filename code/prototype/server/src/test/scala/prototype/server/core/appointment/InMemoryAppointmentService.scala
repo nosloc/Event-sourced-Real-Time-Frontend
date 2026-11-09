@@ -70,6 +70,27 @@ final class InMemoryAppointmentService private (
         )
       )
 
+  // Does not check the company: the services that use this fake check it
+  // themselves
+  override def listCompanyAppointments(
+      companyId: CompanyId
+  ): IO[ListCompanyAppointmentsOutput] =
+    therapists.listTherapists().flatMap { output =>
+      val companyTherapists = output.therapists
+        .filter(_.companyId == companyId)
+        .map(_.therapistId)
+        .toSet
+      appointments.get.map(all =>
+        ListCompanyAppointmentsOutput(
+          all.values.toList
+            .filter(_.therapistIds.exists(companyTherapists.contains))
+            .sortBy(_.timeRange.start.epochSecond),
+          // No event store behind this fake: no position to report
+          globalPosition = 0L
+        )
+      )
+    }
+
   override def updateAppointment(
       appointmentId: AppointmentId,
       apptType: AppointmentType,

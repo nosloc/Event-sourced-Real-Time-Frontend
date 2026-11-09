@@ -12,6 +12,7 @@ service AppointmentService {
     version: "1.0.0"
     operations: [
         ListTherapistAppointments
+        ListCompanyAppointments
         CreateAppointment
         DeleteAppointment
         UpdateAppointment
@@ -33,6 +34,16 @@ operation ListTherapistAppointments {
     output: ListTherapistAppointmentsOutput
     errors: [
         TherapistNotFound
+    ]
+}
+
+@readonly
+@http(method: "GET", uri: "/api/companies/{companyId}/appointments", code: 200)
+operation ListCompanyAppointments {
+    input: ListCompanyAppointmentsInput
+    output: ListCompanyAppointmentsOutput
+    errors: [
+        CompanyNotFound
     ]
 }
 
@@ -152,6 +163,20 @@ structure ListTherapistAppointmentsInput {
 }
 
 structure ListTherapistAppointmentsOutput {
+    @required
+    appointments: Appointments
+
+    @required
+    globalPosition: Long
+}
+
+structure ListCompanyAppointmentsInput {
+    @httpLabel
+    @required
+    companyId: CompanyId
+}
+
+structure ListCompanyAppointmentsOutput {
     @required
     appointments: Appointments
 

@@ -55,6 +55,18 @@ final class AppointmentRepository private (pool: Resource[IO, Session[IO]])
       (appointments, cursor.globalPosition)
     }
 
+  /** The appointments of any of these therapists, earliest first, each once
+    * even when shared by several of them. One read, so one projection position
+    */
+  def forTherapists(
+      therapistIds: List[String]
+  ): IO[(List[AppointmentState], Long)] =
+    readWithCursor(AppointmentProjectionName)(session =>
+      session.execute(ofAnyTherapist)(Arr(therapistIds*))
+    ).map { case (appointments, cursor) =>
+      (appointments, cursor.globalPosition)
+    }
+
 object AppointmentRepository:
 
   def make(pool: Resource[IO, Session[IO]]): AppointmentRepository =
@@ -130,6 +142,13 @@ object AppointmentRepository:
   private val ofTherapist: Query[String, AppointmentState] =
     sql"""$selectWithPrestations
       WHERE $text = ANY(a.therapist_ids)
+      GROUP BY a.appointment_id
+      ORDER BY a.start_time, a.appointment_id""".query(appointmentState)
+
+  // `&&` is array overlap: the appointment has at least one of the therapists
+  private val ofAnyTherapist: Query[Arr[String], AppointmentState] =
+    sql"""$selectWithPrestations
+      WHERE a.therapist_ids && $_text
       GROUP BY a.appointment_id
       ORDER BY a.start_time, a.appointment_id""".query(appointmentState)
 
