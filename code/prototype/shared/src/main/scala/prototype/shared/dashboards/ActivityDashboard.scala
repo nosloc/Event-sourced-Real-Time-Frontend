@@ -1,4 +1,4 @@
-package prototype.server.core.dashboards
+package prototype.shared.dashboards
 
 import java.time.{DayOfWeek, Instant, LocalDate as JavaLocalDate, ZoneId}
 import java.time.temporal.TemporalAdjusters
@@ -22,23 +22,21 @@ object ActivityDashboard:
       therapists: List[Therapist],
       companyAppointments: List[Appointment],
       unit: PeriodUnit,
-      date: LocalDate,
-      globalPosition: Long
-  ): GetActivityDashboardOutput =
-    val period = periodOf(unit, date.toJava)
+      date: LocalDate
+  ): ActivityFigures =
+    val period = periodOf(unit, JavaLocalDate.ofEpochDay(date.epochDay))
     val inPeriod = appointmentsIn(companyAppointments, period)
     val perTherapist = getPerTherapist(therapists, inPeriod)
     val evolution = getEvolution(companyAppointments, unit, period)
 
-    GetActivityDashboardOutput(
+    ActivityFigures(
       periodStart = toSmithyDate(period.start),
       periodEnd = toSmithyDate(period.end),
       appointments = inPeriod.size,
       patientsSeen = inPeriod.flatMap(_.patientIds).distinct.size,
       busiestTherapist = getBusiestTherapist(perTherapist),
       perTherapist = perTherapist,
-      evolution = evolution,
-      globalPosition = globalPosition
+      evolution = evolution
     )
   end apply
 

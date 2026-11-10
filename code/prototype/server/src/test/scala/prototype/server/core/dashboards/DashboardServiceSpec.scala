@@ -93,7 +93,7 @@ class DashboardServiceSpec
       _ <- addAppointment(w, List(arb), List(ann), "2026-10-12", 9)
       _ <- addAppointment(w, List(mdp), List(bob), "2026-10-12", 9)
       _ <- addAppointment(w, List(out), List(bob), "2026-10-13", 9)
-      result <- w.dashboards.getDirectoryDashboard(mine)
+      result <- w.dashboards.getDirectoryDashboard(mine).map(_.dashboard)
     yield
       result.therapists shouldBe 2
       result.appointments shouldBe 2
@@ -108,7 +108,7 @@ class DashboardServiceSpec
       mdp <- addTherapist(w, "mdp", mine)
       ann = patient(1)
       _ <- addAppointment(w, List(arb, mdp), List(ann), "2026-10-12", 9)
-      result <- w.dashboards.getDirectoryDashboard(mine)
+      result <- w.dashboards.getDirectoryDashboard(mine).map(_.dashboard)
     yield
       result.appointments shouldBe 1
       result.patientsPerTherapist.map(_.count) shouldBe List(1, 1)
@@ -123,8 +123,8 @@ class DashboardServiceSpec
       mdp <- addTherapist(w, "mdp", b)
       ann = patient(1)
       _ <- addAppointment(w, List(arb, mdp), List(ann), "2026-10-12", 9)
-      forA <- w.dashboards.getDirectoryDashboard(a)
-      forB <- w.dashboards.getDirectoryDashboard(b)
+      forA <- w.dashboards.getDirectoryDashboard(a).map(_.dashboard)
+      forB <- w.dashboards.getDirectoryDashboard(b).map(_.dashboard)
     yield
       forA.appointments shouldBe 1
       forB.appointments shouldBe 1
@@ -139,7 +139,9 @@ class DashboardServiceSpec
       _ <- addAppointment(w, List(arb), List(ann), "2026-10-13", 9)
       _ <- addAppointment(w, List(arb), List(ann), "2026-10-14", 9)
       _ <- addAppointment(w, List(arb), List(ann), "2026-10-21", 9)
-      result <- w.dashboards.getActivityDashboard(mine, PeriodUnit.WEEK, date("2026-10-14"))
+      result <- w.dashboards
+        .getActivityDashboard(mine, PeriodUnit.WEEK, date("2026-10-14"))
+        .map(_.dashboard)
     yield
       result.appointments shouldBe 2
       result.patientsSeen shouldBe 1
@@ -162,7 +164,7 @@ class DashboardServiceSpec
       _ <- w.appointments.createPrestation(foreign.appointmentId, "Consultation", 1, 999f)
       reportId = withPrestation.appointment.prestations.find(_.label == "Report").get.prestationId
       _ <- w.appointments.updatePrestationStatus(shared.appointmentId, reportId, PrestationStatus.BILLED)
-      result <- w.dashboards.getBillingDashboard(mine)
+      result <- w.dashboards.getBillingDashboard(mine).map(_.dashboard)
     yield
       // The appointment with two therapists of the company is counted once,
       // and the other company's prestation is left out

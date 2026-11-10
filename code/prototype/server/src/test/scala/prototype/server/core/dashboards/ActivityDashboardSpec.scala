@@ -2,6 +2,7 @@ package prototype.server.core.dashboards
 
 import prototype.api.*
 import prototype.server.core.dashboards.DashboardFixtures.*
+import prototype.shared.dashboards.*
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -14,10 +15,10 @@ class ActivityDashboardSpec extends AnyFlatSpec with Matchers:
   private val therapists = List(therapist("arb"), therapist("mdp"), therapist("tst"))
 
   private def week(day: String, appointments: List[Appointment]) =
-    ActivityDashboard(therapists, appointments, PeriodUnit.WEEK, date(day), 0L)
+    ActivityDashboard(therapists, appointments, PeriodUnit.WEEK, date(day))
 
   private def month(day: String, appointments: List[Appointment]) =
-    ActivityDashboard(therapists, appointments, PeriodUnit.MONTH, date(day), 0L)
+    ActivityDashboard(therapists, appointments, PeriodUnit.MONTH, date(day))
 
   "A week" should "run from Monday to Sunday around the given day" in {
     // 2026-10-14 is a Wednesday

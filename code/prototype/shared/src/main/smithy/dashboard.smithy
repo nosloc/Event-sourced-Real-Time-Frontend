@@ -81,6 +81,17 @@ structure GetDirectoryDashboardInput {
 
 structure GetDirectoryDashboardOutput {
     @required
+    dashboard: DirectoryFigures
+
+    // Up to date with the events up to this position: the oldest of the reads
+    // the dashboard was computed from
+    @required
+    globalPosition: Long
+}
+
+// The figures alone, as the server and the browser compute them
+structure DirectoryFigures {
+    @required
     therapists: Integer
 
     // Patients with at least one appointment with a therapist of the company
@@ -99,11 +110,6 @@ structure GetDirectoryDashboardOutput {
 
     @required
     patientsPerTherapist: TherapistCounts
-
-    // Up to date with the events up to this position: the oldest of the reads
-    // the dashboard was computed from
-    @required
-    globalPosition: Long
 }
 
 structure RoleCount {
@@ -135,6 +141,17 @@ structure GetActivityDashboardInput {
 }
 
 structure GetActivityDashboardOutput {
+    @required
+    dashboard: ActivityFigures
+
+    // Up to date with the events up to this position: the oldest of the reads
+    // the dashboard was computed from
+    @required
+    globalPosition: Long
+}
+
+// The figures alone, as the server and the browser compute them
+structure ActivityFigures {
     // First and last day of the chosen period, both included
     @required
     periodStart: LocalDate
@@ -157,11 +174,6 @@ structure GetActivityDashboardOutput {
     // The chosen period and the 5 before it, oldest first
     @required
     evolution: PeriodCounts
-
-    // Up to date with the events up to this position: the oldest of the reads
-    // the dashboard was computed from
-    @required
-    globalPosition: Long
 }
 
 structure PeriodCount {
@@ -186,6 +198,17 @@ structure GetBillingDashboardInput {
 
 structure GetBillingDashboardOutput {
     @required
+    dashboard: BillingFigures
+
+    // Up to date with the events up to this position: the oldest of the reads
+    // the dashboard was computed from
+    @required
+    globalPosition: Long
+}
+
+// The figures alone, as the server and the browser compute them
+structure BillingFigures {
+    @required
     amountPerStatus: AmountPerStatus
 
     // The oldest appointments that still have prestations to bill
@@ -195,11 +218,6 @@ structure GetBillingDashboardOutput {
     // The last 52 weeks ending with the current one, oldest first
     @required
     weekly: WeeklyAmounts
-
-    // Up to date with the events up to this position: the oldest of the reads
-    // the dashboard was computed from
-    @required
-    globalPosition: Long
 }
 
 structure AmountPerStatus {

@@ -4,6 +4,7 @@ import cats.effect.*
 import cats.implicits.*
 
 import prototype.api.*
+import prototype.shared.dashboards.*
 
 import smithy4s.time.LocalDate
 
@@ -25,9 +26,12 @@ object DashboardServiceImpl:
           (companyAppointments, appointmentsPosition) <-
             getCompanyAppointments(companyId)
           now <- IO.realTimeInstant
-        yield BillingDashboard(
-          companyAppointments,
-          now,
+          figures = BillingDashboard(
+            companyAppointments,
+            now
+          )
+        yield GetBillingDashboardOutput(
+          figures,
           oldest(therapistsPosition, appointmentsPosition)
         )
 
@@ -39,10 +43,13 @@ object DashboardServiceImpl:
           (companyAppointments, appointmentsPosition) <-
             getCompanyAppointments(companyId)
           now <- IO.realTimeInstant
-        yield DirectoryDashboard(
-          therapists,
-          companyAppointments,
-          now,
+          figures = DirectoryDashboard(
+            therapists,
+            companyAppointments,
+            now
+          )
+        yield GetDirectoryDashboardOutput(
+          figures,
           oldest(therapistsPosition, appointmentsPosition)
         )
 
@@ -55,11 +62,14 @@ object DashboardServiceImpl:
           (therapists, therapistsPosition) <- getCompanyTherapists(companyId)
           (companyAppointments, appointmentsPosition) <-
             getCompanyAppointments(companyId)
-        yield ActivityDashboard(
-          therapists,
-          companyAppointments,
-          unit,
-          date,
+          figures = ActivityDashboard(
+            therapists,
+            companyAppointments,
+            unit,
+            date
+          )
+        yield GetActivityDashboardOutput(
+          figures,
           oldest(therapistsPosition, appointmentsPosition)
         )
 

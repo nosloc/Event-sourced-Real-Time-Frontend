@@ -37,7 +37,7 @@ object DirectoryDashboard:
       companyIdS: Signal[UUID]
   ): HtmlElement =
     // A new company drops the figures shown until the new ones arrive
-    val dashboard: LiveData[GetDirectoryDashboardOutput] =
+    val dashboard: LiveData[DirectoryFigures] =
       LiveDirectoryDashboard(feed, companyIdS)
 
     div(
@@ -57,7 +57,7 @@ object DirectoryDashboard:
   // Takes a signal, so that on a live update the figures and the
   // charts change in place instead of being built again
   private def renderDirectoryDashboard(
-      dataS: Signal[GetDirectoryDashboardOutput]
+      dataS: Signal[DirectoryFigures]
   ): HtmlElement =
     div(
       cls := "dash",

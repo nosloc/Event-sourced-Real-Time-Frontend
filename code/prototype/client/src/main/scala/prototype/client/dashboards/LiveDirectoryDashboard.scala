@@ -17,14 +17,14 @@ object LiveDirectoryDashboard:
   def apply(
       feed: LiveFeed,
       companyIdS: Signal[UUID]
-  ): LiveData[GetDirectoryDashboardOutput] =
-    new RefreshedLiveData[UUID, GetDirectoryDashboardOutput](
+  ): LiveData[DirectoryFigures] =
+    new RefreshedLiveData[UUID, DirectoryFigures](
       feed = feed,
       key = companyIdS,
       load = companyId =>
         Api.dashboards
           .getDirectoryDashboard(CompanyId(companyId))
-          .map(response => (response, response.globalPosition)),
+          .map(response => (response.dashboard, response.globalPosition)),
       triggerRefresh = message =>
         DirectoryDashboardEvents.types.contains(message.eventType)
     )

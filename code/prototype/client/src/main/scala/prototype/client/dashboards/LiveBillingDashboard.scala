@@ -17,14 +17,14 @@ object LiveBillingDashboard:
   def apply(
       feed: LiveFeed,
       companyIdS: Signal[UUID]
-  ): LiveData[GetBillingDashboardOutput] =
-    new RefreshedLiveData[UUID, GetBillingDashboardOutput](
+  ): LiveData[BillingFigures] =
+    new RefreshedLiveData[UUID, BillingFigures](
       feed = feed,
       key = companyIdS,
       load = companyId =>
         Api.dashboards
           .getBillingDashboard(CompanyId(companyId))
-          .map(response => (response, response.globalPosition)),
+          .map(response => (response.dashboard, response.globalPosition)),
       triggerRefresh = message =>
         BillingDashboardEvents.types.contains(message.eventType)
     )

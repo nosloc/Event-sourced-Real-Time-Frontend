@@ -1,4 +1,4 @@
-package prototype.server.core.dashboards
+package prototype.shared.dashboards
 
 import java.time.{DayOfWeek, Instant, LocalDate as JavaLocalDate, ZoneId}
 import java.time.temporal.TemporalAdjusters
@@ -15,14 +15,12 @@ object BillingDashboard:
 
   def apply(
       companyAppointments: List[Appointment],
-      now: Instant,
-      globalPosition: Long
-  ): GetBillingDashboardOutput =
-    GetBillingDashboardOutput(
+      now: Instant
+  ): BillingFigures =
+    BillingFigures(
       amountPerStatus = getAmountPerStatus(companyAppointments),
       oldestToBill = getOldestToBill(companyAppointments),
-      weekly = getWeeklyAmounts(companyAppointments, now),
-      globalPosition = globalPosition
+      weekly = getWeeklyAmounts(companyAppointments, now)
     )
   end apply
 

@@ -1,4 +1,4 @@
-package prototype.server.core.dashboards
+package prototype.shared.dashboards
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -11,9 +11,8 @@ object DirectoryDashboard:
   def apply(
       therapists: List[Therapist],
       companyAppointments: List[Appointment],
-      now: Instant,
-      globalPosition: Long
-  ): GetDirectoryDashboardOutput =
+      now: Instant
+  ): DirectoryFigures =
     val patientIds = getCompanyPatientIds(companyAppointments)
     val activePatients = getActivePatients(companyAppointments, now)
     val therapistsPerRole = getTherapistRoleCounts(therapists)
@@ -22,14 +21,13 @@ object DirectoryDashboard:
       therapists
     )
 
-    GetDirectoryDashboardOutput(
+    DirectoryFigures(
       therapists = therapists.size,
       patientsSeen = patientIds.size,
       activePatients = activePatients.size,
       appointments = companyAppointments.size,
       therapistsPerRole = therapistsPerRole,
-      patientsPerTherapist = patientsPerTherapist,
-      globalPosition = globalPosition
+      patientsPerTherapist = patientsPerTherapist
     )
   end apply
 

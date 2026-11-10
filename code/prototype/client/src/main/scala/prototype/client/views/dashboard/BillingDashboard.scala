@@ -46,7 +46,7 @@ object BillingDashboard:
       companyIdS: Signal[UUID]
   ): HtmlElement =
     // The billing dashboard
-    val dashboard: LiveData[GetBillingDashboardOutput] =
+    val dashboard: LiveData[BillingFigures] =
       LiveBillingDashboard(feed, companyIdS)
 
     div(
@@ -66,7 +66,7 @@ object BillingDashboard:
   // Takes a signal, so that on a live update the figures and the
   // chart change in place instead of being built again
   private def renderBillingDashboard(
-      dataS: Signal[GetBillingDashboardOutput]
+      dataS: Signal[BillingFigures]
   ): HtmlElement =
     div(
       cls := "dash",

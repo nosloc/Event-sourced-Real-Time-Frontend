@@ -27,12 +27,12 @@ object LiveActivityDashboard:
       companyIdS: Signal[UUID],
       periodUnitS: Signal[PeriodUnit],
       periodDayS: Signal[LocalDate]
-  ): LiveData[(PeriodUnit, GetActivityDashboardOutput)] =
+  ): LiveData[(PeriodUnit, ActivityFigures)] =
     val keyS: Signal[Key] =
       companyIdS.combineWith(periodUnitS, periodDayS).map(Key.apply)
     new RefreshedLiveData[
       Key,
-      (PeriodUnit, GetActivityDashboardOutput)
+      (PeriodUnit, ActivityFigures)
     ](
       feed = feed,
       key = keyS,
@@ -44,7 +44,7 @@ object LiveActivityDashboard:
             date = key.periodDay
           )
           .map(response =>
-            ((key.periodUnit, response), response.globalPosition)
+            ((key.periodUnit, response.dashboard), response.globalPosition)
           ),
       triggerRefresh = message =>
         ActivityDashboardEvents.types.contains(message.eventType),

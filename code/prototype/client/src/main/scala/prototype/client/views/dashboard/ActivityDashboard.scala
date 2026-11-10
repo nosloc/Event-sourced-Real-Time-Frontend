@@ -53,7 +53,7 @@ object ActivityDashboard:
       selectedPeriodDayVar: Var[LocalDate]
   ): HtmlElement =
     // A tuple of the period unit and the response from the server
-    val dashboard: LiveData[(PeriodUnit, GetActivityDashboardOutput)] =
+    val dashboard: LiveData[(PeriodUnit, ActivityFigures)] =
       LiveActivityDashboard(
         feed,
         companyIdS,
@@ -142,7 +142,7 @@ object ActivityDashboard:
   // The charts get a signal of their config, not a fixed one: they stay on
   // the page and update() when the period changes
   private def renderAnswer(
-      dashboardS: Signal[(PeriodUnit, GetActivityDashboardOutput)]
+      dashboardS: Signal[(PeriodUnit, ActivityFigures)]
   ): HtmlElement =
     val outS = dashboardS.map((_, out) => out)
     div(
@@ -171,7 +171,7 @@ object ActivityDashboard:
     )
   end renderAnswer
 
-  private def busiestTherapistText(out: GetActivityDashboardOutput): String =
+  private def busiestTherapistText(out: ActivityFigures): String =
     out.busiestTherapist.fold("None")(t =>
       s"${t.therapistId.value} (${t.count} appointment${
           if t.count == 1 then "" else "s"
@@ -179,7 +179,7 @@ object ActivityDashboard:
     )
 
   private def perTherapistChartConfig(
-      out: GetActivityDashboardOutput
+      out: ActivityFigures
   ): ChartConfig =
     val therapistCounts = out.perTherapist.sortBy(-_.count)
     new ChartConfig:
@@ -195,7 +195,7 @@ object ActivityDashboard:
   // The chosen period and the 5 before it, oldest first
   private def evolutionChartConfig(
       unit: PeriodUnit,
-      out: GetActivityDashboardOutput
+      out: ActivityFigures
   ): ChartConfig =
     new ChartConfig:
       val `type` = "line"
