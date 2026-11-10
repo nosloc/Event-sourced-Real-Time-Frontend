@@ -152,10 +152,10 @@ class ActivityDashboardSpec extends AnyFlatSpec with Matchers:
     )
   }
 
-  "A day's week" should "be cut in Zurich time, not in UTC" in {
-    // Monday 2026-10-12 00:30 in Zurich is still Sunday 22:30 in UTC
-    val appointments = List(appointment("2026-10-12", hour = 0, minute = 30))
+  "A day's week" should "be cut in UTC, not in Zurich time" in {
+    // Sunday 2026-10-11 23:30 in UTC is already Monday 01:30 in Zurich
+    val appointments = List(appointment("2026-10-11", hour = 23, minute = 30))
 
-    week("2026-10-14", appointments).appointments shouldBe 1
-    week("2026-10-11", appointments).appointments shouldBe 0
+    week("2026-10-11", appointments).appointments shouldBe 1
+    week("2026-10-14", appointments).appointments shouldBe 0
   }

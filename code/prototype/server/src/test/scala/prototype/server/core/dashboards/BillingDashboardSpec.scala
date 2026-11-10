@@ -107,7 +107,8 @@ class BillingDashboardSpec extends AnyFlatSpec with Matchers:
       WeeklyAmount(date("2026-10-12"), 0f, 0f, 0f)
   }
 
-  it should "start a week on Monday, in Zurich time" in {
+  it should "start a week on Monday, in UTC" in {
+    // Sunday 23:30 in UTC is already Monday in Zurich, but counts on Sunday
     val appointments = List(
       appointment("2026-10-11", hour = 23, minute = 30, prestations = List(prestation(PAID, 1, 5f))), // Sunday
       appointment("2026-10-12", hour = 0, minute = 30, prestations = List(prestation(PAID, 1, 7f))) // Monday

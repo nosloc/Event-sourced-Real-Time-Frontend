@@ -1,6 +1,6 @@
 package prototype.shared.dashboards
 
-import java.time.{DayOfWeek, Instant, LocalDate as JavaLocalDate, ZoneId}
+import java.time.{DayOfWeek, Instant, LocalDate as JavaLocalDate, ZoneOffset}
 import java.time.temporal.TemporalAdjusters
 
 import prototype.api.*
@@ -8,8 +8,9 @@ import prototype.api.*
 import smithy4s.time.LocalDate
 
 object BillingDashboard:
-  // Weeks and days are cut in one fixed zone, whatever the machine's zone is
-  private val zone = ZoneId.of("Europe/Zurich")
+  // Weeks and days are cut in UTC, whatever the machine's zone is: no
+  // time-zone database is needed in the browser
+  private val zone = ZoneOffset.UTC
   private val weekCount = 52
   private val oldestCount = 5
 

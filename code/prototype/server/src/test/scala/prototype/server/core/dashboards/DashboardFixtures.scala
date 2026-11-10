@@ -1,6 +1,6 @@
 package prototype.server.core.dashboards
 
-import java.time.{Instant, LocalDate as JavaLocalDate, ZoneId}
+import java.time.{Instant, LocalDate as JavaLocalDate, ZoneOffset}
 import java.util.UUID
 
 import prototype.api.*
@@ -8,10 +8,10 @@ import prototype.api.*
 import smithy4s.time.{LocalDate, Timestamp}
 
 /** Small builders for the dashboard specs. Days are written as "2026-10-12"
-  * and read in Zurich time, like the dashboards do.
+  * and read in UTC, like the dashboards do.
   */
 object DashboardFixtures:
-  private val zone = ZoneId.of("Europe/Zurich")
+  private val zone = ZoneOffset.UTC
 
   val company: CompanyId = CompanyId(UUID.fromString("00000000-0000-4000-8000-0000000000c1"))
 
