@@ -7,8 +7,13 @@ import scala.scalajs.js.JSConverters.*
 
 import prototype.api.*
 import prototype.client.ErrorMessages
+import prototype.client.appointments.LiveAppointmentsForCompany
 import prototype.client.dashboards.LiveDirectoryDashboard
 import prototype.client.live.{LiveData, LiveFeed}
+import prototype.client.therapists.{
+  LiveTherapists,
+  LiveTherapistsForCompany
+}
 import prototype.client.views.components.StatBox
 import prototype.client.views.components.chartJS.*
 
@@ -36,9 +41,24 @@ object DirectoryDashboard:
       feed: LiveFeed,
       companyIdS: Signal[UUID]
   ): HtmlElement =
-    // A new company drops the figures shown until the new ones arrive
+    val apiCompanyIdS = companyIdS.map(CompanyId.apply)
+
+    val companyTherapists =
+      LiveTherapistsForCompany(
+        LiveTherapists(feed),
+        apiCompanyIdS
+      )
+
+    val companyAppointments =
+      LiveAppointmentsForCompany(feed, apiCompanyIdS, companyTherapists)
+
+    // A new company drops the figures shown until its appointments are loaded
+    // (its therapists are filtered at once)
     val dashboard: LiveData[DirectoryFigures] =
-      LiveDirectoryDashboard(feed, companyIdS)
+      LiveDirectoryDashboard.replayed(
+        companyTherapists,
+        companyAppointments
+      )
 
     div(
       cls := "dash",

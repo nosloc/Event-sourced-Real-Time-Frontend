@@ -10,8 +10,8 @@ enum AppointmentOf:
   case Company(companyId: UUID)
 
   /** A company keeps every appointment the events bring: an event does not say
-    * which company it belongs to, so a view filters it later by the company's
-    * therapists.
+    * which company it belongs to, so `LiveAppointmentsForCompany` filters them
+    * by the company's therapists.
     */
   def includes(appointment: Appointment): Boolean =
     this match

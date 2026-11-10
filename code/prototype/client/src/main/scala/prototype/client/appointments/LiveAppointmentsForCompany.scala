@@ -7,10 +7,15 @@ import prototype.shared.appointment.*
 
 import com.raquo.laminar.api.L.*
 
+/** A company's appointments, replayed in the browser. The snapshot holds every
+  * appointment the events bring (an event does not say which company it belongs
+  * to); the value shows only those with one of the company's therapists.
+  */
 object LiveAppointmentsForCompany:
   def apply(
       feed: LiveFeed,
-      companyIdS: Signal[CompanyId]
+      companyIdS: Signal[CompanyId],
+      companyTherapists: LiveData[List[Therapist]]
   ): LiveData[List[Appointment]] =
     new ReplayedLiveData[
       AppointmentOf.Company,
@@ -26,3 +31,7 @@ object LiveAppointmentsForCompany:
       decode = AppointmentEventDecoder.decode,
       evolve = AppointmentListEvolve.evolve
     )
+      .combineWithFn(companyTherapists)((appointments, therapists) =>
+        val therapistIds = therapists.map(_.therapistId).toSet
+        appointments.filter(_.therapistIds.exists(therapistIds.contains))
+      )
