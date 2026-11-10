@@ -12,12 +12,16 @@ object LiveAppointmentsForTherapist:
       feed: LiveFeed,
       therapistIdS: Signal[String]
   ): LiveData[List[Appointment]] =
-    new ReplayedLiveData[String, List[Appointment], AppointmentEvent](
+    new ReplayedLiveData[
+      AppointmentOf.Therapist,
+      List[Appointment],
+      AppointmentEvent
+    ](
       feed = feed,
-      key = therapistIdS,
-      load = therapistId =>
+      key = therapistIdS.map(AppointmentOf.Therapist(_)),
+      load = therapist =>
         Api.appointments
-          .listTherapistAppointments(TherapistId(therapistId))
+          .listTherapistAppointments(TherapistId(therapist.trigram))
           .map(response => (response.appointments, response.globalPosition)),
       decode = AppointmentEventDecoder.decode,
       evolve = AppointmentListEvolve.evolve

@@ -5,13 +5,13 @@ import prototype.shared.appointment.*
 
 import org.scalajs.dom
 
-/** A therapist's appointments: applies `AppointmentEvolve` to the appointment
-  * an event is about, and keeps it only if the therapist is in it. An
-  * appointment already listed keeps its place.
+/** A list of appointments (a therapist's, a company's): applies
+  * `AppointmentEvolve` to the appointment an event is about, and keeps it only
+  * if the key includes it. An appointment already listed keeps its place.
   */
 object AppointmentListEvolve:
   def evolve(
-      trigram: String,
+      of: AppointmentOf,
       appointments: List[Appointment],
       event: AppointmentEvent
   ): List[Appointment] =
@@ -23,7 +23,7 @@ object AppointmentListEvolve:
       )
       .map(
         _.map(AppointmentState.toAppointment)
-          .filter(_.therapistIds.contains(trigram))
+          .filter(of.includes)
       )
 
     evolveResult match
