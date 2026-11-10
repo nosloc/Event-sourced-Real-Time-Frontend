@@ -1,15 +1,13 @@
 package prototype.client.views.dashboard
 
-import java.util.UUID
-
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 
 import prototype.api.*
 import prototype.api.PeriodUnit.*
 import prototype.client.ErrorMessages
-import prototype.client.dashboards.LiveActivityDashboard
-import prototype.client.live.{LiveData, LiveFeed}
+import prototype.client.dashboards.{DashboardSources, LiveActivityDashboard}
+import prototype.client.live.LiveData
 import prototype.client.views.components.*
 import prototype.client.views.components.chartJS.*
 
@@ -19,49 +17,19 @@ import smithy4s.time.LocalDate
 object ActivityDashboard:
 
   def apply(
-      feed: LiveFeed,
-      selectedCompanySignal: Signal[Option[UUID]]
+      sources: DashboardSources
   ): HtmlElement =
-    val selectedPeriodUnitVar: Var[PeriodUnit] = Var(WEEK)
-
-    // Any day inside the period shown: the server works out the week or month
+    val selectedPeriodUnitVar: Var[PeriodUnit] = Var(PeriodUnit.WEEK)
     val selectedPeriodDayVar: Var[LocalDate] = Var(LocalDate.now())
 
-    div(
-      cls := "dash",
-      child <-- selectedCompanySignal.splitOption(
-        (_, companyIdS) =>
-          renderCompanyDashboard(
-            feed,
-            companyIdS,
-            selectedPeriodUnitVar,
-            selectedPeriodDayVar
-          ),
-        ifEmpty = p(
-          cls := "dash__empty",
-          "Select a company to see the activity dashboard."
-        )
-      )
-    )
-  end apply
-
-  // Built once a company is selected, and kept while it changes.
-  private def renderCompanyDashboard(
-      feed: LiveFeed,
-      companyIdS: Signal[UUID],
-      selectedPeriodUnitVar: Var[PeriodUnit],
-      selectedPeriodDayVar: Var[LocalDate]
-  ): HtmlElement =
-    // A tuple of the period unit and the response from the server
     val dashboard: LiveData[(PeriodUnit, ActivityFigures)] =
-      LiveActivityDashboard(
-        feed,
-        companyIdS,
+      LiveActivityDashboard.replayed(
+        sources,
         selectedPeriodUnitVar.signal,
         selectedPeriodDayVar.signal
       )
 
-    // The period shown is the one the server answered with
+    // The period shown is the one the figures were computed for
     val periodS: Signal[Option[(LocalDate, LocalDate)]] =
       dashboard.valueS.map(_.map((_, out) => (out.periodStart, out.periodEnd)))
 
@@ -82,7 +50,7 @@ object ActivityDashboard:
         ifEmpty = p(cls := "dash__empty", "Loading activity dashboard...")
       )
     )
-  end renderCompanyDashboard
+  end apply
 
   // Return the period picker (the period unit picker and the range picker)
   private def renderPeriodSelector(

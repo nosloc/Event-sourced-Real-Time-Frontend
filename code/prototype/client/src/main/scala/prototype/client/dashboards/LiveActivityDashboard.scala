@@ -5,13 +5,13 @@ import java.util.UUID
 import prototype.api.*
 import prototype.client.Api
 import prototype.client.live.{LiveData, LiveFeed, RefreshedLiveData}
-import prototype.shared.dashboards.ActivityDashboardEvents
+import prototype.shared.dashboards.{ActivityDashboard, ActivityDashboardEvents}
 
 import com.raquo.laminar.api.L.*
 import smithy4s.time.LocalDate
 
-/** The activity dashboard of one company, reloaded from the server when an
-  * event arrives. The answer comes with the unit it was asked for: the
+/** The activity dashboard of one company, either reloaded from the server or
+  * computed in the browser. The figures come with the unit they are for: the
   * evolution chart labels its points by week or by month.
   */
 object LiveActivityDashboard:
@@ -51,4 +51,19 @@ object LiveActivityDashboard:
       invalidatePrevious = (oldKey, newKey) =>
         oldKey.companyId != newKey.companyId
     )
+
+  /** Computed in the browser from the company's live therapists and
+    * appointments and the chosen period, with the shared `ActivityDashboard`:
+    * no request when an event arrives or the period changes.
+    */
+  def replayed(
+      sources: DashboardSources,
+      unitS: Signal[PeriodUnit],
+      dateS: Signal[LocalDate]
+  ): LiveData[(PeriodUnit, ActivityFigures)] =
+    sources
+      .combineWithFn(unitS.combineWith(dateS)) {
+        case ((therapists, appointments), (unit, date)) =>
+          (unit, ActivityDashboard(therapists, appointments, unit, date))
+      }
 end LiveActivityDashboard

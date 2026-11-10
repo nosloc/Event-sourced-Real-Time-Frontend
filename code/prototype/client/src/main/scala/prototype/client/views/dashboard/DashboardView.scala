@@ -4,7 +4,9 @@ import java.util.UUID
 
 import prototype.api.*
 import prototype.client.companies.LiveCompanies
+import prototype.client.dashboards.DashboardSources
 import prototype.client.live.{LiveData, LiveFeed}
+import prototype.client.therapists.LiveTherapists
 import prototype.client.views.components.PopoverPicker
 import prototype.client.views.components.PopoverPicker.Item
 
@@ -21,6 +23,10 @@ object DashboardView:
     val selectedCompanyVar: Var[Option[UUID]] = Var(None)
     val companies: LiveData[List[Company]] = LiveCompanies(feed)
     val selectedDashboardVar: Var[Option[DashboardType]] = Var(None)
+
+    // The therapists of every company, loaded once for the page
+    val allTherapists: LiveData[List[Therapist]] = LiveTherapists(feed)
+
     val titleS: Signal[String] = selectedDashboardVar.signal.map {
       case None                          => "No Selected Dashboard"
       case Some(DashboardType.BILLING)   => "Billing Dashboard"
@@ -41,21 +47,48 @@ object DashboardView:
             h2(child.text <-- titleS, cls := "dashboards__title"),
             renderCompanySelector(companies.valueS, selectedCompanyVar)
           ),
-          child <-- selectedDashboardVar.signal.map {
-            case None                => renderNoDashboardSelected()
-            case Some(dashboardType) =>
-              dashboardType match
-                case DashboardType.BILLING =>
-                  BillingDashboard(feed, selectedCompanyVar.signal)
-                case DashboardType.ACTIVITY =>
-                  ActivityDashboard(feed, selectedCompanyVar.signal)
-                case DashboardType.DIRECTORY =>
-                  DirectoryDashboard(feed, selectedCompanyVar.signal)
-          }
+          child <-- selectedCompanyVar.signal.splitOption(
+            (_, companyIdS) =>
+              renderCompanyDashboards(
+                DashboardSources.from(feed, allTherapists, companyIdS),
+                selectedDashboardVar
+              ),
+            ifEmpty = div(
+              child <-- selectedDashboardVar.signal.map {
+                case None    => renderNoDashboardSelected()
+                case Some(_) =>
+                  p(
+                    cls := "dash__empty",
+                    "Select a company to see the ",
+                    text <-- titleS.map(_.toLowerCase()),
+                    "."
+                  )
+              }
+            )
+          )
         )
       )
     )
   end apply
+
+  // Built once a company is selected, and kept while it changes and while the
+  // dashboards change: the sources load once per company
+  private def renderCompanyDashboards(
+      sources: DashboardSources,
+      selectedDashboardVar: Var[Option[DashboardType]]
+  ): HtmlElement =
+    div(
+      // Keeps the sources running while the dashboards are swapped, so they
+      // are not loaded again
+      sources.keepLoaded,
+      child <-- selectedDashboardVar.signal.map {
+        case None                          => renderNoDashboardSelected()
+        case Some(DashboardType.BILLING)   => BillingDashboard(sources)
+        case Some(DashboardType.DIRECTORY) => DirectoryDashboard(sources)
+        case Some(DashboardType.ACTIVITY)  => ActivityDashboard(sources)
+      }
+    )
+  end renderCompanyDashboards
 
   private def renderNoDashboardSelected(): HtmlElement =
     div(

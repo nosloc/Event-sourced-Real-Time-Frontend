@@ -1,14 +1,12 @@
 package prototype.client.views.dashboard
 
-import java.util.UUID
-
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 
 import prototype.api.*
 import prototype.client.ErrorMessages
-import prototype.client.dashboards.LiveBillingDashboard
-import prototype.client.live.{LiveData, LiveFeed}
+import prototype.client.dashboards.{DashboardSources, LiveBillingDashboard}
+import prototype.client.live.LiveData
 import prototype.client.views.components.*
 import prototype.client.views.components.chartJS.*
 
@@ -19,35 +17,16 @@ object BillingDashboard:
 
   /** Return the billing dashboard component
     *
-    * @param selectedCompanyS
-    *   the signal of the selected company, None if no company is selected
+    * @param sources
+    *   the selected company's live therapists and appointments
     * @return
     *   the real time billing dashboard
     */
   def apply(
-      feed: LiveFeed,
-      selectedCompanyS: Signal[Option[UUID]]
+      sources: DashboardSources
   ): HtmlElement =
-    div(
-      cls := "dash",
-      child <-- selectedCompanyS.splitOption(
-        (_, companyIdS) => renderCompanyDashboard(feed, companyIdS),
-        ifEmpty = p(
-          cls := "dash__empty",
-          "Select a company to see the billing dashboard."
-        )
-      )
-    )
-  end apply
-
-  // Built once a company is selected, and kept while it changes.
-  private def renderCompanyDashboard(
-      feed: LiveFeed,
-      companyIdS: Signal[UUID]
-  ): HtmlElement =
-    // The billing dashboard
     val dashboard: LiveData[BillingFigures] =
-      LiveBillingDashboard(feed, companyIdS)
+      LiveBillingDashboard.replayed(sources.appointments)
 
     div(
       cls := "dash",
@@ -61,7 +40,7 @@ object BillingDashboard:
         ifEmpty = p(cls := "dash__empty", "Loading billing dashboard...")
       )
     )
-  end renderCompanyDashboard
+  end apply
 
   // Takes a signal, so that on a live update the figures and the
   // chart change in place instead of being built again

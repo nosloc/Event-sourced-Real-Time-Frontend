@@ -38,11 +38,9 @@ object LiveDirectoryDashboard:
     * event arrives.
     */
   def replayed(
-      companyTherapists: LiveData[List[Therapist]],
-      companyAppointments: LiveData[List[Appointment]]
+      sources: DashboardSources
   ): LiveData[DirectoryFigures] =
-    companyTherapists
-      .combineWith(companyAppointments)
+    sources
       .map((therapists, appointments) =>
         DirectoryDashboard(
           therapists,

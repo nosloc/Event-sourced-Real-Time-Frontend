@@ -1,19 +1,12 @@
 package prototype.client.views.dashboard
 
-import java.util.UUID
-
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 
 import prototype.api.*
 import prototype.client.ErrorMessages
-import prototype.client.appointments.LiveAppointmentsForCompany
-import prototype.client.dashboards.LiveDirectoryDashboard
-import prototype.client.live.{LiveData, LiveFeed}
-import prototype.client.therapists.{
-  LiveTherapists,
-  LiveTherapistsForCompany
-}
+import prototype.client.dashboards.{DashboardSources, LiveDirectoryDashboard}
+import prototype.client.live.LiveData
 import prototype.client.views.components.StatBox
 import prototype.client.views.components.chartJS.*
 
@@ -21,44 +14,12 @@ import com.raquo.laminar.api.L.*
 
 object DirectoryDashboard:
   def apply(
-      feed: LiveFeed,
-      selectedCompanyS: Signal[Option[UUID]]
+      sources: DashboardSources
   ): HtmlElement =
-    div(
-      cls := "dash",
-      child <-- selectedCompanyS.splitOption(
-        (_, companyIdS) => renderCompanyDashboard(feed, companyIdS),
-        ifEmpty = div(
-          cls := "dash__empty",
-          "Select a company to see the directory dashboard."
-        )
-      )
-    )
-  end apply
-
-  // Built once a company is selected, and kept while it changes.
-  private def renderCompanyDashboard(
-      feed: LiveFeed,
-      companyIdS: Signal[UUID]
-  ): HtmlElement =
-    val apiCompanyIdS = companyIdS.map(CompanyId.apply)
-
-    val companyTherapists =
-      LiveTherapistsForCompany(
-        LiveTherapists(feed),
-        apiCompanyIdS
-      )
-
-    val companyAppointments =
-      LiveAppointmentsForCompany(feed, apiCompanyIdS, companyTherapists)
-
     // A new company drops the figures shown until its appointments are loaded
     // (its therapists are filtered at once)
     val dashboard: LiveData[DirectoryFigures] =
-      LiveDirectoryDashboard.replayed(
-        companyTherapists,
-        companyAppointments
-      )
+      LiveDirectoryDashboard.replayed(sources)
 
     div(
       cls := "dash",
@@ -72,7 +33,7 @@ object DirectoryDashboard:
         div(cls := "dash__empty", "Loading directory dashboard...")
       )
     )
-  end renderCompanyDashboard
+  end apply
 
   // Takes a signal, so that on a live update the figures and the
   // charts change in place instead of being built again

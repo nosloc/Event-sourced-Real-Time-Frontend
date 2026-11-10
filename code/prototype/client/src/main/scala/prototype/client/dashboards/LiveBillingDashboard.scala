@@ -1,16 +1,20 @@
 package prototype.client.dashboards
 
+import java.time.Instant
 import java.util.UUID
 
 import prototype.api.*
 import prototype.client.Api
 import prototype.client.live.{LiveData, LiveFeed, RefreshedLiveData}
-import prototype.shared.dashboards.BillingDashboardEvents
+import prototype.shared.dashboards.{
+  BillingDashboard,
+  BillingDashboardEvents
+}
 
 import com.raquo.laminar.api.L.*
 
-/** The billing dashboard of one company, reloaded from the server when one of
-  * its events arrives.
+/** The billing dashboard of one company, either reloaded from the server or
+  * computed in the browser.
   */
 object LiveBillingDashboard:
 
@@ -27,5 +31,15 @@ object LiveBillingDashboard:
           .map(response => (response.dashboard, response.globalPosition)),
       triggerRefresh = message =>
         BillingDashboardEvents.types.contains(message.eventType)
+    )
+
+  /** Computed in the browser from the company's live appointments, with the
+    * shared `BillingDashboard`: no request when an event arrives.
+    */
+  def replayed(
+      companyAppointments: LiveData[List[Appointment]]
+  ): LiveData[BillingFigures] =
+    companyAppointments.map(appointments =>
+      BillingDashboard(appointments, Instant.now())
     )
 end LiveBillingDashboard
