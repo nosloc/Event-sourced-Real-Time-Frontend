@@ -61,7 +61,10 @@ final class RefreshedLiveData[K, A](
   private val eventArrivedInput: EventStream[Input[K, A]] =
     feed.events.collect {
       case FeedMessage.Event(message) if triggerRefresh(message) =>
-        feed.tracer.record("Considered", message.position)
+        feed.tracer.record(
+          TraceStep.Kind.Considered(name),
+          message.position
+        )
         Input.EventArrived(message.position)
     }
 
@@ -86,10 +89,12 @@ final class RefreshedLiveData[K, A](
       )((acc, input) =>
         val result = RefreshModel.step(invalidatePrevious)(acc._1, input)
         // Recorded here, once per step: the signal itself can be read again
-        result._2.map(recordEntry).foreach {
-          case (step, Some(position)) => feed.tracer.record(step, position)
-          case (step, None)           => feed.tracer.record(step)
-        }
+        result._2.foreach(outcome =>
+          feed.tracer.record(
+            TraceStep.Kind.Reload(name, outcome),
+            eventBehind(outcome)
+          )
+        )
         result
       )
 
@@ -123,30 +128,14 @@ final class RefreshedLiveData[K, A](
   override val loadingS: Signal[Boolean] = stateS.map(_.loading)
   override val errorS: Signal[Option[Throwable]] = stateS.map(_.error)
 
-  private def recordEntry(outcome: Outcome[K]): (String, Option[Long]) =
+  // The event an outcome belongs to in the trace: the one that launched the
+  // load or was batched, the highest one batched for a pending load; None
+  // for an answer alone and for a load with no event behind it
+  private def eventBehind(outcome: Outcome[K]): Option[Long] =
     outcome match
-      case Outcome.Answer(position, loadNumber) =>
-        (s"Received server data for load $loadNumber of $name", None)
-      case Outcome.AnswerAndLaunchPending(answer, load) =>
-        (
-          s"Received server data for load ${answer.loadNumber} of $name, " +
-            s"launched pending load ${load.loadNumber}",
-          Some(load.position)
-        )
-      case Outcome.Error(loadNumber) =>
-        (s"Load $loadNumber of $name failed", None)
-      case Outcome.ErrorAndLaunchPending(error, load) =>
-        (
-          s"Load ${error.loadNumber} of $name failed, " +
-            s"launched pending load ${load.loadNumber}",
-          Some(load.position)
-        )
-      case Outcome.InitialLoad(key, loadNumber) =>
-        (s"Launched initial load $loadNumber of $name for $key", None)
-      case Outcome.Load(_, position, loadNumber) =>
-        (s"Launched load $loadNumber of $name", Some(position))
-      case Outcome.Batched(position, servedBy) =>
-        (
-          s"Batched, to be served by load $servedBy of $name",
-          Some(position)
-        )
+      case Outcome.Load(_, position, _)            => Some(position)
+      case Outcome.Batched(position, _)            => Some(position)
+      case Outcome.AnswerAndLaunchPending(_, load) => Some(load.position)
+      case Outcome.ErrorAndLaunchPending(_, load)  => Some(load.position)
+      case Outcome.InitialLoad(_, _)               => None
+      case Outcome.Answer(_, _) | Outcome.Error(_) => None

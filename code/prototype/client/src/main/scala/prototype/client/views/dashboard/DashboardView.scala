@@ -44,6 +44,7 @@ object DashboardView:
     div(
       cls := "dashboards",
       feed.bind(),
+      feed.tracer.logToConsole,
       h1("Dashboards"),
       div(
         cls := "dashboards__layout",

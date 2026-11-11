@@ -17,30 +17,131 @@ final class Tracer:
     */
   val enabled: Var[Boolean] = Var(false)
 
-  /** Records that the event at `position` reached `step`, at the time of the
-    * call (milliseconds since the page loaded).
-    */
-  def record(step: String, position: Long): Unit =
-    if enabled.now() then
-      val at = dom.window.performance.now()
-      dom.console.log(f"[trace] $step: event $position at $at%.1f ms")
+  // Only `record` and `timed` emit; the others read `steps`
+  private val bus: EventBus[TraceStep] = new EventBus
 
-  /** Runs `block` and records `step` for the event at `position`, with the time
-    * the block took.
+  /** The steps recorded, in the order recorded. Nothing while `enabled` is off.
     */
-  def timed[A](step: String, position: Long)(block: => A): A =
+  val steps: EventStream[TraceStep] = bus.events
+
+  /** Records a step built by the caller, with its own time. */
+  def record(step: TraceStep): Unit =
+    if enabled.now() then bus.emit(step)
+
+  /** Prints each recorded step in the console, while the element it is given to
+    * is mounted.
+    */
+  def logToConsole: Mod[HtmlElement] =
+    steps --> (step => dom.console.log(TraceStep.describe(step)))
+
+  /** Records that the event at `position` reached the step `kind`: the tracer
+    * reads the clock itself.
+    */
+  def record(kind: TraceStep.Kind, position: Long): Unit =
+    record(kind, Some(position))
+
+  /** The same for a position that may be missing: None for a step with no event
+    * behind it (a first load, a company change, the answer of a load).
+    */
+  def record(kind: TraceStep.Kind, position: Option[Long] = None): Unit =
+    if enabled.now() then
+      bus.emit(
+        TraceStep(
+          kind = kind,
+          position = position,
+          at = dom.window.performance.now(),
+          duration = None
+        )
+      )
+
+  /** Runs `block` and records the step `kind` for the event at `position`, with
+    * the time the block took. The step's time is the end of the block.
+    */
+  def timed[A](kind: TraceStep.Kind, position: Option[Long])(block: => A): A =
     if enabled.now() then
       val start = dom.window.performance.now()
       val result = block
-      val duration = dom.window.performance.now() - start
-      record(f"$step in $duration%.1f ms", position)
+      val end = dom.window.performance.now()
+      bus.emit(
+        TraceStep(
+          kind = kind,
+          position = position,
+          at = end,
+          duration = Some(end - start)
+        )
+      )
       result
     else block
 
-  /** Records a `step` with no event behind it (a first load, a company change),
-    * at the time of the call.
-    */
-  def record(step: String): Unit =
-    if enabled.now() then
-      val at = dom.window.performance.now()
-      dom.console.log(f"[trace] $step: no event at $at%.1f ms")
+/** One step recorded by the tracer, as data.
+  *
+  * @param kind
+  *   what happened
+  * @param position
+  *   the position of the event the step belongs to, or None when no event is
+  *   behind it (a first load, a company change, the answer of a load)
+  * @param at
+  *   when the step was recorded (milliseconds since the page loaded)
+  * @param duration
+  *   how long the step took in milliseconds, for the steps that are timed
+  */
+final case class TraceStep(
+    kind: TraceStep.Kind,
+    position: Option[Long],
+    at: Double,
+    duration: Option[Double]
+)
+
+object TraceStep:
+
+  enum Kind:
+    // The feed received the event, before anything reads it
+    case Received
+    // Everything the event triggered synchronously is done. On the Browser
+    // level the screen is written; on the Server level a request may have left
+    case Ended
+    // Browser level: a replayed live data decoded the event
+    case Decoded
+    // Browser level: the event was applied to the value, or only kept aside
+    // (still loading, or already in the snapshot)
+    case Folded(applied: Boolean)
+    // Browser level: the figures of `dashboard` were computed
+    case FiguresComputed(dashboard: String)
+    // Server level: the event makes the live data `source` out of date
+    case Considered(source: String)
+    // Server level: what the refresh model of `source` did (a load launched,
+    // an event batched, an answer); the outcome holds the load's number
+    case Reload(source: String, outcome: RefreshModel.Outcome[Any])
+
+  /** A step as one line of text, for the console. */
+  def describe(step: TraceStep): String =
+    import RefreshModel.Outcome
+    val what = step.kind match
+      case Kind.Received        => "Received"
+      case Kind.Ended           => "Ended"
+      case Kind.Decoded         => "Decoded"
+      case Kind.Folded(applied) =>
+        if applied then "Folded" else "Not folded"
+      case Kind.FiguresComputed(dashboard) => s"Figures of $dashboard computed"
+      case Kind.Considered(source)         => s"Considered for $source"
+      case Kind.Reload(source, outcome)    =>
+        outcome match
+          case Outcome.InitialLoad(key, loadNumber) =>
+            s"Launched initial load $loadNumber of $source for $key"
+          case Outcome.Load(_, _, loadNumber) =>
+            s"Launched load $loadNumber of $source"
+          case Outcome.Batched(_, servedBy) =>
+            s"Batched, to be served by load $servedBy of $source"
+          case Outcome.Answer(_, loadNumber) =>
+            s"Received server data for load $loadNumber of $source"
+          case Outcome.AnswerAndLaunchPending(answer, load) =>
+            s"Received server data for load ${answer.loadNumber} of $source, " +
+              s"launched pending load ${load.loadNumber}"
+          case Outcome.Error(loadNumber) =>
+            s"Load $loadNumber of $source failed"
+          case Outcome.ErrorAndLaunchPending(error, load) =>
+            s"Load ${error.loadNumber} of $source failed, " +
+              s"launched pending load ${load.loadNumber}"
+    val event = step.position.fold("no event")(position => s"event $position")
+    val duration = step.duration.fold("")(d => f" in $d%.1f ms")
+    f"[trace] $what$duration: $event at ${step.at}%.1f ms"

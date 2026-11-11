@@ -4,7 +4,13 @@ import java.util.UUID
 
 import prototype.api.*
 import prototype.client.Api
-import prototype.client.live.{LiveData, LiveFeed, RefreshedLiveData, Tracer}
+import prototype.client.live.{
+  LiveData,
+  LiveFeed,
+  RefreshedLiveData,
+  TraceStep,
+  Tracer
+}
 import prototype.shared.dashboards.{ActivityDashboard, ActivityDashboardEvents}
 
 import com.raquo.laminar.api.L.*
@@ -70,7 +76,10 @@ object LiveActivityDashboard:
       .map { case (((therapists, appointments), (unit, date)), position) =>
         (
           unit,
-          tracer.timed("Activity figures computed", position)(
+          tracer.timed(
+            TraceStep.Kind.FiguresComputed("activity"),
+            Option.when(position >= 0)(position)
+          )(
             ActivityDashboard(therapists, appointments, unit, date)
           )
         )

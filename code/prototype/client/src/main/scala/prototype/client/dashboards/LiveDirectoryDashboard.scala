@@ -5,7 +5,13 @@ import java.util.UUID
 
 import prototype.api.*
 import prototype.client.Api
-import prototype.client.live.{LiveData, LiveFeed, RefreshedLiveData, Tracer}
+import prototype.client.live.{
+  LiveData,
+  LiveFeed,
+  RefreshedLiveData,
+  TraceStep,
+  Tracer
+}
 import prototype.shared.dashboards.{
   DirectoryDashboard,
   DirectoryDashboardEvents
@@ -46,7 +52,10 @@ object LiveDirectoryDashboard:
     sources
       .withCurrentValueOf(processedEvent)
       .map { case ((therapists, appointments), position) =>
-        tracer.timed("Directory figures computed", position)(
+        tracer.timed(
+          TraceStep.Kind.FiguresComputed("directory"),
+          Option.when(position >= 0)(position)
+        )(
           DirectoryDashboard(
             therapists,
             appointments,

@@ -31,7 +31,8 @@ final class LiveFeed:
   val events: EventStream[FeedMessage] = messages.events
   // The position of the last event received, -1 before the first one
   val lastPositionS: Signal[Long] =
-    events.collect { case FeedMessage.Event(message) => message.position }
+    events
+      .collect { case FeedMessage.Event(message) => message.position }
       .toSignal(-1L)
 
   // Records the steps of each event, for the step-by-step mode
@@ -44,9 +45,9 @@ final class LiveFeed:
         source.onmessage = event =>
           Json.read[EventMessage](Blob(event.data.toString)) match
             case Right(message) =>
-              tracer.record("Received", message.position)
+              tracer.record(TraceStep.Kind.Received, message.position)
               messages.emit(FeedMessage.Event(message))
-              tracer.record("Ended", message.position)
+              tracer.record(TraceStep.Kind.Ended, message.position)
             case Left(error) =>
               dom.console.warn(
                 s"Stream message not decoded: ${error.getMessage}"

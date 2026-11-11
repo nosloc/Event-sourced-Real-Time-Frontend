@@ -43,7 +43,7 @@ final class ReplayedLiveData[K, A, E](
       .collect { case FeedMessage.Event(message) => message }
       .map(message =>
         decode(message).map(event =>
-          feed.tracer.record("Decoded", message.position)
+          feed.tracer.record(TraceStep.Kind.Decoded, message.position)
           Input.Received(message.position, event)
         )
       )
@@ -70,11 +70,7 @@ final class ReplayedLiveData[K, A, E](
         input match
           case Input.Received(position, _) =>
             val applied = next.position > state.position
-            feed.tracer.record(
-              if applied then s"Folded"
-              else s"Not folded",
-              position
-            )
+            feed.tracer.record(TraceStep.Kind.Folded(applied), position)
           case _ => ()
         next
       )
