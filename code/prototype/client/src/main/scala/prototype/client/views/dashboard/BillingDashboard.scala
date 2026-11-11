@@ -1,12 +1,18 @@
 package prototype.client.views.dashboard
 
+import java.util.UUID
+
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 
 import prototype.api.*
 import prototype.client.ErrorMessages
-import prototype.client.dashboards.{DashboardSources, LiveBillingDashboard}
-import prototype.client.live.LiveData
+import prototype.client.dashboards.{
+  ComputationLevel,
+  DashboardSources,
+  LiveBillingDashboard
+}
+import prototype.client.live.{LiveData, LiveFeed}
 import prototype.client.views.components.*
 import prototype.client.views.components.chartJS.*
 
@@ -18,15 +24,30 @@ object BillingDashboard:
   /** Return the billing dashboard component
     *
     * @param sources
-    *   the selected company's live therapists and appointments
+    *   the selected company's live therapists and appointments, for the
+    *   browser level
+    * @param feed
+    *   the page's live feed, for the server level
+    * @param companyIdS
+    *   the selected company, for the server level
+    * @param computationLevelS
+    *   where the figures are computed
     * @return
     *   the real time billing dashboard
     */
   def apply(
-      sources: DashboardSources
+      sources: DashboardSources,
+      feed: LiveFeed,
+      companyIdS: Signal[UUID],
+      computationLevelS: Signal[ComputationLevel]
   ): HtmlElement =
     val dashboard: LiveData[BillingFigures] =
-      LiveBillingDashboard.replayed(sources.appointments)
+      LiveData.switching(computationLevelS) {
+        case ComputationLevel.Browser =>
+          LiveBillingDashboard.replayed(sources.appointments)
+        case ComputationLevel.Server =>
+          LiveBillingDashboard(feed, companyIdS)
+      }
 
     div(
       cls := "dash",

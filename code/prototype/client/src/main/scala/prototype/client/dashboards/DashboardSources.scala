@@ -26,6 +26,15 @@ final case class DashboardSources(
   val loadingS: Signal[Boolean] = combined.loadingS
   val errorS: Signal[Option[Throwable]] = combined.errorS
 
+  /** Mount this on an element that stays on screen: it keeps the sources
+    * running while `activeS` is true, and lets them stop otherwise (their state
+    * is dropped, and they load again once it is true).
+    */
+  def keepLoadedWhile(activeS: Signal[Boolean]): Mod[HtmlElement] =
+    activeS.distinct.flatMapSwitch(
+      if _ then valueS else Val(None)
+    ) --> Observer.empty
+
 object DashboardSources:
   def from(
       feed: LiveFeed,

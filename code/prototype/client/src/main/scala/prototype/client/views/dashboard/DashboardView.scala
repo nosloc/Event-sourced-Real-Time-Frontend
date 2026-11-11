@@ -4,7 +4,7 @@ import java.util.UUID
 
 import prototype.api.*
 import prototype.client.companies.LiveCompanies
-import prototype.client.dashboards.DashboardSources
+import prototype.client.dashboards.{ComputationLevel, DashboardSources}
 import prototype.client.live.{LiveData, LiveFeed}
 import prototype.client.therapists.LiveTherapists
 import prototype.client.views.components.PopoverPicker
@@ -13,6 +13,7 @@ import prototype.client.views.components.PopoverPicker.Item
 import com.raquo.laminar.api.L.*
 
 object DashboardView:
+
   enum DashboardType:
     case BILLING
     case ACTIVITY
@@ -23,6 +24,10 @@ object DashboardView:
     val selectedCompanyVar: Var[Option[UUID]] = Var(None)
     val companies: LiveData[List[Company]] = LiveCompanies(feed)
     val selectedDashboardVar: Var[Option[DashboardType]] = Var(None)
+
+    val computationLevelVar: Var[ComputationLevel] = Var(
+      ComputationLevel.Browser
+    )
 
     // The therapists of every company, loaded once for the page
     val allTherapists: LiveData[List[Therapist]] = LiveTherapists(feed)
@@ -45,12 +50,19 @@ object DashboardView:
           div(
             cls := "dashboards__head",
             h2(child.text <-- titleS, cls := "dashboards__title"),
-            renderCompanySelector(companies.valueS, selectedCompanyVar)
+            div(
+              cls := "dashboards__pickers",
+              renderComputationLevelSelector(computationLevelVar),
+              renderCompanySelector(companies.valueS, selectedCompanyVar)
+            )
           ),
           child <-- selectedCompanyVar.signal.splitOption(
             (_, companyIdS) =>
               renderCompanyDashboards(
                 DashboardSources.from(feed, allTherapists, companyIdS),
+                feed,
+                companyIdS,
+                computationLevelVar.signal,
                 selectedDashboardVar
               ),
             ifEmpty = div(
@@ -75,17 +87,36 @@ object DashboardView:
   // dashboards change: the sources load once per company
   private def renderCompanyDashboards(
       sources: DashboardSources,
+      feed: LiveFeed,
+      companyIdS: Signal[UUID],
+      computationLevelS: Signal[ComputationLevel],
       selectedDashboardVar: Var[Option[DashboardType]]
   ): HtmlElement =
     div(
-      // Keeps the sources running while the dashboards are swapped, so they
-      // are not loaded again
-      sources.keepLoaded,
+      // On the browser level, keeps the sources running while the dashboards
+      // are swapped, so they are not loaded again; on the server level, lets
+      // them stop (nothing computes from them)
+      sources.keepLoadedWhile(
+        computationLevelS.map(_ == ComputationLevel.Browser)
+      ),
       child <-- selectedDashboardVar.signal.map {
-        case None                          => renderNoDashboardSelected()
-        case Some(DashboardType.BILLING)   => BillingDashboard(sources)
-        case Some(DashboardType.DIRECTORY) => DirectoryDashboard(sources)
-        case Some(DashboardType.ACTIVITY)  => ActivityDashboard(sources)
+        case None                        => renderNoDashboardSelected()
+        case Some(DashboardType.BILLING) =>
+          BillingDashboard(sources, feed, companyIdS, computationLevelS)
+        case Some(DashboardType.DIRECTORY) =>
+          DirectoryDashboard(
+            sources,
+            feed,
+            companyIdS,
+            computationLevelS
+          )
+        case Some(DashboardType.ACTIVITY) =>
+          ActivityDashboard(
+            sources,
+            feed,
+            companyIdS,
+            computationLevelS
+          )
       }
     )
   end renderCompanyDashboards
@@ -99,6 +130,22 @@ object DashboardView:
       )
     )
   end renderNoDashboardSelected
+
+  private def renderComputationLevelSelector(
+      computationLevelVar: Var[ComputationLevel]
+  ): HtmlElement =
+    PopoverPicker(
+      id = "computation-level-selector",
+      label = "Computed by",
+      items = Val(
+        List(
+          Item(ComputationLevel.Browser, "Browser"),
+          Item(ComputationLevel.Server, "Server")
+        )
+      ),
+      selectedVar = computationLevelVar
+    )
+  end renderComputationLevelSelector
 
   private def renderCompanySelector(
       companiesS: Signal[Option[List[Company]]],

@@ -1,13 +1,19 @@
 package prototype.client.views.dashboard
 
+import java.util.UUID
+
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 
 import prototype.api.*
 import prototype.api.PeriodUnit.*
 import prototype.client.ErrorMessages
-import prototype.client.dashboards.{DashboardSources, LiveActivityDashboard}
-import prototype.client.live.LiveData
+import prototype.client.dashboards.{
+  ComputationLevel,
+  DashboardSources,
+  LiveActivityDashboard
+}
+import prototype.client.live.{LiveData, LiveFeed}
 import prototype.client.views.components.*
 import prototype.client.views.components.chartJS.*
 
@@ -17,17 +23,30 @@ import smithy4s.time.LocalDate
 object ActivityDashboard:
 
   def apply(
-      sources: DashboardSources
+      sources: DashboardSources,
+      feed: LiveFeed,
+      companyIdS: Signal[UUID],
+      computationLevelS: Signal[ComputationLevel]
   ): HtmlElement =
     val selectedPeriodUnitVar: Var[PeriodUnit] = Var(PeriodUnit.WEEK)
     val selectedPeriodDayVar: Var[LocalDate] = Var(LocalDate.now())
 
     val dashboard: LiveData[(PeriodUnit, ActivityFigures)] =
-      LiveActivityDashboard.replayed(
-        sources,
-        selectedPeriodUnitVar.signal,
-        selectedPeriodDayVar.signal
-      )
+      LiveData.switching(computationLevelS) {
+        case ComputationLevel.Browser =>
+          LiveActivityDashboard.replayed(
+            sources,
+            selectedPeriodUnitVar.signal,
+            selectedPeriodDayVar.signal
+          )
+        case ComputationLevel.Server =>
+          LiveActivityDashboard(
+            feed,
+            companyIdS,
+            selectedPeriodUnitVar.signal,
+            selectedPeriodDayVar.signal
+          )
+      }
 
     // The period shown is the one the figures were computed for
     val periodS: Signal[Option[(LocalDate, LocalDate)]] =

@@ -100,3 +100,17 @@ object LiveData:
       val valueS: Signal[Option[A]] = signal.map(Some(_))
       val loadingS: Signal[Boolean] = Val(false)
       val errorS: Signal[Option[Throwable]] = Val(None)
+
+  /** The live value of the source `f` picks for the current key. Only that
+    * source runs: a key change drops the previous one, and the new one starts
+    * from scratch (it loads, unless something else keeps it running).
+    */
+  def switching[K, A](
+      keyS: Signal[K]
+  )(f: K => LiveData[A]): LiveData[A] =
+    new LiveData[A]:
+      // One source per key change, shared by the three members
+      private val current: Signal[LiveData[A]] = keyS.distinct.map(f)
+      val valueS: Signal[Option[A]] = current.flatMapSwitch(_.valueS)
+      val loadingS: Signal[Boolean] = current.flatMapSwitch(_.loadingS)
+      val errorS: Signal[Option[Throwable]] = current.flatMapSwitch(_.errorS)

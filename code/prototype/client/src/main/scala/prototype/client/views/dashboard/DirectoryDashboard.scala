@@ -1,12 +1,18 @@
 package prototype.client.views.dashboard
 
+import java.util.UUID
+
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.*
 
 import prototype.api.*
 import prototype.client.ErrorMessages
-import prototype.client.dashboards.{DashboardSources, LiveDirectoryDashboard}
-import prototype.client.live.LiveData
+import prototype.client.dashboards.{
+  ComputationLevel,
+  DashboardSources,
+  LiveDirectoryDashboard
+}
+import prototype.client.live.{LiveData, LiveFeed}
 import prototype.client.views.components.StatBox
 import prototype.client.views.components.chartJS.*
 
@@ -14,12 +20,19 @@ import com.raquo.laminar.api.L.*
 
 object DirectoryDashboard:
   def apply(
-      sources: DashboardSources
+      sources: DashboardSources,
+      feed: LiveFeed,
+      companyIdS: Signal[UUID],
+      computationLevelS: Signal[ComputationLevel]
   ): HtmlElement =
-    // A new company drops the figures shown until its appointments are loaded
-    // (its therapists are filtered at once)
+    // A new company drops the figures shown until they are loaded for it
     val dashboard: LiveData[DirectoryFigures] =
-      LiveDirectoryDashboard.replayed(sources)
+      LiveData.switching(computationLevelS) {
+        case ComputationLevel.Browser =>
+          LiveDirectoryDashboard.replayed(sources)
+        case ComputationLevel.Server =>
+          LiveDirectoryDashboard(feed, companyIdS)
+      }
 
     div(
       cls := "dash",

@@ -79,6 +79,13 @@
   margin-bottom: var(--space-4);
 }
 
+.dashboards__pickers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .dashboards__title {
   margin: 0;
   font-size: 20px;
