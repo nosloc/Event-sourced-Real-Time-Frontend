@@ -21,6 +21,9 @@ object DashboardView:
 
   def apply(): HtmlElement =
     val feed: LiveFeed = new LiveFeed
+
+    feed.tracer.enabled.set(true)
+
     val selectedCompanyVar: Var[Option[UUID]] = Var(None)
     val companies: LiveData[List[Company]] = LiveCompanies(feed)
     val selectedDashboardVar: Var[Option[DashboardType]] = Var(None)

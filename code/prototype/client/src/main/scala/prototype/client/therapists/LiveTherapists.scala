@@ -15,5 +15,6 @@ object LiveTherapists:
         .listTherapists()
         .map(response => (response.therapists, response.globalPosition)),
       decode = TherapistEventDecoder.decode,
-      evolve = TherapistListEvolve.evolve
+      evolve = TherapistListEvolve.evolve,
+      name = "therapists"
     )

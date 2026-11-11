@@ -5,7 +5,7 @@ import java.util.UUID
 
 import prototype.api.*
 import prototype.client.Api
-import prototype.client.live.{LiveData, LiveFeed, RefreshedLiveData}
+import prototype.client.live.{LiveData, LiveFeed, RefreshedLiveData, Tracer}
 import prototype.shared.dashboards.{
   DirectoryDashboard,
   DirectoryDashboardEvents
@@ -38,14 +38,17 @@ object LiveDirectoryDashboard:
     * event arrives.
     */
   def replayed(
+      tracer: Tracer,
       sources: DashboardSources
   ): LiveData[DirectoryFigures] =
     sources
       .map((therapists, appointments) =>
-        DirectoryDashboard(
-          therapists,
-          appointments,
-          Instant.now()
+        tracer.timed("Directory figures computed")(
+          DirectoryDashboard(
+            therapists,
+            appointments,
+            Instant.now()
+          )
         )
       )
 end LiveDirectoryDashboard

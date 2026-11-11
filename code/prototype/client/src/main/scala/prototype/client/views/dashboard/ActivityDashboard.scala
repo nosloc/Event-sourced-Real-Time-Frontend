@@ -35,6 +35,7 @@ object ActivityDashboard:
       LiveData.switching(computationLevelS) {
         case ComputationLevel.Browser =>
           LiveActivityDashboard.replayed(
+            feed.tracer,
             sources,
             selectedPeriodUnitVar.signal,
             selectedPeriodDayVar.signal

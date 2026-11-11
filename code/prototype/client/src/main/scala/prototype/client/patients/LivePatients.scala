@@ -15,5 +15,6 @@ object LivePatients:
         .listPatients()
         .map(response => (response.patients, response.globalPosition)),
       decode = PatientEventDecoder.decode,
-      evolve = PatientListEvolve.evolve
+      evolve = PatientListEvolve.evolve,
+      name = "patients"
     )

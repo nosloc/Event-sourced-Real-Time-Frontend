@@ -24,8 +24,8 @@ object BillingDashboard:
   /** Return the billing dashboard component
     *
     * @param sources
-    *   the selected company's live therapists and appointments, for the
-    *   browser level
+    *   the selected company's live therapists and appointments, for the browser
+    *   level
     * @param feed
     *   the page's live feed, for the server level
     * @param companyIdS
@@ -44,7 +44,7 @@ object BillingDashboard:
     val dashboard: LiveData[BillingFigures] =
       LiveData.switching(computationLevelS) {
         case ComputationLevel.Browser =>
-          LiveBillingDashboard.replayed(sources.appointments)
+          LiveBillingDashboard.replayed(feed.tracer, sources.appointments)
         case ComputationLevel.Server =>
           LiveBillingDashboard(feed, companyIdS)
       }

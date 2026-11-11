@@ -30,14 +30,20 @@ final class LiveFeed:
   private val messages: EventBus[FeedMessage] = new EventBus[FeedMessage]
   val events: EventStream[FeedMessage] = messages.events
 
+  // Records the steps of each event, for the step-by-step mode
+  val tracer: Tracer = new Tracer
+
   def bind(): Mod[HtmlElement] =
     onMountUnmountCallbackWithState(
       mount = _ => {
         val source = new dom.EventSource(sseURL)
         source.onmessage = event =>
           Json.read[EventMessage](Blob(event.data.toString)) match
-            case Right(message) => messages.emit(FeedMessage.Event(message))
-            case Left(error)    =>
+            case Right(message) =>
+              tracer.span(message)(
+                messages.emit(FeedMessage.Event(message))
+              )
+            case Left(error) =>
               dom.console.warn(
                 s"Stream message not decoded: ${error.getMessage}"
               )

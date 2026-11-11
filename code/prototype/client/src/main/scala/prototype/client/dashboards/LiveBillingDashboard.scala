@@ -5,11 +5,8 @@ import java.util.UUID
 
 import prototype.api.*
 import prototype.client.Api
-import prototype.client.live.{LiveData, LiveFeed, RefreshedLiveData}
-import prototype.shared.dashboards.{
-  BillingDashboard,
-  BillingDashboardEvents
-}
+import prototype.client.live.{LiveData, LiveFeed, RefreshedLiveData, Tracer}
+import prototype.shared.dashboards.{BillingDashboard, BillingDashboardEvents}
 
 import com.raquo.laminar.api.L.*
 
@@ -37,9 +34,12 @@ object LiveBillingDashboard:
     * shared `BillingDashboard`: no request when an event arrives.
     */
   def replayed(
+      tracer: Tracer,
       companyAppointments: LiveData[List[Appointment]]
   ): LiveData[BillingFigures] =
     companyAppointments.map(appointments =>
-      BillingDashboard(appointments, Instant.now())
+      tracer.timed("Billing figures computed")(
+        BillingDashboard(appointments, Instant.now())
+      )
     )
 end LiveBillingDashboard

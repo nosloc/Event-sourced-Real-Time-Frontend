@@ -4,7 +4,7 @@ import java.util.UUID
 
 import prototype.api.*
 import prototype.client.Api
-import prototype.client.live.{LiveData, LiveFeed, RefreshedLiveData}
+import prototype.client.live.{LiveData, LiveFeed, RefreshedLiveData, Tracer}
 import prototype.shared.dashboards.{ActivityDashboard, ActivityDashboardEvents}
 
 import com.raquo.laminar.api.L.*
@@ -57,6 +57,7 @@ object LiveActivityDashboard:
     * no request when an event arrives or the period changes.
     */
   def replayed(
+      tracer: Tracer,
       sources: DashboardSources,
       unitS: Signal[PeriodUnit],
       dateS: Signal[LocalDate]
@@ -64,6 +65,11 @@ object LiveActivityDashboard:
     sources
       .combineWithFn(unitS.combineWith(dateS)) {
         case ((therapists, appointments), (unit, date)) =>
-          (unit, ActivityDashboard(therapists, appointments, unit, date))
+          (
+            unit,
+            tracer.timed("Activity figures computed")(
+              ActivityDashboard(therapists, appointments, unit, date)
+            )
+          )
       }
 end LiveActivityDashboard

@@ -18,14 +18,16 @@ import com.raquo.laminar.api.L.*
   * one of its signals is read.
   *
   * K is the type of the key (for example a therapist), A the type of the value,
-  * E the type of the events `decode` keeps.
+  * E the type of the events `decode` keeps. `name` says which live data this is
+  * in the feed's trace.
   */
 final class ReplayedLiveData[K, A, E](
     feed: LiveFeed,
     key: Signal[K],
     load: K => IO[(A, Long)],
     decode: EventMessage => Option[E],
-    evolve: (K, A, E) => A
+    evolve: (K, A, E) => A,
+    name: String = "unnamed"
 ) extends LiveData[A]:
 
   // The key to load, each time a snapshot is needed: when the stream opens
@@ -44,9 +46,12 @@ final class ReplayedLiveData[K, A, E](
         decode(message).map(event => Input.Received(message.position, event))
       )
       .collectSome
+      .tapEach(_ => feed.tracer.addStep(s"Decoded for $name"))
 
   // The state of the live value: the loads (a status per reload, for the latest
-  // key only) and the events received, folded by `LiveModel.step`
+  // key only) and the events received, folded by `LiveModel.step`. The trace
+  // tells an event applied to the value (the position moved) from one only
+  // kept aside: still loading, or already in the snapshot
   private val stateS: Signal[LiveModel.State[K, A, E]] =
     reloadKey
       .flatMapWithStatus(k => Api.stream(load(k)))
@@ -59,7 +64,18 @@ final class ReplayedLiveData[K, A, E](
           Input.Failed(k, error)
       }
       .mergeWith(receivedInput)
-      .scanLeft(LiveModel.initial[K, A, E])(LiveModel.step(evolve))
+      .scanLeft(LiveModel.initial[K, A, E])((state, input) =>
+        val next = LiveModel.step(evolve)(state, input)
+        input match
+          case Input.Received(_, _) =>
+            val applied = next.position > state.position
+            feed.tracer.addStep(
+              if applied then s"Folded into $name"
+              else s"Not folded into $name"
+            )
+          case _ => ()
+        next
+      )
 
   // Exposed state: read separately, so a failed reload can show its error
   // next to the value still on screen
@@ -78,12 +94,14 @@ object ReplayedLiveData:
       feed: LiveFeed,
       load: IO[(A, Long)],
       decode: EventMessage => Option[E],
-      evolve: (A, E) => A
+      evolve: (A, E) => A,
+      name: String = "unnamed"
   ): ReplayedLiveData[Unit, A, E] =
     new ReplayedLiveData[Unit, A, E](
       feed = feed,
       key = Signal.fromValue(()),
       load = _ => load,
       decode = decode,
-      evolve = (_, value, event) => evolve(value, event)
+      evolve = (_, value, event) => evolve(value, event),
+      name = name
     )
