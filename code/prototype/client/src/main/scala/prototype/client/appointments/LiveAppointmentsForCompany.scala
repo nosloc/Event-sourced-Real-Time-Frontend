@@ -29,8 +29,7 @@ object LiveAppointmentsForCompany:
           .listCompanyAppointments(CompanyId(company.companyId))
           .map(response => (response.appointments, response.globalPosition)),
       decode = AppointmentEventDecoder.decode,
-      evolve = AppointmentListEvolve.evolve,
-      name = "company appointments"
+      evolve = AppointmentListEvolve.evolve
     )
       .combineWithFn(companyTherapists)((appointments, therapists) =>
         val therapistIds = therapists.map(_.therapistId).toSet

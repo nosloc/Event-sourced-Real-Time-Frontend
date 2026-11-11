@@ -24,6 +24,5 @@ object LiveAppointmentsForTherapist:
           .listTherapistAppointments(TherapistId(therapist.trigram))
           .map(response => (response.appointments, response.globalPosition)),
       decode = AppointmentEventDecoder.decode,
-      evolve = AppointmentListEvolve.evolve,
-      name = "therapist appointments"
+      evolve = AppointmentListEvolve.evolve
     )

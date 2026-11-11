@@ -26,8 +26,7 @@ final class ReplayedLiveData[K, A, E](
     key: Signal[K],
     load: K => IO[(A, Long)],
     decode: EventMessage => Option[E],
-    evolve: (K, A, E) => A,
-    name: String = "unnamed"
+    evolve: (K, A, E) => A
 ) extends LiveData[A]:
 
   // The key to load, each time a snapshot is needed: when the stream opens
@@ -43,10 +42,12 @@ final class ReplayedLiveData[K, A, E](
     feed.events
       .collect { case FeedMessage.Event(message) => message }
       .map(message =>
-        decode(message).map(event => Input.Received(message.position, event))
+        decode(message).map(event =>
+          feed.tracer.record("Decoded", message.position)
+          Input.Received(message.position, event)
+        )
       )
       .collectSome
-      .tapEach(_ => feed.tracer.addStep(s"Decoded for $name"))
 
   // The state of the live value: the loads (a status per reload, for the latest
   // key only) and the events received, folded by `LiveModel.step`. The trace
@@ -67,11 +68,12 @@ final class ReplayedLiveData[K, A, E](
       .scanLeft(LiveModel.initial[K, A, E])((state, input) =>
         val next = LiveModel.step(evolve)(state, input)
         input match
-          case Input.Received(_, _) =>
+          case Input.Received(position, _) =>
             val applied = next.position > state.position
-            feed.tracer.addStep(
-              if applied then s"Folded into $name"
-              else s"Not folded into $name"
+            feed.tracer.record(
+              if applied then s"Folded"
+              else s"Not folded",
+              position
             )
           case _ => ()
         next
@@ -94,14 +96,12 @@ object ReplayedLiveData:
       feed: LiveFeed,
       load: IO[(A, Long)],
       decode: EventMessage => Option[E],
-      evolve: (A, E) => A,
-      name: String = "unnamed"
+      evolve: (A, E) => A
   ): ReplayedLiveData[Unit, A, E] =
     new ReplayedLiveData[Unit, A, E](
       feed = feed,
       key = Signal.fromValue(()),
       load = _ => load,
       decode = decode,
-      evolve = (_, value, event) => evolve(value, event),
-      name = name
+      evolve = (_, value, event) => evolve(value, event)
     )

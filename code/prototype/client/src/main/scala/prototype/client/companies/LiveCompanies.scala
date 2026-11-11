@@ -15,6 +15,5 @@ object LiveCompanies:
         .listCompanies()
         .map(response => (response.companies, response.globalPosition)),
       decode = CompanyEventDecoder.decode,
-      evolve = CompanyListEvolve.evolve,
-      name = "companies"
+      evolve = CompanyListEvolve.evolve
     )

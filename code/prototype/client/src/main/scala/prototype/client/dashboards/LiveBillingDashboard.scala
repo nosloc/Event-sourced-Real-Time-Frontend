@@ -27,7 +27,8 @@ object LiveBillingDashboard:
           .getBillingDashboard(CompanyId(companyId))
           .map(response => (response.dashboard, response.globalPosition)),
       triggerRefresh = message =>
-        BillingDashboardEvents.types.contains(message.eventType)
+        BillingDashboardEvents.types.contains(message.eventType),
+      name = "billing dashboard"
     )
 
   /** Computed in the browser from the company's live appointments, with the
@@ -35,11 +36,14 @@ object LiveBillingDashboard:
     */
   def replayed(
       tracer: Tracer,
+      processedEvent: Signal[Long],
       companyAppointments: LiveData[List[Appointment]]
   ): LiveData[BillingFigures] =
-    companyAppointments.map(appointments =>
-      tracer.timed("Billing figures computed")(
-        BillingDashboard(appointments, Instant.now())
+    companyAppointments
+      .withCurrentValueOf(processedEvent)
+      .map((appointments, position) =>
+        tracer.timed("Billing figures computed", position)(
+          BillingDashboard(appointments, Instant.now())
+        )
       )
-    )
 end LiveBillingDashboard

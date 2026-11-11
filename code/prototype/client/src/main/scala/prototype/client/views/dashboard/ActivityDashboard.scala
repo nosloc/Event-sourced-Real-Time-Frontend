@@ -36,6 +36,7 @@ object ActivityDashboard:
         case ComputationLevel.Browser =>
           LiveActivityDashboard.replayed(
             feed.tracer,
+            feed.lastPositionS,
             sources,
             selectedPeriodUnitVar.signal,
             selectedPeriodDayVar.signal

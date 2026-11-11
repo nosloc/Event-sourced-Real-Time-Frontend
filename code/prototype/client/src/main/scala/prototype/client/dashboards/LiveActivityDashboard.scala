@@ -49,7 +49,8 @@ object LiveActivityDashboard:
       triggerRefresh = message =>
         ActivityDashboardEvents.types.contains(message.eventType),
       invalidatePrevious = (oldKey, newKey) =>
-        oldKey.companyId != newKey.companyId
+        oldKey.companyId != newKey.companyId,
+      name = "activity dashboard"
     )
 
   /** Computed in the browser from the company's live therapists and
@@ -58,18 +59,20 @@ object LiveActivityDashboard:
     */
   def replayed(
       tracer: Tracer,
+      processedEvent: Signal[Long],
       sources: DashboardSources,
       unitS: Signal[PeriodUnit],
       dateS: Signal[LocalDate]
   ): LiveData[(PeriodUnit, ActivityFigures)] =
     sources
-      .combineWithFn(unitS.combineWith(dateS)) {
-        case ((therapists, appointments), (unit, date)) =>
-          (
-            unit,
-            tracer.timed("Activity figures computed")(
-              ActivityDashboard(therapists, appointments, unit, date)
-            )
+      .combineWith(unitS.combineWith(dateS))
+      .withCurrentValueOf(processedEvent)
+      .map { case (((therapists, appointments), (unit, date)), position) =>
+        (
+          unit,
+          tracer.timed("Activity figures computed", position)(
+            ActivityDashboard(therapists, appointments, unit, date)
           )
+        )
       }
 end LiveActivityDashboard

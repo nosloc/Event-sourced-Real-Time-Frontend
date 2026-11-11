@@ -29,7 +29,11 @@ object DirectoryDashboard:
     val dashboard: LiveData[DirectoryFigures] =
       LiveData.switching(computationLevelS) {
         case ComputationLevel.Browser =>
-          LiveDirectoryDashboard.replayed(feed.tracer, sources)
+          LiveDirectoryDashboard.replayed(
+            feed.tracer,
+            feed.lastPositionS,
+            sources
+          )
         case ComputationLevel.Server =>
           LiveDirectoryDashboard(feed, companyIdS)
       }

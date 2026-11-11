@@ -44,7 +44,11 @@ object BillingDashboard:
     val dashboard: LiveData[BillingFigures] =
       LiveData.switching(computationLevelS) {
         case ComputationLevel.Browser =>
-          LiveBillingDashboard.replayed(feed.tracer, sources.appointments)
+          LiveBillingDashboard.replayed(
+            feed.tracer,
+            feed.lastPositionS,
+            sources.appointments
+          )
         case ComputationLevel.Server =>
           LiveBillingDashboard(feed, companyIdS)
       }

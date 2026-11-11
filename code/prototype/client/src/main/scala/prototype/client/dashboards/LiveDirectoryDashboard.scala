@@ -30,7 +30,8 @@ object LiveDirectoryDashboard:
           .getDirectoryDashboard(CompanyId(companyId))
           .map(response => (response.dashboard, response.globalPosition)),
       triggerRefresh = message =>
-        DirectoryDashboardEvents.types.contains(message.eventType)
+        DirectoryDashboardEvents.types.contains(message.eventType),
+      name = "directory dashboard"
     )
 
   /** Computed in the browser from the company's live therapists and
@@ -39,16 +40,18 @@ object LiveDirectoryDashboard:
     */
   def replayed(
       tracer: Tracer,
+      processedEvent: Signal[Long],
       sources: DashboardSources
   ): LiveData[DirectoryFigures] =
     sources
-      .map((therapists, appointments) =>
-        tracer.timed("Directory figures computed")(
+      .withCurrentValueOf(processedEvent)
+      .map { case ((therapists, appointments), position) =>
+        tracer.timed("Directory figures computed", position)(
           DirectoryDashboard(
             therapists,
             appointments,
             Instant.now()
           )
         )
-      )
+      }
 end LiveDirectoryDashboard

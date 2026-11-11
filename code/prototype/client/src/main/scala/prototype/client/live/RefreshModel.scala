@@ -16,6 +16,21 @@ object RefreshModel:
     // Waiting for an answer, `pending` is the highest position seen while the load is happening
     case InFlight(pending: Option[Position])
 
+  /** What a step did: a load to launch, an event kept for the next load, or
+    * the answer of a load. `RefreshedLiveData` runs the loads and records them
+    * all in the trace.
+    */
+  enum Outcome[+K]:
+    case InitialLoad(key: K, loadNumber: Int)
+    case Load(key: K, position: Position, loadNumber: Int)
+    // `servedBy` is the load that will cover the event: the one after the
+    // load in flight
+    case Batched(position: Position, servedBy: Int)
+    case Answer(position: Position, loadNumber: Int)
+    case AnswerAndLaunchPending(answer: Answer[K], load: Load[K])
+    case Error(loadNumber: Int)
+    case ErrorAndLaunchPending(error: Error[K], load: Load[K])
+
   /** The refresh model
     *
     * @param key
@@ -37,7 +52,8 @@ object RefreshModel:
       loading: Boolean,
       error: Option[Throwable],
       position: Position,
-      phase: Phase
+      phase: Phase,
+      loadNumber: Int
   )
 
   def initial[K, A]: State[K, A] =
@@ -47,7 +63,8 @@ object RefreshModel:
       loading = false,
       error = None,
       position = 0L,
-      phase = Phase.Idle
+      phase = Phase.Idle,
+      loadNumber = 0
     )
 
   /** How the model evolves based on the current state and the input
@@ -60,13 +77,14 @@ object RefreshModel:
     *   the input that triggered the evolve
     *
     * @return
-    *   the evolved state and the key that need a reload, or None if no reload
+    *   the evolved state and what the step did, or None if nothing worth telling
     */
   def step[K, A](invalidatePrevious: (K, K) => Boolean)(
       state: State[K, A],
       input: Input[K, A]
-  ): (State[K, A], Option[K]) =
+  ): (State[K, A], Option[Outcome[K]]) =
     import Input.*
+    val newLoadNumber = state.loadNumber + 1
     input match
       // The stream opened on a key the model does not have yet (the first
       // open): the same as a key change
@@ -81,17 +99,15 @@ object RefreshModel:
               state.copy(
                 loading = true,
                 error = None,
-                phase = Phase.InFlight(None)
+                phase = Phase.InFlight(None),
+                loadNumber = newLoadNumber
               ),
-              Some(key)
+              Some(Outcome.InitialLoad(key, newLoadNumber))
             )
+          // No event arrived: a reload is owed, but nothing was batched
           case Phase.InFlight(pending) =>
-            (
-              state.copy(phase =
-                Phase.InFlight(Some(pending.getOrElse(state.position)))
-              ),
-              None
-            )
+            val newPending = pending.getOrElse(state.position)
+            (state.copy(phase = Phase.InFlight(Some(newPending))), None)
 
       // When an event arrives, trigger a refresh or store it as pending
       case EventArrived(position) =>
@@ -103,16 +119,20 @@ object RefreshModel:
                   state.copy(
                     loading = true,
                     error = None,
-                    phase = Phase.InFlight(None)
+                    phase = Phase.InFlight(None),
+                    loadNumber = newLoadNumber
                   ),
-                  Some(k)
+                  Some(Outcome.Load(k, position, newLoadNumber))
                 )
               case None => (state, None)
           case Phase.InFlight(posOpt) =>
             val newPos = posOpt match
               case Some(p) => Math.max(p, position)
               case None    => position
-            (state.copy(phase = Phase.InFlight(Some(newPos))), None)
+            (
+              state.copy(phase = Phase.InFlight(Some(newPos))),
+              Some(Outcome.Batched(position, newLoadNumber))
+            )
 
       // Ignore a result that doesn't match the current key
       case Loaded(key, _, _) if !state.key.contains(key) =>
@@ -130,11 +150,23 @@ object RefreshModel:
         state.phase match
           case Phase.Idle           => (state, None)
           case Phase.InFlight(None) =>
-            (answered.copy(loading = false, phase = Phase.Idle), None)
-          case Phase.InFlight(Some(_)) =>
             (
-              answered.copy(loading = true, phase = Phase.InFlight(None)),
-              Some(key)
+              answered.copy(loading = false, phase = Phase.Idle),
+              Some(Outcome.Answer(position, state.loadNumber))
+            )
+          case Phase.InFlight(Some(newPosition)) =>
+            (
+              answered.copy(
+                loading = true,
+                phase = Phase.InFlight(None),
+                loadNumber = newLoadNumber
+              ),
+              Some(
+                Outcome.AnswerAndLaunchPending(
+                  Outcome.Answer(position, state.loadNumber),
+                  Outcome.Load(key, newPosition, newLoadNumber)
+                )
+              )
             )
 
       // Ignore failure if the key doesn't match the current one
@@ -152,16 +184,22 @@ object RefreshModel:
                 error = Some(error),
                 phase = Phase.Idle
               ),
-              None
+              Some(Outcome.Error(state.loadNumber))
             )
-          case Phase.InFlight(Some(_)) =>
+          case Phase.InFlight(Some(newPos)) =>
             (
               state.copy(
                 loading = true,
                 error = Some(error),
-                phase = Phase.InFlight(None)
+                phase = Phase.InFlight(None),
+                loadNumber = newLoadNumber
               ),
-              Some(key)
+              Some(
+                Outcome.ErrorAndLaunchPending(
+                  Outcome.Error(state.loadNumber),
+                  Outcome.Load(key, newPos, newLoadNumber)
+                )
+              )
             )
       // Launch a reload, and invalidate previous state if needed
       case KeyChanged(key) =>
@@ -170,13 +208,14 @@ object RefreshModel:
             key = Some(key),
             loading = true,
             error = None,
-            phase = Phase.InFlight(None)
+            phase = Phase.InFlight(None),
+            loadNumber = newLoadNumber
           )
         (
           if state.key.exists(invalidatePrevious(_, key)) then
             newState.copy(value = None)
           else newState,
-          Some(key)
+          Some(Outcome.InitialLoad(key, newLoadNumber))
         )
   end step
 end RefreshModel

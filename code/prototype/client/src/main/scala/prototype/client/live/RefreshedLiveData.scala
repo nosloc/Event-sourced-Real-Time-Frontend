@@ -5,7 +5,7 @@ import cats.effect.IO
 import prototype.api.EventMessage
 import prototype.client.Api
 import prototype.client.live.LiveFeed.FeedMessage
-import prototype.client.live.RefreshModel.Input
+import prototype.client.live.RefreshModel.{Input, Outcome}
 
 import com.raquo.laminar.api.L.*
 
@@ -36,13 +36,17 @@ import com.raquo.laminar.api.L.*
   * @param invalidatePrevious
   *   tell if a new key invalidate the previous shown value (delete it from the
   *   screen), or keep it until the `load` completes
+  * @param name
+  *   which live data this is in the feed's trace: the loads are numbered per
+  *   instance, so a number alone does not say whose load it is
   */
 final class RefreshedLiveData[K, A](
     feed: LiveFeed,
     key: Signal[K],
     load: K => IO[(A, Long)],
     triggerRefresh: EventMessage => Boolean,
-    invalidatePrevious: (K, K) => Boolean = (_: K, _: K) => true
+    invalidatePrevious: (K, K) => Boolean = (_: K, _: K) => true,
+    name: String = "unnamed"
 ) extends LiveData[A]:
 
   // When the stream opened, input it with the current value of the key
@@ -57,6 +61,7 @@ final class RefreshedLiveData[K, A](
   private val eventArrivedInput: EventStream[Input[K, A]] =
     feed.events.collect {
       case FeedMessage.Event(message) if triggerRefresh(message) =>
+        feed.tracer.record("Considered", message.position)
         Input.EventArrived(message.position)
     }
 
@@ -65,8 +70,9 @@ final class RefreshedLiveData[K, A](
 
   // Return a signal of:
   // _1. the state of the refresh model
-  // _2. An option saying if a reload is need (Some(key)), or nothing is needed (None)
-  private val stepResult: Signal[(RefreshModel.State[K, A], Option[K])] =
+  // _2. What the step decided (a load to launch, an answer, ...), or None if nothing
+  private val stepResult
+      : Signal[(RefreshModel.State[K, A], Option[Outcome[K]])] =
     // All the inputs merged in a single EventStream
     EventStream
       .merge(
@@ -75,16 +81,29 @@ final class RefreshedLiveData[K, A](
         eventArrivedInput,
         loadResults.events
       )
-      .scanLeft[(RefreshModel.State[K, A], Option[K])](
+      .scanLeft[(RefreshModel.State[K, A], Option[Outcome[K]])](
         (RefreshModel.initial[K, A], None)
-      )((acc, input) => RefreshModel.step(invalidatePrevious)(acc._1, input))
+      )((acc, input) =>
+        val result = RefreshModel.step(invalidatePrevious)(acc._1, input)
+        // Recorded here, once per step: the signal itself can be read again
+        result._2.map(recordEntry).foreach {
+          case (step, Some(position)) => feed.tracer.record(step, position)
+          case (step, None)           => feed.tracer.record(step)
+        }
+        result
+      )
 
   // Runs each load the model asks for and sends its answer back.
   // It never emits: it is only there so that the loads
   // run while the state is read, without `keepLoaded`
   private val runLoads: Signal[Unit] =
     stepResult.changes
-      .collect { case (_, Some(k)) => k }
+      .collect {
+        case (_, Some(Outcome.InitialLoad(k, _)))               => k
+        case (_, Some(Outcome.Load(k, _, _)))                   => k
+        case (_, Some(Outcome.AnswerAndLaunchPending(_, load))) => load.key
+        case (_, Some(Outcome.ErrorAndLaunchPending(_, load)))  => load.key
+      }
       .flatMapSwitch(k => Api.stream(load(k)).map(k -> _))
       .tapEach {
         case (k, Right((value, position))) =>
@@ -103,3 +122,31 @@ final class RefreshedLiveData[K, A](
   override val valueS: Signal[Option[A]] = stateS.map(_.value)
   override val loadingS: Signal[Boolean] = stateS.map(_.loading)
   override val errorS: Signal[Option[Throwable]] = stateS.map(_.error)
+
+  private def recordEntry(outcome: Outcome[K]): (String, Option[Long]) =
+    outcome match
+      case Outcome.Answer(position, loadNumber) =>
+        (s"Received server data for load $loadNumber of $name", None)
+      case Outcome.AnswerAndLaunchPending(answer, load) =>
+        (
+          s"Received server data for load ${answer.loadNumber} of $name, " +
+            s"launched pending load ${load.loadNumber}",
+          Some(load.position)
+        )
+      case Outcome.Error(loadNumber) =>
+        (s"Load $loadNumber of $name failed", None)
+      case Outcome.ErrorAndLaunchPending(error, load) =>
+        (
+          s"Load ${error.loadNumber} of $name failed, " +
+            s"launched pending load ${load.loadNumber}",
+          Some(load.position)
+        )
+      case Outcome.InitialLoad(key, loadNumber) =>
+        (s"Launched initial load $loadNumber of $name for $key", None)
+      case Outcome.Load(_, position, loadNumber) =>
+        (s"Launched load $loadNumber of $name", Some(position))
+      case Outcome.Batched(position, servedBy) =>
+        (
+          s"Batched, to be served by load $servedBy of $name",
+          Some(position)
+        )
