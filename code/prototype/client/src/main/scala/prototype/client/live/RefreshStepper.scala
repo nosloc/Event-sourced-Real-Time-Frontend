@@ -2,6 +2,7 @@ package prototype.client.live
 
 import prototype.client.live.TraceStep.Kind
 import prototype.client.live.RefreshModel.Outcome
+import scala.collection.immutable.Queue
 
 // Where an event is before it is attached to a load
 enum EventPlace:
@@ -137,7 +138,7 @@ case class RefreshStepper(
     source: String,
     currentStep: Option[TraceStep],
     pipeline: Pipeline,
-    history: List[TraceStep]
+    history: Queue[TraceStep]
 ):
   // A Next does something while a trace step is left, a load waits to be
   // displayed, or a step left something behind
@@ -176,11 +177,13 @@ case class RefreshStepper(
   def addStep(step: TraceStep): RefreshStepper =
     if concerns(step) then copy(history = history :+ step) else this
 
-  // Whether a step is one of this stepper's: the steps every event goes
-  // through, and the ones of its own source
+  // Whether a step is one of this stepper's: the arrival of every event, and
+  // the steps of its own source. `Ended` is left out: it moves nothing in the
+  // pipeline, so it would only be an empty Next
   private def concerns(traceStep: TraceStep): Boolean =
     traceStep.kind match
-      case Kind.Received | Kind.Ended     => true
+      case Kind.Received                  => true
+      case Kind.Ended                     => false
       case Kind.Considered(stepSource)    => stepSource == source
       case Kind.NotConsidered(stepSource) => stepSource == source
       case Kind.Reload(stepSource, _)     => stepSource == source
@@ -228,5 +231,5 @@ object RefreshStepper:
       source,
       None,
       Pipeline.empty,
-      List.empty
+      Queue.empty
     )

@@ -5,73 +5,94 @@
 /* filled teal the moment the figures change on screen.                 */
 /* ------------------------------------------------------------------ */
 
-/* The switch */
-.stepper-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 44px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--line-input);
-  border-radius: var(--radius-control);
-  background: var(--panel);
-  color: var(--ink);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+/* The bottom sheet. The dashboards page fills the window, so that the sheet
+   sits at its bottom even on a short page; on a long page it sticks to the
+   bottom of the window while the page scrolls under it */
+.dashboards {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
-.stepper-toggle:hover {
-  background: var(--ground);
+.page:has(.sheet) {
+  padding-bottom: 0;
 }
 
-.stepper-toggle__switch {
-  position: relative;
-  flex: none;
-  width: 30px;
-  height: 18px;
-  border-radius: 9px;
-  background: var(--line-strong);
-  transition: background-color 0.15s ease;
-}
-
-.stepper-toggle__switch::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--panel);
-  transition: transform 0.15s ease;
-}
-
-.stepper-toggle--on,
-.stepper-toggle--on:hover {
-  border-color: var(--warning);
-  background: var(--warning-soft);
-}
-
-.stepper-toggle--on .stepper-toggle__switch {
-  background: var(--warning);
-}
-
-.stepper-toggle--on .stepper-toggle__switch::after {
-  transform: translateX(12px);
-}
-
-/* The panel: it stays at the bottom of the window while the page scrolls */
-.stepper {
+.sheet {
   position: sticky;
   bottom: 0;
   z-index: 5;
   display: flex;
   flex-direction: column;
+  margin-top: auto;
+  padding-top: var(--space-5);
+  pointer-events: none;
+}
+
+.sheet > * {
+  pointer-events: auto;
+}
+
+/* The handle: a tab on the bottom edge, on top of the panel once open */
+.sheet__handle {
+  position: relative;
+  z-index: 1;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  margin-bottom: -1px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 -4px 12px var(--shadow);
+  transition: background-color 0.15s ease;
+}
+
+.sheet__handle:hover {
+  background: var(--ground);
+}
+
+.sheet--open .sheet__handle:hover {
+  background: var(--panel);
+}
+
+.sheet__chevron {
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.2s ease;
+}
+
+.sheet--open .sheet__chevron {
+  transform: rotate(180deg);
+}
+
+/* What the sheet shows when there is nothing to step through */
+.sheet__message {
+  padding: var(--space-4) var(--space-5);
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-bottom: 0;
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  box-shadow: 0 -8px 24px var(--shadow);
+  color: var(--muted);
+}
+
+/* The panel, inside the sheet */
+.stepper {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
   max-height: 70vh;
-  margin-top: var(--space-5);
   padding: var(--space-4) var(--space-5);
   overflow-y: auto;
   background: var(--panel);
@@ -94,11 +115,6 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-3);
-}
-
-.stepper__title {
-  font-size: 15px;
-  font-weight: 600;
 }
 
 .stepper__source {
@@ -212,6 +228,24 @@
 
 .stepper__arrow-head {
   fill: var(--line-input);
+}
+
+/* The moves of the current step, in the amber of the "now" node */
+.stepper__arrow--now {
+  stroke: var(--warning);
+  stroke-width: 2;
+}
+
+.stepper__arrow-head--now {
+  fill: var(--warning);
+}
+
+.stepper__arrow-label {
+  fill: var(--warning);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  text-anchor: middle;
 }
 
 /* One node */

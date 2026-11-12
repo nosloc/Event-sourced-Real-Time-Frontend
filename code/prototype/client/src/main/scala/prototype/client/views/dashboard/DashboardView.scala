@@ -62,7 +62,6 @@ object DashboardView:
             h2(child.text <-- titleS, cls := "dashboards__title"),
             div(
               cls := "dashboards__pickers",
-              renderStepByStepButton(stepByStepVar),
               renderComputationLevelSelector(computationLevelVar),
               renderCompanySelector(companies.valueS, selectedCompanyVar)
             )
@@ -91,19 +90,31 @@ object DashboardView:
           )
         )
       ),
-      child.maybe <-- stepByStepVar.signal
-        .combineWith(computationLevelVar.signal, selectedDashboardVar.signal)
-        .map((stepByStep, computationLevel, selectedDashboard) =>
-          Option.when(stepByStep)(
-            computationLevel match
-              case ComputationLevel.Browser => span("Browser step by step")
-              case ComputationLevel.Server  =>
-                selectedDashboard match
-                  case Some(dashboardType) =>
-                    ServerStepByStep(feed.tracer, sourceName(dashboardType))
-                  case None => span("Select a dashboard to step through")
+      // The bottom sheet: its handle stays at the bottom of the window, and
+      // opens the step-by-step panel above it
+      div(
+        cls := "sheet",
+        cls("sheet--open") <-- stepByStepVar.signal,
+        renderStepByStepButton(stepByStepVar),
+        child.maybe <-- stepByStepVar.signal
+          .combineWith(computationLevelVar.signal, selectedDashboardVar.signal)
+          .map((stepByStep, computationLevel, selectedDashboard) =>
+            Option.when(stepByStep)(
+              computationLevel match
+                case ComputationLevel.Browser =>
+                  div(cls := "sheet__message", "Browser step by step")
+                case ComputationLevel.Server =>
+                  selectedDashboard match
+                    case Some(dashboardType) =>
+                      ServerStepByStep(feed.tracer, sourceName(dashboardType))
+                    case None =>
+                      div(
+                        cls := "sheet__message",
+                        "Select a dashboard to step through"
+                      )
+            )
           )
-        )
+      )
     )
   end apply
 
@@ -246,9 +257,17 @@ object DashboardView:
   ): HtmlElement =
     button(
       tpe := "button",
-      cls := "stepper-toggle",
-      cls("stepper-toggle--on") <-- stepByStepVar.signal,
-      span(cls := "stepper-toggle__switch", aria.hidden := true),
+      cls := "sheet__handle",
+      aria.expanded <-- stepByStepVar.signal,
       "Step by step",
+      svg.svg(
+        svg.cls := "sheet__chevron",
+        svg.width := "12",
+        svg.height := "12",
+        svg.viewBox := "0 0 12 12",
+        svg.fill := "none",
+        aria.hidden := true,
+        svg.path(svg.d := "M2.5 7.5 6 4l3.5 3.5")
+      ),
       onClick.-->(_ => stepByStepVar.update(!_))
     )

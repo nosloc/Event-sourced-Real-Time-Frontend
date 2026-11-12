@@ -38,7 +38,6 @@ object ServerStepByStep:
         cls := "stepper__bar",
         div(
           cls := "stepper__heading",
-          span(cls := "stepper__title", "Step by step"),
           span(cls := "stepper__source", source),
           span(
             cls := "stepper__left",
@@ -57,6 +56,12 @@ object ServerStepByStep:
       child <-- stepper.map(renderCurrentStep),
       child <-- stepper.map(renderGraph)
     )
+
+  // The moves an arrow can show, from one node to the next, or from outside
+  // the graph (the event stream, the browser asking for a fresh reload)
+  private enum Move:
+    case FromStream, ToConsidered, ToIgnored, ToWaiting, Direct, FromBrowser,
+      ToServer, ToAnswered, ToFailed, ToCancelled, ToScreen
 
   // The nodes of the graph, one per place an event or a load can be in
   private enum Node:
@@ -121,37 +126,38 @@ object ServerStepByStep:
           "Browser"
         ),
         renderArrows(
+          litMoves(stepper),
           notConsidered.nonEmpty,
           failed.nonEmpty,
           cancelled.nonEmpty
         ),
         node(
           Node.Received,
-          "Received",
+          "Arrived",
           eventsAt(EventPlace.Received).map(renderEvent)
         ),
         node(
           Node.Considered,
-          "Considered",
+          "Needs a reload",
           eventsAt(EventPlace.Considered).map(renderEvent)
         ),
         Option.when(notConsidered.nonEmpty)(
           node(
             Node.NotConsidered,
-            "Not considered",
+            "Ignored",
             notConsidered.map(renderEvent)
           )
         ),
         node(
           Node.Waiting,
-          "Waiting for a load",
+          "Waiting for a reload",
           loadsWhere(_ == LoadPlace.Pending).map((number, load) =>
             renderLoad(number, load)
           )
         ),
         node(
           Node.OnServer,
-          "On the server",
+          "Server computing",
           loadsWhere(_ == LoadPlace.InFlight).map((number, load) =>
             renderLoad(number, load)
           )
@@ -159,20 +165,20 @@ object ServerStepByStep:
         Option.when(failed.nonEmpty)(
           node(
             Node.Failed,
-            "Failed",
+            "Reload failed",
             failed.map((number, load) => renderLoad(number, load))
           )
         ),
         Option.when(cancelled.nonEmpty)(
           node(
             Node.Cancelled,
-            "Cancelled",
+            "Reload cancelled",
             cancelled.map((number, load) => renderLoad(number, load))
           )
         ),
         node(
           Node.Answered,
-          "Answer received",
+          "Figures received",
           loadsWhere {
             case LoadPlace.Answered(_) => true
             case _                     => false
@@ -205,15 +211,52 @@ object ServerStepByStep:
       div(cls := "stepper__node-body", body)
     )
 
-  // The arrows of the mockup, in the graph's own coordinates (see
-  // stepper.css). The ones towards a hidden node are left out
+  // The arrows, in the graph's own coordinates (see stepper.css). The usual
+  // moves are always drawn, except towards a hidden node; the others (an
+  // event coming from the server, a reload asked by the browser, a reload
+  // launched at once) only during the step that makes them. The moves of the
+  // current step are amber, drawn last so that they sit on top
   private def renderArrows(
+      lit: Set[Move],
       notConsidered: Boolean,
       failed: Boolean,
       cancelled: Boolean
   ): SvgElement =
-    def arrow(path: String) =
-      svg.path(svg.d := path, svg.markerEnd := "url(#stepper-arrow-head)")
+    val usual = List(
+      Some(Move.ToConsidered),
+      Option.when(notConsidered)(Move.ToIgnored),
+      Some(Move.ToWaiting),
+      Some(Move.ToServer),
+      Some(Move.ToAnswered),
+      Option.when(failed)(Move.ToFailed),
+      Option.when(cancelled)(Move.ToCancelled),
+      Some(Move.ToScreen)
+    ).flatten
+    val occasional =
+      List(Move.FromStream, Move.Direct, Move.FromBrowser).filter(lit.contains)
+    val (now, others) = (usual ++ occasional).partition(lit.contains)
+
+    def marker(id: String, modifier: String) =
+      svg.marker(
+        svg.idAttr := id,
+        svg.viewBox := "0 0 8 8",
+        svg.refX := "7",
+        svg.refY := "4",
+        svg.markerWidth := "8",
+        svg.markerHeight := "8",
+        svg.orient := "auto",
+        svg.path(svg.d := "M0 0 8 4 0 8z", svg.cls := modifier)
+      )
+
+    def arrow(move: Move, isNow: Boolean) =
+      svg.path(
+        svg.cls := (if isNow then "stepper__arrow stepper__arrow--now"
+                    else "stepper__arrow"),
+        svg.d := movePath(move),
+        svg.markerEnd := (if isNow then "url(#stepper-arrow-head-now)"
+                          else "url(#stepper-arrow-head)")
+      )
+
     svg.svg(
       svg.cls := "stepper__arrows",
       svg.width := "1082",
@@ -222,35 +265,44 @@ object ServerStepByStep:
       svg.fill := "none",
       aria.hidden := true,
       svg.defs(
-        svg.marker(
-          svg.idAttr := "stepper-arrow-head",
-          svg.viewBox := "0 0 8 8",
-          svg.refX := "7",
-          svg.refY := "4",
-          svg.markerWidth := "8",
-          svg.markerHeight := "8",
-          svg.orient := "auto",
-          svg.path(svg.d := "M0 0 8 4 0 8z", svg.cls := "stepper__arrow-head")
+        marker("stepper-arrow-head", "stepper__arrow-head"),
+        marker(
+          "stepper-arrow-head-now",
+          "stepper__arrow-head stepper__arrow-head--now"
         )
       ),
-      svg.g(
-        svg.cls := "stepper__arrow",
-        // received → considered, → not considered
-        arrow("M222 162 L242 162"),
-        Option.when(notConsidered)(arrow("M147 204 L147 256 L242 256")),
-        // considered → waiting, → straight into a load
-        arrow("M394 162 L414 162"),
-        arrow("M319 120 L319 40 L586 40"),
-        // waiting → on the server
-        arrow("M566 150 C 578 150 576 70 586 70"),
-        // on the server → answer, → failed, → cancelled
-        arrow("M738 70 C 750 70 748 150 758 150"),
-        Option.when(failed)(arrow("M738 30 L758 30")),
-        Option.when(cancelled)(arrow("M663 10 L663 3 L1007 3 L1007 8")),
-        // answer → on screen
-        arrow("M910 162 L930 162")
+      others.map(arrow(_, false)),
+      now.map(arrow(_, true)),
+      now.flatMap(moveLabel).map((label, x, y) =>
+        svg.text(
+          svg.cls := "stepper__arrow-label",
+          svg.x := x.toString,
+          svg.y := y.toString,
+          label
+        )
       )
     )
+
+  private def movePath(move: Move): String =
+    move match
+      case Move.FromStream   => "M147 34 L147 118"
+      case Move.ToConsidered => "M222 162 L242 162"
+      case Move.ToIgnored    => "M147 204 L147 256 L242 256"
+      case Move.ToWaiting    => "M394 162 L414 162"
+      case Move.Direct       => "M319 120 L319 40 L586 40"
+      case Move.FromBrowser  => "M663 180 L663 96"
+      case Move.ToServer     => "M566 150 C 578 150 576 70 586 70"
+      case Move.ToAnswered   => "M738 70 C 750 70 748 150 758 150"
+      case Move.ToFailed     => "M738 30 L758 30"
+      case Move.ToCancelled  => "M663 10 L663 3 L1007 3 L1007 8"
+      case Move.ToScreen     => "M910 162 L930 162"
+
+  // Where an occasional arrow comes from, written at its start
+  private def moveLabel(move: Move): Option[(String, Int, Int)] =
+    move match
+      case Move.FromStream  => Some(("event stream", 147, 28))
+      case Move.FromBrowser => Some(("opened or changed", 663, 196))
+      case _                => None
 
   // An event not in a load: its dot and its position
   private def renderEvent(position: Long): HtmlElement =
@@ -278,7 +330,7 @@ object ServerStepByStep:
       case LoadPlace.Cancelled   => "cancelled"
     span(
       cls := s"stepper__load stepper__load--$modifier",
-      span(cls := "stepper__load-name", s"Load $number"),
+      span(cls := "stepper__load-name", s"Reload $number"),
       if load.events.isEmpty then
         List(span(cls := "stepper__load-note", "no event"))
       else load.events.toList.sorted.map(renderDot)
@@ -303,6 +355,28 @@ object ServerStepByStep:
             Set(Node.Failed, Node.OnServer)
       case Some(_)                        => Set.empty
       case None if isDisplayStep(stepper) => Set(Node.OnScreen)
+      case None                           => Set.empty
+
+  // The moves the current step made, drawn in amber
+  private def litMoves(stepper: RefreshStepper): Set[Move] =
+    stepper.currentStep.map(_.kind) match
+      case Some(TraceStep.Kind.Received)           => Set(Move.FromStream)
+      case Some(TraceStep.Kind.Considered(_))      => Set(Move.ToConsidered)
+      case Some(TraceStep.Kind.NotConsidered(_))   => Set(Move.ToIgnored)
+      case Some(TraceStep.Kind.Reload(_, outcome)) =>
+        outcome match
+          case Outcome.InitialLoad(_, _) =>
+            Set(Move.FromBrowser, Move.ToCancelled)
+          case Outcome.Load(_, _, _) => Set(Move.Direct)
+          case Outcome.Batched(_, _) => Set(Move.ToWaiting)
+          case Outcome.Answer(_, _)  => Set(Move.ToAnswered)
+          case Outcome.AnswerAndLaunchPending(_, _) =>
+            Set(Move.ToAnswered, Move.ToServer)
+          case Outcome.Error(_)                    => Set(Move.ToFailed)
+          case Outcome.ErrorAndLaunchPending(_, _) =>
+            Set(Move.ToFailed, Move.ToServer)
+      case Some(_)                        => Set.empty
+      case None if isDisplayStep(stepper) => Set(Move.ToScreen)
       case None                           => Set.empty
 
   // A step with no trace step behind it that put a load on screen
