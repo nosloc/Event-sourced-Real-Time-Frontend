@@ -10,6 +10,9 @@ import prototype.client.live.{
   Tracer
 }
 
+import prototype.client.views.components.PopoverPicker
+import prototype.client.views.components.PopoverPicker.Item
+
 import com.raquo.laminar.api.L.*
 
 object ServerStepByStep:
@@ -17,18 +20,40 @@ object ServerStepByStep:
     enum Action:
       case AddStep(step: TraceStep)
       case Next
+      case Reset
+
+    // The time between two steps while playing, in milliseconds
+    val speedVar: Var[Int] = Var(1000)
+    val playingVar: Var[Boolean] = Var(false)
 
     val newSteps: EventStream[Action] = tracer.steps.map(Action.AddStep(_))
-    val nextBus: EventBus[Action] = new EventBus
+    val pressedNextBus: EventBus[Action] = new EventBus
+    val pressedLatestBus: EventBus[Action] = new EventBus
+    val playBus: EventStream[Action] =
+      speedVar.signal
+        .combineWith(playingVar.signal)
+        .changes
+        .flatMapSwitch((speed, play) =>
+          if play then EventStream.periodic(speed).mapTo(Action.Next)
+          else EventStream.empty
+        )
+
+    val nextS = pressedNextBus.events.mergeWith(playBus)
 
     val stepper: Signal[RefreshStepper] =
       newSteps
-        .mergeWith(nextBus.events)
+        .mergeWith(nextS, pressedLatestBus.events)
         .scanLeft(RefreshStepper.empty(source))((stepper, action) =>
           action match
             case Action.AddStep(traceStep) => stepper.addStep(traceStep)
             case Action.Next               => stepper.step()
+            case Action.Reset              => RefreshStepper.empty(source)
         )
+
+    // The stepper as the panel draws it: a recorded step only grows
+    // `history`, which the current step and the graph do not show
+    val shown: Signal[RefreshStepper] =
+      stepper.distinctBy(s => (s.currentStep, s.pipeline))
 
     div(
       cls := "stepper",
@@ -44,17 +69,58 @@ object ServerStepByStep:
             text <-- stepper.map(s => stepsLeft(s.history.size))
           )
         ),
-        button(
-          tpe := "button",
-          cls := "btn btn--primary stepper__next",
-          disabled <-- stepper.map(!_.hasNextStep()),
-          "Next step",
-          span(aria.hidden := true, "→"),
-          onClick.mapTo(Action.Next) --> nextBus.writer
+        // The controls: Jump to latest (starts the stepper again from now),
+        // Play / Pause, the speed, Next step (off while playing)
+        div(
+          cls := "stepper__controls",
+          button(
+            tpe := "button",
+            cls := "btn stepper__jump",
+            "Jump to latest",
+            onClick.mapTo(Action.Reset) --> pressedLatestBus.writer
+          ),
+          // Play while paused, Pause while playing
+          button(
+            tpe := "button",
+            cls := "btn stepper__play",
+            cls("stepper__play--on") <-- playingVar.signal,
+            aria.label <-- playingVar.signal.map(playing =>
+              if playing then "Pause" else "Play"
+            ),
+            child <-- playingVar.signal.map(playIcon),
+            onClick --> (_ => playingVar.update(!_))
+          ),
+          PopoverPicker(
+            id = "step-speed-selector",
+            label = "Every",
+            items = Val(
+              List(
+                Item(50, "0.05 s"),
+                Item(250, "0.25 s"),
+                Item(500, "0.5 s"),
+                Item(1000, "1 s"),
+                Item(2000, "2 s"),
+                Item(3000, "3 s")
+              )
+            ),
+            selectedVar = speedVar
+          ),
+          button(
+            tpe := "button",
+            cls := "btn btn--primary stepper__next",
+            disabled <-- stepper
+              .combineWith(playingVar.signal)
+              .map((stepper, play) => play || !stepper.hasNextStep()),
+            "Next step",
+            span(aria.hidden := true, "→"),
+            onClick.mapTo(Action.Next) --> pressedNextBus.writer
+          )
         )
       ),
-      child <-- stepper.map(renderCurrentStep),
-      child <-- stepper.map(renderGraph)
+      // Drawn again only when what they show changes (a Next), not on every
+      // step recorded: during a burst thousands are recorded per second
+      child <-- shown.map(renderCurrentStep),
+      child <-- shown.map(renderGraph)
     )
 
   // The moves an arrow can show, from one node to the next, or from outside
@@ -67,6 +133,20 @@ object ServerStepByStep:
   private enum Node:
     case Received, Considered, NotConsidered, Waiting, OnServer, Failed,
       Cancelled, Answered, OnScreen
+
+  // A triangle to play, two bars to pause
+  private def playIcon(playing: Boolean): SvgElement =
+    svg.svg(
+      svg.width := "14",
+      svg.height := "14",
+      svg.viewBox := "0 0 14 14",
+      svg.fill := "none",
+      aria.hidden := true,
+      svg.path(
+        svg.d := (if playing then "M4.5 2.5v9 M9.5 2.5v9"
+                  else "M3.5 2.5v9l8-4.5z")
+      )
+    )
 
   // The step just shown, as one line
   private def renderCurrentStep(stepper: RefreshStepper): HtmlElement =
@@ -273,14 +353,16 @@ object ServerStepByStep:
       ),
       others.map(arrow(_, false)),
       now.map(arrow(_, true)),
-      now.flatMap(moveLabel).map((label, x, y) =>
-        svg.text(
-          svg.cls := "stepper__arrow-label",
-          svg.x := x.toString,
-          svg.y := y.toString,
-          label
+      now
+        .flatMap(moveLabel)
+        .map((label, x, y) =>
+          svg.text(
+            svg.cls := "stepper__arrow-label",
+            svg.x := x.toString,
+            svg.y := y.toString,
+            label
+          )
         )
-      )
     )
 
   private def movePath(move: Move): String =
@@ -367,9 +449,9 @@ object ServerStepByStep:
         outcome match
           case Outcome.InitialLoad(_, _) =>
             Set(Move.FromBrowser, Move.ToCancelled)
-          case Outcome.Load(_, _, _) => Set(Move.Direct)
-          case Outcome.Batched(_, _) => Set(Move.ToWaiting)
-          case Outcome.Answer(_, _)  => Set(Move.ToAnswered)
+          case Outcome.Load(_, _, _)                => Set(Move.Direct)
+          case Outcome.Batched(_, _)                => Set(Move.ToWaiting)
+          case Outcome.Answer(_, _)                 => Set(Move.ToAnswered)
           case Outcome.AnswerAndLaunchPending(_, _) =>
             Set(Move.ToAnswered, Move.ToServer)
           case Outcome.Error(_)                    => Set(Move.ToFailed)

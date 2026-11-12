@@ -131,6 +131,44 @@
   font-size: 13px;
 }
 
+/* Jump to latest, Play, the speed, Next step */
+.stepper__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.stepper__jump {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+}
+
+.stepper__play {
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+.stepper__play svg {
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Playing: the amber of the mode, and the pause bars a bit thicker */
+.stepper__play--on,
+.stepper__play--on:hover:not(:disabled) {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.stepper__play--on svg {
+  stroke-width: 2.2;
+}
+
 .stepper__next {
   gap: var(--space-2);
   min-height: 44px;
