@@ -4,7 +4,13 @@ import java.util.UUID
 
 import prototype.api.*
 import prototype.client.companies.LiveCompanies
-import prototype.client.dashboards.{ComputationLevel, DashboardSources}
+import prototype.client.dashboards.{
+  ComputationLevel,
+  DashboardSources,
+  LiveActivityDashboard,
+  LiveBillingDashboard,
+  LiveDirectoryDashboard
+}
 import prototype.client.live.{LiveData, LiveFeed}
 import prototype.client.therapists.LiveTherapists
 import prototype.client.views.components.PopoverPicker
@@ -22,8 +28,6 @@ object DashboardView:
   def apply(): HtmlElement =
     val feed: LiveFeed = new LiveFeed
 
-    feed.tracer.enabled.set(true)
-
     val selectedCompanyVar: Var[Option[UUID]] = Var(None)
     val companies: LiveData[List[Company]] = LiveCompanies(feed)
     val selectedDashboardVar: Var[Option[DashboardType]] = Var(None)
@@ -31,6 +35,8 @@ object DashboardView:
     val computationLevelVar: Var[ComputationLevel] = Var(
       ComputationLevel.Browser
     )
+
+    val stepByStepVar: Var[Boolean] = feed.tracer.enabled
 
     // The therapists of every company, loaded once for the page
     val allTherapists: LiveData[List[Therapist]] = LiveTherapists(feed)
@@ -56,6 +62,7 @@ object DashboardView:
             h2(child.text <-- titleS, cls := "dashboards__title"),
             div(
               cls := "dashboards__pickers",
+              renderStepByStepButton(stepByStepVar),
               renderComputationLevelSelector(computationLevelVar),
               renderCompanySelector(companies.valueS, selectedCompanyVar)
             )
@@ -83,7 +90,20 @@ object DashboardView:
             )
           )
         )
-      )
+      ),
+      child.maybe <-- stepByStepVar.signal
+        .combineWith(computationLevelVar.signal, selectedDashboardVar.signal)
+        .map((stepByStep, computationLevel, selectedDashboard) =>
+          Option.when(stepByStep)(
+            computationLevel match
+              case ComputationLevel.Browser => span("Browser step by step")
+              case ComputationLevel.Server  =>
+                selectedDashboard match
+                  case Some(dashboardType) =>
+                    ServerStepByStep(feed.tracer, sourceName(dashboardType))
+                  case None => span("Select a dashboard to step through")
+          )
+        )
     )
   end apply
 
@@ -212,4 +232,23 @@ object DashboardView:
         span(cls := "dashboards__item-blurb", blurb),
         onClick.mapTo(Some(dashboardType)) --> selectedDashboardVar.writer
       )
+    )
+
+  // The name a dashboard's live data has in the trace, for its stepper
+  private def sourceName(dashboardType: DashboardType): String =
+    dashboardType match
+      case DashboardType.BILLING   => LiveBillingDashboard.name
+      case DashboardType.ACTIVITY  => LiveActivityDashboard.name
+      case DashboardType.DIRECTORY => LiveDirectoryDashboard.name
+
+  private def renderStepByStepButton(
+      stepByStepVar: Var[Boolean]
+  ): HtmlElement =
+    button(
+      tpe := "button",
+      cls := "stepper-toggle",
+      cls("stepper-toggle--on") <-- stepByStepVar.signal,
+      span(cls := "stepper-toggle__switch", aria.hidden := true),
+      "Step by step",
+      onClick.-->(_ => stepByStepVar.update(!_))
     )

@@ -22,6 +22,9 @@ import smithy4s.time.LocalDate
   */
 object LiveActivityDashboard:
 
+  /** Its name in the trace, read by the step-by-step mode too. */
+  val name: String = "activity dashboard"
+
   private case class Key(
       companyId: UUID,
       periodUnit: PeriodUnit,
@@ -56,7 +59,7 @@ object LiveActivityDashboard:
         ActivityDashboardEvents.types.contains(message.eventType),
       invalidatePrevious = (oldKey, newKey) =>
         oldKey.companyId != newKey.companyId,
-      name = "activity dashboard"
+      name = name
     )
 
   /** Computed in the browser from the company's live therapists and

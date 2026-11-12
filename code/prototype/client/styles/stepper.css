@@ -1,0 +1,395 @@
+/* ------------------------------------------------------------------ */
+/* Step by step                                                         */
+/* The switch next to "Computed by", and the panel docked at the bottom */
+/* of the dashboards page. Amber marks the mode, teal the loads, the    */
+/* filled teal the moment the figures change on screen.                 */
+/* ------------------------------------------------------------------ */
+
+/* The switch */
+.stepper-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.stepper-toggle:hover {
+  background: var(--ground);
+}
+
+.stepper-toggle__switch {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--line-strong);
+  transition: background-color 0.15s ease;
+}
+
+.stepper-toggle__switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--panel);
+  transition: transform 0.15s ease;
+}
+
+.stepper-toggle--on,
+.stepper-toggle--on:hover {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.stepper-toggle--on .stepper-toggle__switch {
+  background: var(--warning);
+}
+
+.stepper-toggle--on .stepper-toggle__switch::after {
+  transform: translateX(12px);
+}
+
+/* The panel: it stays at the bottom of the window while the page scrolls */
+.stepper {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 70vh;
+  margin-top: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-bottom: 0;
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  box-shadow: 0 -8px 24px var(--shadow);
+}
+
+.stepper__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.stepper__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.stepper__title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.stepper__source {
+  padding: 2px var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.stepper__left {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.stepper__next {
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  font-weight: 600;
+}
+
+/* Small uppercase labels, as on the figures */
+.stepper__label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* The step just shown */
+.stepper__current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--ground);
+}
+
+.stepper__step {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.stepper__step--shown {
+  color: var(--accent-strong);
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
+
+.stepper__step--none {
+  color: var(--muted);
+  font-family: var(--font-sans);
+}
+
+/* The graph: one node per place. Its size and the nodes' positions are
+   fixed, in the same coordinates as the arrows drawn in
+   ServerStepByStep.renderArrows: change both together. It scrolls sideways
+   on a narrow window. Columns at 72, 244, 416, 588, 760, 932 (150 wide);
+   rows at 10 (server), 120 (browser) and 222 (not considered). */
+.stepper__graph-scroll {
+  position: relative;
+  overflow-x: auto;
+}
+
+/* The server's lane, across the whole panel */
+.stepper__graph-scroll::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 104px;
+  border-top: 1px dashed var(--line-strong);
+  border-bottom: 1px dashed var(--line-strong);
+  background: var(--ground);
+}
+
+.stepper__graph {
+  position: relative;
+  width: 1082px;
+  height: 298px;
+}
+
+.stepper__lane {
+  position: absolute;
+  left: 0;
+}
+
+.stepper__lane--server {
+  top: 44px;
+}
+
+.stepper__lane--browser {
+  top: 154px;
+}
+
+.stepper__arrows {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.stepper__arrow {
+  stroke: var(--line-input);
+  stroke-width: 1.5;
+}
+
+.stepper__arrow-head {
+  fill: var(--line-input);
+}
+
+/* One node */
+.stepper__node {
+  position: absolute;
+  width: 150px;
+  min-height: 84px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-2) 10px;
+  background: var(--panel);
+  border: 1px solid var(--line-input);
+  border-radius: 12px;
+}
+
+.stepper__node--received { left: 72px; top: 120px; }
+.stepper__node--considered { left: 244px; top: 120px; }
+.stepper__node--not-considered { left: 244px; top: 222px; min-height: 68px; }
+.stepper__node--waiting { left: 416px; top: 120px; }
+.stepper__node--server { left: 588px; top: 10px; }
+.stepper__node--failed { left: 760px; top: 10px; }
+.stepper__node--cancelled { left: 932px; top: 10px; }
+.stepper__node--answered { left: 760px; top: 120px; }
+.stepper__node--on-screen { left: 932px; top: 120px; }
+
+/* What leaves on the next step */
+.stepper__node--not-considered,
+.stepper__node--cancelled {
+  border: 1.5px dashed var(--line-input);
+}
+
+.stepper__node--failed {
+  border: 1.5px dashed var(--error);
+}
+
+.stepper__node--failed .stepper__node-title {
+  color: var(--error);
+}
+
+/* The node the current step changed */
+.stepper__node--now {
+  border: 2px solid var(--warning);
+  background: var(--now-soft);
+}
+
+.stepper__node--now .stepper__node-title {
+  color: var(--warning);
+}
+
+.stepper__node-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.stepper__node-title {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* On the node's top edge, so that it never pushes the title to two lines */
+.stepper__now {
+  position: absolute;
+  top: -9px;
+  right: var(--space-2);
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--warning);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.stepper__node-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--space-2);
+}
+
+/* An event not in a load */
+.stepper__event {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.stepper__position {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.stepper__dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.stepper__load .stepper__dot {
+  width: 12px;
+  height: 12px;
+}
+
+/* One colour per event, from its position */
+.stepper__dot--0 { background: #d9480f; }
+.stepper__dot--1 { background: #7048e8; }
+.stepper__dot--2 { background: #2f9e44; }
+.stepper__dot--3 { background: #c2255c; }
+.stepper__dot--4 { background: #1c7ed6; }
+.stepper__dot--5 { background: #a16207; }
+.stepper__dot--6 { background: #862e9c; }
+.stepper__dot--7 { background: #5c940d; }
+.stepper__dot--8 { background: #e64980; }
+.stepper__dot--9 { background: #364fc7; }
+
+/* A load: a capsule holding its events */
+.stepper__load {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  box-sizing: border-box;
+  padding: 3px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+  color: var(--ink);
+}
+
+.stepper__load-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stepper__load-note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.stepper__load--pending {
+  border-style: dashed;
+}
+
+.stepper__load--displayed {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.stepper__load--displayed .stepper__dot {
+  box-shadow: 0 0 0 1.5px var(--on-accent);
+}
+
+.stepper__load--displayed .stepper__load-note {
+  color: var(--on-accent);
+}
+
+.stepper__load--failed {
+  border-color: var(--error);
+  background: var(--error-soft);
+}
+
+.stepper__load--cancelled {
+  border-style: dashed;
+  border-color: var(--line-input);
+  color: var(--muted);
+}
+
+@media (max-width: 719px) {
+  .stepper {
+    padding: var(--space-3) var(--space-4);
+  }
+}

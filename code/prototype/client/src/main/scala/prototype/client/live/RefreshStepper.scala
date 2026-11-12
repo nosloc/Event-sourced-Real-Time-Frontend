@@ -76,9 +76,21 @@ case class Pipeline(events: Map[Long, EventPlace], loads: Map[Int, Load]):
 
   // Whether a load is answered and waits to be displayed
   def hasAnswered: Boolean =
-    loads.values.exists(_.place match
-      case LoadPlace.Answered(_) => true
-      case _                     => false)
+    loads.values.exists(
+      _.place match
+        case LoadPlace.Answered(_) => true
+        case _                     => false
+    )
+
+  // Whether a step left something behind for `automaticStep` to remove
+  def hasAutomaticStepPending: Boolean =
+    loads.values.exists(
+      _.place match
+        case LoadPlace.Pending | LoadPlace.InFlight | LoadPlace.Answered(_) =>
+          false
+        case LoadPlace.Displayed | LoadPlace.Failed | LoadPlace.Cancelled =>
+          true
+    ) || events.exists((_, place) => place == EventPlace.NotConsidered)
 
   // The loads answered are put on screen
   def displayAnswered(): Pipeline =
@@ -121,16 +133,19 @@ object Pipeline:
 
 // `source` is the name of the live data this stepper follows, the same as the
 // `name` of its `RefreshedLiveData`: its loads are numbered per live data
-case class RefreshStepperState(
+case class RefreshStepper(
     source: String,
     currentStep: Option[TraceStep],
     pipeline: Pipeline,
     history: List[TraceStep]
 ):
+  // A Next does something while a trace step is left, a load waits to be
+  // displayed, or a step left something behind
   def hasNextStep(): Boolean =
-    history.exists(concerns) || pipeline.hasAnswered
+    history.nonEmpty || pipeline.hasAnswered ||
+      pipeline.hasAutomaticStepPending
 
-  def step(): RefreshStepperState =
+  def step(): RefreshStepper =
     if !hasNextStep() then this
     // A load answered is displayed on a step of its own, before the next
     // trace step: it is the one that changes the screen. No trace step is
@@ -140,19 +155,26 @@ case class RefreshStepperState(
         currentStep = None,
         pipeline = pipeline.automaticStep().displayAnswered()
       )
+    // No trace step left: the Next only removes what the last step left
+    // behind, so that the last load displayed does not stay forever
+    else if history.isEmpty then
+      copy(currentStep = None, pipeline = pipeline.automaticStep())
     else
-      // The steps of other live data are skipped, they are not shown here
-      val remaining = history.dropWhile(traceStep => !concerns(traceStep))
-      val consideredStep = remaining.head
-      val newHistory = remaining.tail
+      val consideredStep = history.head
+      val newHistory = history.tail
       val newPipeline = updatedPipeline(pipeline, consideredStep)
 
-      RefreshStepperState(
+      RefreshStepper(
         source,
         Some(consideredStep),
         newPipeline,
         newHistory
       )
+
+  // Only the steps of this stepper are kept: the ones of other live data are
+  // never shown here
+  def addStep(step: TraceStep): RefreshStepper =
+    if concerns(step) then copy(history = history :+ step) else this
 
   // Whether a step is one of this stepper's: the steps every event goes
   // through, and the ones of its own source
@@ -199,3 +221,12 @@ case class RefreshStepperState(
               .handleError(error.loadNumber)
               .handleLoad(load.position, load.loadNumber)
       case _ => cleaned
+
+object RefreshStepper:
+  def empty(source: String): RefreshStepper =
+    RefreshStepper(
+      source,
+      None,
+      Pipeline.empty,
+      List.empty
+    )

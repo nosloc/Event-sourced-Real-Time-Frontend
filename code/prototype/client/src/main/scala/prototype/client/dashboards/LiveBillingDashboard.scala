@@ -21,6 +21,9 @@ import com.raquo.laminar.api.L.*
   */
 object LiveBillingDashboard:
 
+  /** Its name in the trace, read by the step-by-step mode too. */
+  val name: String = "billing dashboard"
+
   def apply(
       feed: LiveFeed,
       companyIdS: Signal[UUID]
@@ -34,7 +37,7 @@ object LiveBillingDashboard:
           .map(response => (response.dashboard, response.globalPosition)),
       triggerRefresh = message =>
         BillingDashboardEvents.types.contains(message.eventType),
-      name = "billing dashboard"
+      name = name
     )
 
   /** Computed in the browser from the company's live appointments, with the

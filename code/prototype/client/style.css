@@ -19,6 +19,7 @@
 @import './styles/prestations.css';
 @import './styles/admin.css';
 @import './styles/dashboards.css';
+@import './styles/stepper.css';
 @import './styles/event-sourcing.css';
 @import './styles/form.css';
 @import './styles/motion.css';

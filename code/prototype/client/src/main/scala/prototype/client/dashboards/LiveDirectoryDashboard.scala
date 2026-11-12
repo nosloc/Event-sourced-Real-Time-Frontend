@@ -24,6 +24,9 @@ import com.raquo.laminar.api.L.*
   */
 object LiveDirectoryDashboard:
 
+  /** Its name in the trace, read by the step-by-step mode too. */
+  val name: String = "directory dashboard"
+
   def apply(
       feed: LiveFeed,
       companyIdS: Signal[UUID]
@@ -37,7 +40,7 @@ object LiveDirectoryDashboard:
           .map(response => (response.dashboard, response.globalPosition)),
       triggerRefresh = message =>
         DirectoryDashboardEvents.types.contains(message.eventType),
-      name = "directory dashboard"
+      name = name
     )
 
   /** Computed in the browser from the company's live therapists and
