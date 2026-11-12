@@ -109,6 +109,8 @@ object TraceStep:
     case FiguresComputed(dashboard: String)
     // Server level: the event makes the live data `source` out of date
     case Considered(source: String)
+    // Server level: the event doesn't make the live data `source` out of date
+    case NotConsidered(source: String)
     // Server level: what the refresh model of `source` did (a load launched,
     // an event batched, an answer); the outcome holds the load's number
     case Reload(source: String, outcome: RefreshModel.Outcome[Any])
@@ -124,6 +126,7 @@ object TraceStep:
         if applied then "Folded" else "Not folded"
       case Kind.FiguresComputed(dashboard) => s"Figures of $dashboard computed"
       case Kind.Considered(source)         => s"Considered for $source"
+      case Kind.NotConsidered(source)      => s"Not considered for $source"
       case Kind.Reload(source, outcome)    =>
         outcome match
           case Outcome.InitialLoad(key, loadNumber) =>

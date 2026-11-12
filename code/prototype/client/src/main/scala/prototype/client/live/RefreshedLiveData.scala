@@ -59,14 +59,20 @@ final class RefreshedLiveData[K, A](
 
   // Keep only the events that triggers a refresh
   private val eventArrivedInput: EventStream[Input[K, A]] =
-    feed.events.collect {
-      case FeedMessage.Event(message) if triggerRefresh(message) =>
+    feed.events.collect { case FeedMessage.Event(message) =>
+      if triggerRefresh(message) then
         feed.tracer.record(
           TraceStep.Kind.Considered(name),
           message.position
         )
-        Input.EventArrived(message.position)
-    }
+        Some(Input.EventArrived(message.position))
+      else
+        feed.tracer.record(
+          TraceStep.Kind.NotConsidered(name),
+          message.position
+        )
+        None
+    }.collectSome
 
   // The answers of the loads, sent back into the model by `runLoads`
   private val loadResults: EventBus[Input[K, A]] = new EventBus
