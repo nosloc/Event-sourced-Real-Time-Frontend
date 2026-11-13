@@ -13,7 +13,7 @@ import prototype.client.dashboards.{
   DashboardSources,
   LiveActivityDashboard
 }
-import prototype.client.live.{LiveData, LiveFeed}
+import prototype.client.live.LiveFeed
 import prototype.client.views.components.*
 import prototype.client.views.components.chartJS.*
 
@@ -26,29 +26,33 @@ object ActivityDashboard:
       sources: DashboardSources,
       feed: LiveFeed,
       companyIdS: Signal[UUID],
-      computationLevelS: Signal[ComputationLevel]
+      computationLevelS: Signal[ComputationLevel],
+      stepperObserver: Observer[Option[ServerStepByStep[?]]]
   ): HtmlElement =
     val selectedPeriodUnitVar: Var[PeriodUnit] = Var(PeriodUnit.WEEK)
     val selectedPeriodDayVar: Var[LocalDate] = Var(LocalDate.now())
 
-    val dashboard: LiveData[(PeriodUnit, ActivityFigures)] =
-      LiveData.switching(computationLevelS) {
-        case ComputationLevel.Browser =>
-          LiveActivityDashboard.replayed(
-            feed.tracer,
-            feed.lastPositionS,
-            sources,
-            selectedPeriodUnitVar.signal,
-            selectedPeriodDayVar.signal
-          )
-        case ComputationLevel.Server =>
-          LiveActivityDashboard(
-            feed,
-            companyIdS,
-            selectedPeriodUnitVar.signal,
-            selectedPeriodDayVar.signal
-          )
-      }
+    val (dashboard, handStepperUp) = ServerStepByStep.switchingLevels(
+      feed.tracer,
+      LiveActivityDashboard.name,
+      computationLevelS,
+      server = () =>
+        LiveActivityDashboard(
+          feed,
+          companyIdS,
+          selectedPeriodUnitVar.signal,
+          selectedPeriodDayVar.signal
+        ),
+      browser = () =>
+        LiveActivityDashboard.replayed(
+          feed.tracer,
+          feed.lastPositionS,
+          sources,
+          selectedPeriodUnitVar.signal,
+          selectedPeriodDayVar.signal
+        ),
+      stepperObserver
+    )
 
     // The period shown is the one the figures were computed for
     val periodS: Signal[Option[(LocalDate, LocalDate)]] =
@@ -56,6 +60,7 @@ object ActivityDashboard:
 
     div(
       cls := "dash",
+      handStepperUp,
       renderPeriodSelector(
         selectedPeriodUnitVar,
         selectedPeriodDayVar,

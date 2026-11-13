@@ -16,20 +16,21 @@ object RefreshModel:
     // Waiting for an answer, `pending` is the highest position seen while the load is happening
     case InFlight(pending: Option[Position])
 
-  /** What a step did: a load to launch, an event kept for the next load, or
-    * the answer of a load. `RefreshedLiveData` runs the loads and records them
-    * all in the trace.
+  /** What a step did: a load to launch, an event kept for the next load, or the
+    * answer of a load. `RefreshedLiveData` runs the loads and records them all
+    * in the trace.
     */
-  enum Outcome[+K]:
+  enum Outcome[+K, +A]:
     case InitialLoad(key: K, loadNumber: Int)
     case Load(key: K, position: Position, loadNumber: Int)
     // `servedBy` is the load that will cover the event: the one after the
     // load in flight
     case Batched(position: Position, servedBy: Int)
-    case Answer(position: Position, loadNumber: Int)
-    case AnswerAndLaunchPending(answer: Answer[K], load: Load[K])
+    // `value` is what is on screen after the answer
+    case Answer(position: Position, loadNumber: Int, value: A)
+    case AnswerAndLaunchPending(answer: Answer[K, A], load: Load[K, A])
     case Error(loadNumber: Int)
-    case ErrorAndLaunchPending(error: Error[K], load: Load[K])
+    case ErrorAndLaunchPending(error: Error[K, A], load: Load[K, A])
 
   /** The refresh model
     *
@@ -77,12 +78,13 @@ object RefreshModel:
     *   the input that triggered the evolve
     *
     * @return
-    *   the evolved state and what the step did, or None if nothing worth telling
+    *   the evolved state and what the step did, or None if nothing worth
+    *   telling
     */
   def step[K, A](invalidatePrevious: (K, K) => Boolean)(
       state: State[K, A],
       input: Input[K, A]
-  ): (State[K, A], Option[Outcome[K]]) =
+  ): (State[K, A], Option[Outcome[K, A]]) =
     import Input.*
     val newLoadNumber = state.loadNumber + 1
     input match
@@ -147,12 +149,17 @@ object RefreshModel:
           if state.value.isEmpty || position >= state.position then
             state.copy(value = Some(value), error = None, position = position)
           else state.copy(error = None)
+        // What is on screen after this answer: the new value, or the one kept
+        // when the answer is older than it
+        val shown = answered.value.getOrElse(value)
         state.phase match
           case Phase.Idle           => (state, None)
           case Phase.InFlight(None) =>
             (
               answered.copy(loading = false, phase = Phase.Idle),
-              Some(Outcome.Answer(position, state.loadNumber))
+              Some(
+                Outcome.Answer(position, state.loadNumber, shown)
+              )
             )
           case Phase.InFlight(Some(newPosition)) =>
             (
@@ -163,7 +170,7 @@ object RefreshModel:
               ),
               Some(
                 Outcome.AnswerAndLaunchPending(
-                  Outcome.Answer(position, state.loadNumber),
+                  Outcome.Answer(position, state.loadNumber, shown),
                   Outcome.Load(key, newPosition, newLoadNumber)
                 )
               )

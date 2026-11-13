@@ -109,7 +109,7 @@ object TraceStep:
     case NotConsidered(source: String)
     // Server level: what the refresh model of `source` did (a load launched,
     // an event batched, an answer); the outcome holds the load's number
-    case Reload(source: String, outcome: RefreshModel.Outcome[Any])
+    case Reload(source: String, outcome: RefreshModel.Outcome[Any, Any])
 
   /** A step as one line of text, for the console and the step-by-step panel.
     */
@@ -132,7 +132,7 @@ object TraceStep:
             s"Launched load $loadNumber of $source"
           case Outcome.Batched(_, servedBy) =>
             s"Batched, to be served by load $servedBy of $source"
-          case Outcome.Answer(_, loadNumber) =>
+          case Outcome.Answer(_, loadNumber, _) =>
             s"Received server data for load $loadNumber of $source"
           case Outcome.AnswerAndLaunchPending(answer, load) =>
             s"Received server data for load ${answer.loadNumber} of $source, " +

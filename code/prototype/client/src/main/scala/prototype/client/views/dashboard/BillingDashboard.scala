@@ -12,7 +12,7 @@ import prototype.client.dashboards.{
   DashboardSources,
   LiveBillingDashboard
 }
-import prototype.client.live.{LiveData, LiveFeed}
+import prototype.client.live.LiveFeed
 import prototype.client.views.components.*
 import prototype.client.views.components.chartJS.*
 
@@ -32,6 +32,9 @@ object BillingDashboard:
     *   the selected company, for the server level
     * @param computationLevelS
     *   where the figures are computed
+    * @param stepperObserver
+    *   receives the stepper of the server level, for the step-by-step panel,
+    *   and None on the browser level or once the dashboard leaves the page
     * @return
     *   the real time billing dashboard
     */
@@ -39,22 +42,26 @@ object BillingDashboard:
       sources: DashboardSources,
       feed: LiveFeed,
       companyIdS: Signal[UUID],
-      computationLevelS: Signal[ComputationLevel]
+      computationLevelS: Signal[ComputationLevel],
+      stepperObserver: Observer[Option[ServerStepByStep[?]]]
   ): HtmlElement =
-    val dashboard: LiveData[BillingFigures] =
-      LiveData.switching(computationLevelS) {
-        case ComputationLevel.Browser =>
-          LiveBillingDashboard.replayed(
-            feed.tracer,
-            feed.lastPositionS,
-            sources.appointments
-          )
-        case ComputationLevel.Server =>
-          LiveBillingDashboard(feed, companyIdS)
-      }
+    val (dashboard, handStepperUp) = ServerStepByStep.switchingLevels(
+      feed.tracer,
+      LiveBillingDashboard.name,
+      computationLevelS,
+      server = () => LiveBillingDashboard(feed, companyIdS),
+      browser = () =>
+        LiveBillingDashboard.replayed(
+          feed.tracer,
+          feed.lastPositionS,
+          sources.appointments
+        ),
+      stepperObserver
+    )
 
     div(
       cls := "dash",
+      handStepperUp,
       child.maybe <-- dashboard.errorS.map(
         _.map(error =>
           div(cls := "dash__error", ErrorMessages.errorToMessage(error))

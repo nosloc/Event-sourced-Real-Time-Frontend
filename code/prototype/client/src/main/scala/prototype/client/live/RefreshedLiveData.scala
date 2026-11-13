@@ -81,7 +81,7 @@ final class RefreshedLiveData[K, A](
   // _1. the state of the refresh model
   // _2. What the step decided (a load to launch, an answer, ...), or None if nothing
   private val stepResult
-      : Signal[(RefreshModel.State[K, A], Option[Outcome[K]])] =
+      : Signal[(RefreshModel.State[K, A], Option[Outcome[K, A]])] =
     // All the inputs merged in a single EventStream
     EventStream
       .merge(
@@ -90,7 +90,7 @@ final class RefreshedLiveData[K, A](
         eventArrivedInput,
         loadResults.events
       )
-      .scanLeft[(RefreshModel.State[K, A], Option[Outcome[K]])](
+      .scanLeft[(RefreshModel.State[K, A], Option[Outcome[K, A]])](
         (RefreshModel.initial[K, A], None)
       )((acc, input) =>
         val result = RefreshModel.step(invalidatePrevious)(acc._1, input)
@@ -137,11 +137,11 @@ final class RefreshedLiveData[K, A](
   // The event an outcome belongs to in the trace: the one that launched the
   // load or was batched, the highest one batched for a pending load; None
   // for an answer alone and for a load with no event behind it
-  private def eventBehind(outcome: Outcome[K]): Option[Long] =
+  private def eventBehind(outcome: Outcome[K, A]): Option[Long] =
     outcome match
-      case Outcome.Load(_, position, _)            => Some(position)
-      case Outcome.Batched(position, _)            => Some(position)
-      case Outcome.AnswerAndLaunchPending(_, load) => Some(load.position)
-      case Outcome.ErrorAndLaunchPending(_, load)  => Some(load.position)
-      case Outcome.InitialLoad(_, _)               => None
-      case Outcome.Answer(_, _) | Outcome.Error(_) => None
+      case Outcome.Load(_, position, _)               => Some(position)
+      case Outcome.Batched(position, _)               => Some(position)
+      case Outcome.AnswerAndLaunchPending(_, load)    => Some(load.position)
+      case Outcome.ErrorAndLaunchPending(_, load)     => Some(load.position)
+      case Outcome.InitialLoad(_, _)                  => None
+      case Outcome.Answer(_, _, _) | Outcome.Error(_) => None

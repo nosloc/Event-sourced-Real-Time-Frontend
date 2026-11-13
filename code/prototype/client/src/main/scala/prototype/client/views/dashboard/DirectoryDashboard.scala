@@ -12,7 +12,7 @@ import prototype.client.dashboards.{
   DashboardSources,
   LiveDirectoryDashboard
 }
-import prototype.client.live.{LiveData, LiveFeed}
+import prototype.client.live.LiveFeed
 import prototype.client.views.components.StatBox
 import prototype.client.views.components.chartJS.*
 
@@ -23,23 +23,27 @@ object DirectoryDashboard:
       sources: DashboardSources,
       feed: LiveFeed,
       companyIdS: Signal[UUID],
-      computationLevelS: Signal[ComputationLevel]
+      computationLevelS: Signal[ComputationLevel],
+      stepperObserver: Observer[Option[ServerStepByStep[?]]]
   ): HtmlElement =
     // A new company drops the figures shown until they are loaded for it
-    val dashboard: LiveData[DirectoryFigures] =
-      LiveData.switching(computationLevelS) {
-        case ComputationLevel.Browser =>
-          LiveDirectoryDashboard.replayed(
-            feed.tracer,
-            feed.lastPositionS,
-            sources
-          )
-        case ComputationLevel.Server =>
-          LiveDirectoryDashboard(feed, companyIdS)
-      }
+    val (dashboard, handStepperUp) = ServerStepByStep.switchingLevels(
+      feed.tracer,
+      LiveDirectoryDashboard.name,
+      computationLevelS,
+      server = () => LiveDirectoryDashboard(feed, companyIdS),
+      browser = () =>
+        LiveDirectoryDashboard.replayed(
+          feed.tracer,
+          feed.lastPositionS,
+          sources
+        ),
+      stepperObserver
+    )
 
     div(
       cls := "dash",
+      handStepperUp,
       child.maybe <-- dashboard.errorS.map(
         _.map(error =>
           div(cls := "dash__error", ErrorMessages.errorToMessage(error))

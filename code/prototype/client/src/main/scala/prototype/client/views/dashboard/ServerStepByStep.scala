@@ -1,58 +1,67 @@
 package prototype.client.views.dashboard
 
+import prototype.client.dashboards.ComputationLevel
+import prototype.client.live.{LiveData, RefreshStepper, TraceStep, Tracer}
 import prototype.client.live.RefreshModel.Outcome
 import prototype.client.live.RefreshStepper.{EventPlace, Load, LoadPlace, Shown}
-import prototype.client.live.{RefreshStepper, TraceStep, Tracer}
-
 import prototype.client.views.components.PopoverPicker
 import prototype.client.views.components.PopoverPicker.Item
 
 import com.raquo.laminar.api.L.*
 
-object ServerStepByStep:
-  def apply(tracer: Tracer, source: String): HtmlElement =
-    enum Action:
-      case AddStep(step: TraceStep)
-      case Next
-      case Reset
+final class ServerStepByStep[A](
+    tracer: Tracer,
+    source: String,
+    val live: LiveData[A]
+):
+  import ServerStepByStep.*
 
-    // The time between two steps while playing, in milliseconds
-    val speedVar: Var[Int] = Var(1000)
-    val playingVar: Var[Boolean] = Var(false)
-    // Off: Next skips the events this dashboard ignores
-    val showIgnoredVar: Var[Boolean] = Var(false)
+  // The time between two steps while playing, in milliseconds
+  private val speedVar: Var[Int] = Var(1000)
+  private val playingVar: Var[Boolean] = Var(false)
+  // Off: Next skips the events this dashboard ignores
+  private val showIgnoredVar: Var[Boolean] = Var(false)
 
-    val newSteps: EventStream[Action] = tracer.steps.map(Action.AddStep(_))
-    val pressedNextBus: EventBus[Action] = new EventBus
-    val pressedLatestBus: EventBus[Action] = new EventBus
-    val playBus: EventStream[Action] =
-      speedVar.signal
-        .combineWith(playingVar.signal)
-        .changes
-        .flatMapSwitch((speed, play) =>
-          if play then EventStream.periodic(speed).mapTo(Action.Next)
-          else EventStream.empty
-        )
+  private val newSteps: EventStream[Action] =
+    tracer.steps.map(Action.AddStep(_))
+  private val pressedNextBus: EventBus[Action] = new EventBus
+  private val pressedLatestBus: EventBus[Action] = new EventBus
+  private val playBus: EventStream[Action] =
+    speedVar.signal
+      .combineWith(playingVar.signal)
+      .changes
+      .flatMapSwitch((speed, play) =>
+        if play then EventStream.periodic(speed).mapTo(Action.Next)
+        else EventStream.empty
+      )
 
-    val nextS = pressedNextBus.events.mergeWith(playBus)
+  private val nextS = pressedNextBus.events.mergeWith(playBus)
 
-    val stepper: Signal[RefreshStepper] =
-      newSteps
-        .mergeWith(nextS, pressedLatestBus.events)
-        .withCurrentValueOf(showIgnoredVar.signal)
-        .scanLeft(RefreshStepper.empty(source)) {
-          case (stepper, (action, showIgnored)) =>
-            action match
-              case Action.AddStep(traceStep) => stepper.addStep(traceStep)
-              case Action.Next  => stepper.step(skipIgnored = !showIgnored)
-              case Action.Reset => RefreshStepper.empty(source)
-        }
+  private val stepper: Signal[RefreshStepper[A]] =
+    newSteps
+      .mergeWith(nextS, pressedLatestBus.events)
+      .mergeWith(EventStream.fromValue(Action.Reset)) // Start with a reset
+      .withCurrentValueOf(showIgnoredVar.signal, live.valueS)
+      .scanLeft(RefreshStepper.empty[A](source)) {
+        case (stepper, (action, showIgnored, real)) =>
+          action match
+            case Action.AddStep(traceStep) => stepper.addStep(traceStep)
+            case Action.Next  => stepper.step(skipIgnored = !showIgnored)
+            case Action.Reset =>
+              RefreshStepper.empty[A](source).copy(displayed = real)
+      }
 
-    // The stepper as the panel draws it: a recorded step only grows
-    // `history`, which the current step and the graph do not show
-    val shown: Signal[RefreshStepper] =
-      stepper.distinctBy(s => (s.currentStep, s.pipeline))
+  // The stepper as the panel draws it: a recorded step only grows
+  // `history`, which the current step and the graph do not show
+  private val shown: Signal[RefreshStepper[A]] =
+    stepper.distinctBy(s => (s.currentStep, s.pipeline))
 
+  val steppedData: LiveData[A] = new LiveData[A]:
+    val valueS: Signal[Option[A]] = stepper.map(_.displayed)
+    val errorS: Signal[Option[Throwable]] = Val(None)
+    val loadingS: Signal[Boolean] = Val(false)
+
+  def panel: HtmlElement =
     div(
       cls := "stepper",
       role := "region",
@@ -142,6 +151,62 @@ object ServerStepByStep:
       child <-- shown.map(renderGraph)
     )
 
+object ServerStepByStep:
+
+  /** A dashboard's live data on both computation levels, with a stepper on the
+    * server level.
+    *
+    * On the server level the dashboard reads the real live data, or the
+    * stepper's held one while the step-by-step mode is on. The real one keeps
+    * running when the mode turns on: the switch starts the held one, which
+    * reads it, before it lets go of the real one.
+    *
+    * @param server
+    *   builds the live data reloaded from the server: a new one on each switch
+    *   to the server level, since a stopped one is not read again
+    * @param browser
+    *   builds the live data computed in the browser
+    * @param stepperObserver
+    *   receives the stepper while the server level is shown, for the panel, and
+    *   None otherwise
+    * @return
+    *   the live data to show, and the modifier that hands the stepper to
+    *   `stepperObserver`, to mount on the dashboard's element
+    */
+  def switchingLevels[A](
+      tracer: Tracer,
+      source: String,
+      levelS: Signal[ComputationLevel],
+      server: () => LiveData[A],
+      browser: () => LiveData[A],
+      stepperObserver: Observer[Option[ServerStepByStep[?]]]
+  ): (LiveData[A], Mod[HtmlElement]) =
+    // One stepper per switch to the server level, shared by the dashboard and
+    // the panel
+    val stepperS: Signal[Option[ServerStepByStep[A]]] =
+      levelS.distinct.map {
+        case ComputationLevel.Browser => None
+        case ComputationLevel.Server  =>
+          Some(ServerStepByStep(tracer, source, server()))
+      }
+
+    val data: LiveData[A] =
+      LiveData.switching(stepperS) {
+        case Some(stepper) =>
+          LiveData.switching(tracer.enabled.signal)(on =>
+            if on then stepper.steppedData else stepper.live
+          )
+        case None => browser()
+      }
+
+    // Cleared once the dashboard leaves the page: the next one mounts after
+    val handUp: Mod[HtmlElement] = Seq(
+      stepperS --> stepperObserver,
+      onUnmountCallback(_ => stepperObserver.onNext(None))
+    )
+
+    (data, handUp)
+
   // The moves an arrow can show, from one node to the next, or from outside
   // the graph (the event stream, the browser asking for a fresh reload)
   private enum Move:
@@ -152,6 +217,11 @@ object ServerStepByStep:
   private enum Node:
     case Received, Considered, NotConsidered, Waiting, OnServer, Failed,
       Cancelled, Answered, OnScreen
+
+  private enum Action:
+    case AddStep(step: TraceStep)
+    case Next
+    case Reset
 
   // A triangle to play, two bars to pause
   private def playIcon(playing: Boolean): SvgElement =
@@ -168,7 +238,7 @@ object ServerStepByStep:
     )
 
   // The step just shown, as one line
-  private def renderCurrentStep(stepper: RefreshStepper): HtmlElement =
+  private def renderCurrentStep(stepper: RefreshStepper[?]): HtmlElement =
     div(
       cls := "stepper__current",
       span(cls := "stepper__label", "Current step"),
@@ -193,7 +263,7 @@ object ServerStepByStep:
   // One node per place, laid out as in the mockup: the server's lane on top,
   // the browser's below. Not considered, Failed and Cancelled only show when
   // something is in them
-  private def renderGraph(stepper: RefreshStepper): HtmlElement =
+  private def renderGraph(stepper: RefreshStepper[?]): HtmlElement =
     val pipeline = stepper.pipeline
     val (now, lit) = highlighted(stepper.currentStep)
 
@@ -202,7 +272,7 @@ object ServerStepByStep:
         position
       }.sorted
 
-    def loadsWhere(test: LoadPlace => Boolean): List[(Int, Load)] =
+    def loadsWhere(test: LoadPlace[?] => Boolean): List[(Int, Load[?])] =
       pipeline.loads.toList.filter((_, load) => test(load.place)).sortBy(_._1)
 
     val notConsidered = eventsAt(EventPlace.NotConsidered)
@@ -279,8 +349,8 @@ object ServerStepByStep:
           Node.Answered,
           "Figures received",
           loadsWhere {
-            case LoadPlace.Answered(_) => true
-            case _                     => false
+            case LoadPlace.Answered(_, _) => true
+            case _                        => false
           }.map((number, load) => renderLoad(number, load))
         ),
         node(
@@ -423,14 +493,14 @@ object ServerStepByStep:
     )
 
   // A load: a capsule holding the dots of the events it serves
-  private def renderLoad(number: Int, load: Load): HtmlElement =
+  private def renderLoad(number: Int, load: Load[?]): HtmlElement =
     val modifier = load.place match
-      case LoadPlace.Pending     => "pending"
-      case LoadPlace.InFlight    => "in-flight"
-      case LoadPlace.Answered(_) => "answered"
-      case LoadPlace.Displayed   => "displayed"
-      case LoadPlace.Failed      => "failed"
-      case LoadPlace.Cancelled   => "cancelled"
+      case LoadPlace.Pending        => "pending"
+      case LoadPlace.InFlight       => "in-flight"
+      case LoadPlace.Answered(_, _) => "answered"
+      case LoadPlace.Displayed      => "displayed"
+      case LoadPlace.Failed         => "failed"
+      case LoadPlace.Cancelled      => "cancelled"
     span(
       cls := s"stepper__load stepper__load--$modifier",
       span(cls := "stepper__load-name", s"Reload $number"),
@@ -464,7 +534,7 @@ object ServerStepByStep:
                 (Set(Node.OnServer), Set(Move.Direct))
               case Outcome.Batched(_, _) =>
                 (Set(Node.Waiting), Set(Move.ToWaiting))
-              case Outcome.Answer(_, _) =>
+              case Outcome.Answer(_, _, _) =>
                 (Set(Node.Answered), Set(Move.ToAnswered))
               case Outcome.AnswerAndLaunchPending(_, _) =>
                 (
