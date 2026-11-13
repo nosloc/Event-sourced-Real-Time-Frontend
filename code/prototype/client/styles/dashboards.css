@@ -1,6 +1,18 @@
 /* ------------------------------------------------------------------ */
 /* Dashboards page                                                      */
 /* ------------------------------------------------------------------ */
+/* The page fills the window, so that the step-by-step sheet (stepper.css)
+   sits at its bottom even on a short page, touching the window's edge */
+.dashboards {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.page:has(.sheet) {
+  padding-bottom: 0;
+}
+
 .dashboards__layout {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);

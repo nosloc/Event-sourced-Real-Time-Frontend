@@ -56,7 +56,7 @@ object LiveDirectoryDashboard:
       .withCurrentValueOf(processedEvent)
       .map { case ((therapists, appointments), position) =>
         tracer.timed(
-          TraceStep.Kind.FiguresComputed("directory"),
+          TraceStep.Kind.FiguresComputed(name),
           Option.when(position >= 0)(position)
         )(
           DirectoryDashboard(

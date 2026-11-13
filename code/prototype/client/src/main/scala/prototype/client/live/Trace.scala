@@ -24,15 +24,11 @@ final class Tracer:
     */
   val steps: EventStream[TraceStep] = bus.events
 
-  /** Records a step built by the caller, with its own time. */
-  def record(step: TraceStep): Unit =
-    if enabled.now() then bus.emit(step)
-
   /** Prints each recorded step in the console, while the element it is given to
     * is mounted.
     */
   def logToConsole: Mod[HtmlElement] =
-    steps --> (step => dom.console.log(TraceStep.describe(step)))
+    steps --> (step => dom.console.log(s"[trace] ${TraceStep.describe(step)}"))
 
   /** Records that the event at `position` reached the step `kind`: the tracer
     * reads the clock itself.
@@ -115,7 +111,8 @@ object TraceStep:
     // an event batched, an answer); the outcome holds the load's number
     case Reload(source: String, outcome: RefreshModel.Outcome[Any])
 
-  /** A step as one line of text, for the console. */
+  /** A step as one line of text, for the console and the step-by-step panel.
+    */
   def describe(step: TraceStep): String =
     import RefreshModel.Outcome
     val what = step.kind match
@@ -147,4 +144,4 @@ object TraceStep:
               s"launched pending load ${load.loadNumber}"
     val event = step.position.fold("no event")(position => s"event $position")
     val duration = step.duration.fold("")(d => f" in $d%.1f ms")
-    f"[trace] $what$duration: $event at ${step.at}%.1f ms"
+    f"$what$duration: $event at ${step.at}%.1f ms"

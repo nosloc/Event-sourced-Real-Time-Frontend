@@ -1,23 +1,14 @@
 /* ------------------------------------------------------------------ */
 /* Step by step                                                         */
-/* The switch next to "Computed by", and the panel docked at the bottom */
-/* of the dashboards page. Amber marks the mode, teal the loads, the    */
-/* filled teal the moment the figures change on screen.                 */
+/* The bottom sheet of the dashboards page: a tab at the bottom of the  */
+/* window, and the panel it opens above it. Amber marks the mode and    */
+/* the current step, teal the reloads, the filled teal the moment the   */
+/* figures change on screen.                                            */
 /* ------------------------------------------------------------------ */
 
-/* The bottom sheet. The dashboards page fills the window, so that the sheet
-   sits at its bottom even on a short page; on a long page it sticks to the
-   bottom of the window while the page scrolls under it */
-.dashboards {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-}
-
-.page:has(.sheet) {
-  padding-bottom: 0;
-}
-
+/* On a long page the sheet sticks to the bottom of the window while the
+   page scrolls under it (the page's layout lets it sit at the bottom of a
+   short page too: see dashboards.css) */
 .sheet {
   position: sticky;
   bottom: 0;
@@ -160,13 +151,57 @@
 /* Playing: the amber of the mode, and the pause bars a bit thicker */
 .stepper__play--on,
 .stepper__play--on:hover:not(:disabled) {
-  border-color: var(--warning);
-  background: var(--warning-soft);
-  color: var(--warning);
+  border-color: var(--now-strong);
+  background: var(--now-soft);
+  color: var(--now-strong);
 }
 
 .stepper__play--on svg {
   stroke-width: 2.2;
+}
+
+/* Show ignored: a switch, amber when on like the rest of the mode */
+.stepper__toggle {
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  font-weight: 600;
+}
+
+.stepper__switch {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--line-strong);
+  transition: background-color 0.15s ease;
+}
+
+.stepper__switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--panel);
+  transition: transform 0.15s ease;
+}
+
+.stepper__toggle--on,
+.stepper__toggle--on:hover:not(:disabled) {
+  border-color: var(--now-strong);
+  background: var(--now-soft);
+}
+
+.stepper__toggle--on .stepper__switch {
+  background: var(--now-strong);
+}
+
+.stepper__toggle--on .stepper__switch::after {
+  transform: translateX(12px);
 }
 
 .stepper__next {
@@ -270,16 +305,16 @@
 
 /* The moves of the current step, in the amber of the "now" node */
 .stepper__arrow--now {
-  stroke: var(--warning);
+  stroke: var(--now-strong);
   stroke-width: 2;
 }
 
 .stepper__arrow-head--now {
-  fill: var(--warning);
+  fill: var(--now-strong);
 }
 
 .stepper__arrow-label {
-  fill: var(--warning);
+  fill: var(--now-strong);
   font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 600;
@@ -327,12 +362,12 @@
 
 /* The node the current step changed */
 .stepper__node--now {
-  border: 2px solid var(--warning);
+  border: 2px solid var(--now-strong);
   background: var(--now-soft);
 }
 
 .stepper__node--now .stepper__node-title {
-  color: var(--warning);
+  color: var(--now-strong);
 }
 
 .stepper__node-head {
@@ -357,7 +392,7 @@
   right: var(--space-2);
   padding: 1px 6px;
   border-radius: 6px;
-  background: var(--warning);
+  background: var(--now-strong);
   color: var(--on-accent);
   font-size: 11px;
   font-weight: 600;
@@ -400,12 +435,10 @@
 .stepper__dot--1 { background: #7048e8; }
 .stepper__dot--2 { background: #2f9e44; }
 .stepper__dot--3 { background: #c2255c; }
-.stepper__dot--4 { background: #1c7ed6; }
-.stepper__dot--5 { background: #a16207; }
-.stepper__dot--6 { background: #862e9c; }
-.stepper__dot--7 { background: #5c940d; }
-.stepper__dot--8 { background: #e64980; }
-.stepper__dot--9 { background: #364fc7; }
+.stepper__dot--4 { background: #a16207; }
+.stepper__dot--5 { background: #862e9c; }
+.stepper__dot--6 { background: #5c940d; }
+.stepper__dot--7 { background: #e64980; }
 
 /* A load: a capsule holding its events */
 .stepper__load {

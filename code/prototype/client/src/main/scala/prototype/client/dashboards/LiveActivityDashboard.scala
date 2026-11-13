@@ -80,7 +80,7 @@ object LiveActivityDashboard:
         (
           unit,
           tracer.timed(
-            TraceStep.Kind.FiguresComputed("activity"),
+            TraceStep.Kind.FiguresComputed(name),
             Option.when(position >= 0)(position)
           )(
             ActivityDashboard(therapists, appointments, unit, date)

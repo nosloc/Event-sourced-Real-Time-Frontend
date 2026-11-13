@@ -1,14 +1,8 @@
 package prototype.client.views.dashboard
 
 import prototype.client.live.RefreshModel.Outcome
-import prototype.client.live.{
-  EventPlace,
-  Load,
-  LoadPlace,
-  RefreshStepper,
-  TraceStep,
-  Tracer
-}
+import prototype.client.live.RefreshStepper.{EventPlace, Load, LoadPlace, Shown}
+import prototype.client.live.{RefreshStepper, TraceStep, Tracer}
 
 import prototype.client.views.components.PopoverPicker
 import prototype.client.views.components.PopoverPicker.Item
@@ -25,6 +19,8 @@ object ServerStepByStep:
     // The time between two steps while playing, in milliseconds
     val speedVar: Var[Int] = Var(1000)
     val playingVar: Var[Boolean] = Var(false)
+    // Off: Next skips the events this dashboard ignores
+    val showIgnoredVar: Var[Boolean] = Var(false)
 
     val newSteps: EventStream[Action] = tracer.steps.map(Action.AddStep(_))
     val pressedNextBus: EventBus[Action] = new EventBus
@@ -43,12 +39,14 @@ object ServerStepByStep:
     val stepper: Signal[RefreshStepper] =
       newSteps
         .mergeWith(nextS, pressedLatestBus.events)
-        .scanLeft(RefreshStepper.empty(source))((stepper, action) =>
-          action match
-            case Action.AddStep(traceStep) => stepper.addStep(traceStep)
-            case Action.Next               => stepper.step()
-            case Action.Reset              => RefreshStepper.empty(source)
-        )
+        .withCurrentValueOf(showIgnoredVar.signal)
+        .scanLeft(RefreshStepper.empty(source)) {
+          case (stepper, (action, showIgnored)) =>
+            action match
+              case Action.AddStep(traceStep) => stepper.addStep(traceStep)
+              case Action.Next  => stepper.step(skipIgnored = !showIgnored)
+              case Action.Reset => RefreshStepper.empty(source)
+        }
 
     // The stepper as the panel draws it: a recorded step only grows
     // `history`, which the current step and the graph do not show
@@ -66,7 +64,9 @@ object ServerStepByStep:
           span(cls := "stepper__source", source),
           span(
             cls := "stepper__left",
-            text <-- stepper.map(s => stepsLeft(s.history.size))
+            text <-- stepper
+              .combineWith(showIgnoredVar.signal)
+              .map((s, showIgnored) => stepsLeft(s.stepsLeft(!showIgnored)))
           )
         ),
         // The controls: Jump to latest (starts the stepper again from now),
@@ -105,12 +105,25 @@ object ServerStepByStep:
             ),
             selectedVar = speedVar
           ),
+          // On: every step, the events this dashboard ignores too
+          button(
+            tpe := "button",
+            cls := "btn stepper__toggle",
+            cls("stepper__toggle--on") <-- showIgnoredVar.signal,
+            aria.pressed <-- showIgnoredVar.signal.map(_.toString),
+            title := "Also step through the events this dashboard ignores",
+            span(cls := "stepper__switch", aria.hidden := true),
+            "Show ignored",
+            onClick --> (_ => showIgnoredVar.update(!_))
+          ),
           button(
             tpe := "button",
             cls := "btn btn--primary stepper__next",
             disabled <-- stepper
-              .combineWith(playingVar.signal)
-              .map((stepper, play) => play || !stepper.hasNextStep()),
+              .combineWith(playingVar.signal, showIgnoredVar.signal)
+              .map((stepper, play, showIgnored) =>
+                play || !stepper.hasNextStep(!showIgnored)
+              ),
             "Next step",
             span(aria.hidden := true, "→"),
             onClick.mapTo(Action.Next) --> pressedNextBus.writer
@@ -119,7 +132,13 @@ object ServerStepByStep:
       ),
       // Drawn again only when what they show changes (a Next), not on every
       // step recorded: during a burst thousands are recorded per second
-      child <-- shown.map(renderCurrentStep),
+      // Read out by screen readers at each Next, but not while playing
+      div(
+        aria.live <-- playingVar.signal.map(playing =>
+          if playing then "off" else "polite"
+        ),
+        child <-- shown.map(renderCurrentStep)
+      ),
       child <-- shown.map(renderGraph)
     )
 
@@ -154,17 +173,17 @@ object ServerStepByStep:
       cls := "stepper__current",
       span(cls := "stepper__label", "Current step"),
       stepper.currentStep match
-        case Some(step) =>
+        case Shown.Trace(step) =>
           span(
             cls := "stepper__step",
-            TraceStep.describe(step).stripPrefix("[trace] ")
+            TraceStep.describe(step)
           )
-        case None if isDisplayStep(stepper) =>
+        case Shown.Display(loadNumber) =>
           span(
             cls := "stepper__step stepper__step--shown",
-            "The answer is on screen"
+            s"The figures of reload $loadNumber are on screen"
           )
-        case None =>
+        case Shown.Idle =>
           span(
             cls := "stepper__step stepper__step--none",
             "Waiting for the next step"
@@ -176,7 +195,7 @@ object ServerStepByStep:
   // something is in them
   private def renderGraph(stepper: RefreshStepper): HtmlElement =
     val pipeline = stepper.pipeline
-    val now = changedNodes(stepper)
+    val (now, lit) = highlighted(stepper.currentStep)
 
     def eventsAt(place: EventPlace): List[Long] =
       pipeline.events.toList.collect { case (position, `place`) =>
@@ -206,7 +225,7 @@ object ServerStepByStep:
           "Browser"
         ),
         renderArrows(
-          litMoves(stepper),
+          lit,
           notConsidered.nonEmpty,
           failed.nonEmpty,
           cancelled.nonEmpty
@@ -391,13 +410,15 @@ object ServerStepByStep:
     span(
       cls := "stepper__event",
       renderDot(position),
-      span(cls := "stepper__position", position.toString)
+      span(cls := "stepper__position", aria.hidden := true, position.toString)
     )
 
   // One colour per event, from its position
   private def renderDot(position: Long): HtmlElement =
     span(
-      cls := s"stepper__dot stepper__dot--${position % 10}",
+      cls := s"stepper__dot stepper__dot--${position % 8}",
+      role := "img",
+      aria.label := s"event $position",
       title := s"event $position"
     )
 
@@ -418,53 +439,46 @@ object ServerStepByStep:
       else load.events.toList.sorted.map(renderDot)
     )
 
-  // The nodes the current step changed, drawn in amber
-  private def changedNodes(stepper: RefreshStepper): Set[Node] =
-    stepper.currentStep.map(_.kind) match
-      case Some(TraceStep.Kind.Received)           => Set(Node.Received)
-      case Some(TraceStep.Kind.Considered(_))      => Set(Node.Considered)
-      case Some(TraceStep.Kind.NotConsidered(_))   => Set(Node.NotConsidered)
-      case Some(TraceStep.Kind.Reload(_, outcome)) =>
-        outcome match
-          case Outcome.InitialLoad(_, _) => Set(Node.OnServer, Node.Cancelled)
-          case Outcome.Load(_, _, _)     => Set(Node.OnServer)
-          case Outcome.Batched(_, _)     => Set(Node.Waiting)
-          case Outcome.Answer(_, _)      => Set(Node.Answered)
-          case Outcome.AnswerAndLaunchPending(_, _) =>
-            Set(Node.Answered, Node.OnServer)
-          case Outcome.Error(_)                    => Set(Node.Failed)
-          case Outcome.ErrorAndLaunchPending(_, _) =>
-            Set(Node.Failed, Node.OnServer)
-      case Some(_)                        => Set.empty
-      case None if isDisplayStep(stepper) => Set(Node.OnScreen)
-      case None                           => Set.empty
-
-  // The moves the current step made, drawn in amber
-  private def litMoves(stepper: RefreshStepper): Set[Move] =
-    stepper.currentStep.map(_.kind) match
-      case Some(TraceStep.Kind.Received)           => Set(Move.FromStream)
-      case Some(TraceStep.Kind.Considered(_))      => Set(Move.ToConsidered)
-      case Some(TraceStep.Kind.NotConsidered(_))   => Set(Move.ToIgnored)
-      case Some(TraceStep.Kind.Reload(_, outcome)) =>
-        outcome match
-          case Outcome.InitialLoad(_, _) =>
-            Set(Move.FromBrowser, Move.ToCancelled)
-          case Outcome.Load(_, _, _)                => Set(Move.Direct)
-          case Outcome.Batched(_, _)                => Set(Move.ToWaiting)
-          case Outcome.Answer(_, _)                 => Set(Move.ToAnswered)
-          case Outcome.AnswerAndLaunchPending(_, _) =>
-            Set(Move.ToAnswered, Move.ToServer)
-          case Outcome.Error(_)                    => Set(Move.ToFailed)
-          case Outcome.ErrorAndLaunchPending(_, _) =>
-            Set(Move.ToFailed, Move.ToServer)
-      case Some(_)                        => Set.empty
-      case None if isDisplayStep(stepper) => Set(Move.ToScreen)
-      case None                           => Set.empty
-
-  // A step with no trace step behind it that put a load on screen
-  private def isDisplayStep(stepper: RefreshStepper): Boolean =
-    stepper.currentStep.isEmpty &&
-      stepper.pipeline.loads.values.exists(_.place == LoadPlace.Displayed)
+  // What the current step changed, drawn in amber: the nodes it put
+  // something in, and the moves it made
+  private def highlighted(shown: Shown): (Set[Node], Set[Move]) =
+    shown match
+      case Shown.Idle        => (Set.empty, Set.empty)
+      case Shown.Display(_)  => (Set(Node.OnScreen), Set(Move.ToScreen))
+      case Shown.Trace(step) =>
+        step.kind match
+          case TraceStep.Kind.Received =>
+            (Set(Node.Received), Set(Move.FromStream))
+          case TraceStep.Kind.Considered(_) =>
+            (Set(Node.Considered), Set(Move.ToConsidered))
+          case TraceStep.Kind.NotConsidered(_) =>
+            (Set(Node.NotConsidered), Set(Move.ToIgnored))
+          case TraceStep.Kind.Reload(_, outcome) =>
+            outcome match
+              case Outcome.InitialLoad(_, _) =>
+                (
+                  Set(Node.OnServer, Node.Cancelled),
+                  Set(Move.FromBrowser, Move.ToCancelled)
+                )
+              case Outcome.Load(_, _, _) =>
+                (Set(Node.OnServer), Set(Move.Direct))
+              case Outcome.Batched(_, _) =>
+                (Set(Node.Waiting), Set(Move.ToWaiting))
+              case Outcome.Answer(_, _) =>
+                (Set(Node.Answered), Set(Move.ToAnswered))
+              case Outcome.AnswerAndLaunchPending(_, _) =>
+                (
+                  Set(Node.Answered, Node.OnServer),
+                  Set(Move.ToAnswered, Move.ToServer)
+                )
+              case Outcome.Error(_) =>
+                (Set(Node.Failed), Set(Move.ToFailed))
+              case Outcome.ErrorAndLaunchPending(_, _) =>
+                (
+                  Set(Node.Failed, Node.OnServer),
+                  Set(Move.ToFailed, Move.ToServer)
+                )
+          case _ => (Set.empty, Set.empty)
 
   private def nodeClass(which: Node): String =
     which match

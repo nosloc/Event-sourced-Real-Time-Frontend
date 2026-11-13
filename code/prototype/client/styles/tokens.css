@@ -20,6 +20,8 @@
 
   --now: oklch(82% 0.15 80);
   --now-soft: oklch(95.5% 0.05 88);
+  /* "now" as a border or text on --now-soft (the step-by-step panel) */
+  --now-strong: oklch(45% 0.1 70);
 
   --error: oklch(42% 0.17 25);
   --error-soft: oklch(96% 0.025 25);

@@ -18,8 +18,7 @@ import com.raquo.laminar.api.L.*
   * one of its signals is read.
   *
   * K is the type of the key (for example a therapist), A the type of the value,
-  * E the type of the events `decode` keeps. `name` says which live data this is
-  * in the feed's trace.
+  * E the type of the events `decode` keeps.
   */
 final class ReplayedLiveData[K, A, E](
     feed: LiveFeed,
