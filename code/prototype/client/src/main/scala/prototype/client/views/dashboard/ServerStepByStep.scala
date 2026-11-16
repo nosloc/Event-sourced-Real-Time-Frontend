@@ -3,102 +3,31 @@ package prototype.client.views.dashboard
 import prototype.client.live.{LiveData, RefreshStepper, TraceStep, Tracer}
 import prototype.client.live.RefreshModel.Outcome
 import prototype.client.live.RefreshStepper.{EventPlace, Load, LoadPlace, Shown}
-import prototype.client.views.components.PopoverPicker
-import prototype.client.views.components.PopoverPicker.Item
+import prototype.client.views.components.StepGraph
 
 import com.raquo.laminar.api.L.*
 
-final class ServerStepByStep[A](
-    tracer: Tracer,
-    source: String,
-    val live: LiveData[A]
-) extends StepByStep[A]:
-  import ServerStepByStep.*
-
-  // The time between two steps while playing, in milliseconds
-  private val speedVar: Var[Int] = Var(1000)
-  private val playingVar: Var[Boolean] = Var(false)
-  // Off: Next skips the events this dashboard ignores
-  private val showIgnoredVar: Var[Boolean] = Var(false)
-
-  private val newSteps: EventStream[Action] =
-    tracer.steps.map(Action.AddStep(_))
-  private val pressedNextBus: EventBus[Action] = new EventBus
-  private val pressedLatestBus: EventBus[Action] = new EventBus
-  private val playBus: EventStream[Action] =
-    speedVar.signal
-      .combineWith(playingVar.signal)
-      .changes
-      .flatMapSwitch((speed, play) =>
-        if play then EventStream.periodic(speed).mapTo(Action.Next)
-        else EventStream.empty
-      )
-
-  private val nextS = pressedNextBus.events.mergeWith(playBus)
-
-  private val stepper: Signal[RefreshStepper[A]] =
-    newSteps
-      .mergeWith(nextS, pressedLatestBus.events)
-      .mergeWith(EventStream.fromValue(Action.Reset)) // Start with a reset
-      .withCurrentValueOf(showIgnoredVar.signal, live.valueS)
-      .scanLeft(RefreshStepper.empty[A](source)) {
-        case (stepper, (action, showIgnored, real)) =>
-          action match
-            case Action.AddStep(traceStep) => stepper.addStep(traceStep)
-            case Action.Next  => stepper.step(skipIgnored = !showIgnored)
-            case Action.Reset =>
-              RefreshStepper.empty[A](source).copy(displayed = real)
-      }
-
-  // The stepper as the panel draws it: a recorded step only grows
-  // `history`, which the current step and the graph do not show
-  private val shown: Signal[RefreshStepper[A]] =
-    stepper.distinctBy(s => (s.currentStep, s.pipeline))
-
-  val steppedData: LiveData[A] = new LiveData[A]:
-    val valueS: Signal[Option[A]] = stepper.map(_.displayed)
-    val errorS: Signal[Option[Throwable]] = Val(None)
-    val loadingS: Signal[Boolean] = Val(false)
-
-  def panel: HtmlElement =
-    div(
-      cls := "stepper",
-      role := "region",
-      aria.label := "Step by step",
-      div(
-        cls := "stepper__bar",
-        div(
-          cls := "stepper__heading",
-          span(cls := "stepper__source", source),
-          span(
-            cls := "stepper__left",
-            text <-- stepper
-              .combineWith(showIgnoredVar.signal)
-              .map((s, showIgnored) => stepsLeft(s.stepsLeft(!showIgnored)))
-          )
-        ),
-        renderControls(
-          stepper,
-          playingVar,
-          speedVar,
-          showIgnoredVar,
-          pressedLatestBus.writer,
-          pressedNextBus.writer
-        )
-      ),
-      // Drawn again only when what they show changes (a Next), not on every
-      // step recorded: during a burst thousands are recorded per second
-      // Read out by screen readers at each Next, but not while playing
-      div(
-        aria.live <-- playingVar.signal.map(playing =>
-          if playing then "off" else "polite"
-        ),
-        child <-- shown.map(renderCurrentStep)
-      ),
-      child <-- shown.map(renderGraph)
-    )
-
 object ServerStepByStep:
+
+  /** The step-by-step mode of a dashboard on the server level: its live data
+    * reloaded from the server, held by a `RefreshStepper`, drawn on the
+    * server's graph.
+    */
+  def apply[A](
+      tracer: Tracer,
+      source: String,
+      live: LiveData[A]
+  ): StepByStep[A] =
+    StepByStepView[RefreshStepper[A], A](
+      tracer,
+      source,
+      live,
+      start = real => RefreshStepper.empty[A](source).copy(displayed = real),
+      // A recorded step only grows `history`, which the panel does not draw
+      drawn = stepper => (stepper.currentStep, stepper.pipeline),
+      renderCurrentStep = renderCurrentStep,
+      renderGraph = renderGraph
+    )
 
   // The moves an arrow can show, from one node to the next, or from outside
   // the graph (the event stream, the browser asking for a fresh reload)
@@ -110,123 +39,6 @@ object ServerStepByStep:
   private enum Node:
     case Received, Considered, NotConsidered, Waiting, OnServer, Failed,
       Cancelled, Answered, OnScreen
-
-  private enum Action:
-    case AddStep(step: TraceStep)
-    case Next
-    case Reset
-
-  // The controls: Jump to latest (starts the stepper again from now),
-  // Play / Pause, the speed, Show ignored, Next step (off while playing)
-  private def renderControls(
-      stepperS: Signal[RefreshStepper[?]],
-      playingVar: Var[Boolean],
-      speedVar: Var[Int],
-      showIgnoredVar: Var[Boolean],
-      pressedLatest: Observer[Action],
-      pressedNext: Observer[Action]
-  ): HtmlElement =
-    div(
-      cls := "stepper__controls",
-      renderJumpButton(pressedLatest),
-      renderPlayButton(playingVar),
-      renderSpeedSelector(speedVar),
-      renderShowIgnoredToggle(showIgnoredVar),
-      renderNextButton(
-        stepperS,
-        playingVar.signal,
-        showIgnoredVar.signal,
-        pressedNext
-      )
-    )
-
-  private def renderJumpButton(pressedLatest: Observer[Action]): HtmlElement =
-    button(
-      tpe := "button",
-      cls := "btn stepper__jump",
-      "Jump to latest",
-      onClick.mapTo(Action.Reset) --> pressedLatest
-    )
-
-  // Play while paused, Pause while playing
-  private def renderPlayButton(playingVar: Var[Boolean]): HtmlElement =
-    button(
-      tpe := "button",
-      cls := "btn stepper__play",
-      cls("stepper__play--on") <-- playingVar.signal,
-      aria.label <-- playingVar.signal.map(playing =>
-        if playing then "Pause" else "Play"
-      ),
-      child <-- playingVar.signal.map(playIcon),
-      onClick --> (_ => playingVar.update(!_))
-    )
-
-  // The time between two steps while playing
-  private def renderSpeedSelector(speedVar: Var[Int]): HtmlElement =
-    PopoverPicker(
-      id = "step-speed-selector",
-      label = "Every",
-      items = Val(
-        List(
-          Item(50, "0.05 s"),
-          Item(250, "0.25 s"),
-          Item(500, "0.5 s"),
-          Item(1000, "1 s"),
-          Item(2000, "2 s"),
-          Item(3000, "3 s")
-        )
-      ),
-      selectedVar = speedVar
-    )
-
-  // On: every step, the events this dashboard ignores too
-  private def renderShowIgnoredToggle(
-      showIgnoredVar: Var[Boolean]
-  ): HtmlElement =
-    button(
-      tpe := "button",
-      cls := "btn stepper__toggle",
-      cls("stepper__toggle--on") <-- showIgnoredVar.signal,
-      aria.pressed <-- showIgnoredVar.signal.map(_.toString),
-      title := "Also step through the events this dashboard ignores",
-      span(cls := "stepper__switch", aria.hidden := true),
-      "Show ignored",
-      onClick --> (_ => showIgnoredVar.update(!_))
-    )
-
-  // Off while playing, or when no step is left
-  private def renderNextButton(
-      stepperS: Signal[RefreshStepper[?]],
-      playingS: Signal[Boolean],
-      showIgnoredS: Signal[Boolean],
-      pressedNext: Observer[Action]
-  ): HtmlElement =
-    button(
-      tpe := "button",
-      cls := "btn btn--primary stepper__next",
-      disabled <-- stepperS
-        .combineWith(playingS, showIgnoredS)
-        .map((stepper, play, showIgnored) =>
-          play || !stepper.hasNextStep(!showIgnored)
-        ),
-      "Next step",
-      span(aria.hidden := true, "→"),
-      onClick.mapTo(Action.Next) --> pressedNext
-    )
-
-  // A triangle to play, two bars to pause
-  private def playIcon(playing: Boolean): SvgElement =
-    svg.svg(
-      svg.width := "14",
-      svg.height := "14",
-      svg.viewBox := "0 0 14 14",
-      svg.fill := "none",
-      aria.hidden := true,
-      svg.path(
-        svg.d := (if playing then "M4.5 2.5v9 M9.5 2.5v9"
-                  else "M3.5 2.5v9l8-4.5z")
-      )
-    )
 
   // The step just shown, as one line
   private def renderCurrentStep(stepper: RefreshStepper[?]): HtmlElement =
@@ -271,7 +83,7 @@ object ServerStepByStep:
     val cancelled = loadsWhere(_ == LoadPlace.Cancelled)
 
     def node(which: Node, title: String, body: Seq[HtmlElement]) =
-      renderNode(which, title, now.contains(which), body)
+      StepGraph.node(nodeClass(which), title, now.contains(which), body)
 
     div(
       cls := "stepper__graph-scroll",
@@ -294,18 +106,18 @@ object ServerStepByStep:
         node(
           Node.Received,
           "Arrived",
-          eventsAt(EventPlace.Received).map(renderEvent)
+          eventsAt(EventPlace.Received).map(StepGraph.event)
         ),
         node(
           Node.Considered,
           "Needs a reload",
-          eventsAt(EventPlace.Considered).map(renderEvent)
+          eventsAt(EventPlace.Considered).map(StepGraph.event)
         ),
         Option.when(notConsidered.nonEmpty)(
           node(
             Node.NotConsidered,
             "Ignored",
-            notConsidered.map(renderEvent)
+            notConsidered.map(StepGraph.event)
           )
         ),
         node(
@@ -354,23 +166,6 @@ object ServerStepByStep:
       )
     )
 
-  private def renderNode(
-      which: Node,
-      title: String,
-      isNow: Boolean,
-      body: Seq[HtmlElement]
-  ): HtmlElement =
-    div(
-      cls := s"stepper__node stepper__node--${nodeClass(which)}" +
-        (if isNow then " stepper__node--now" else ""),
-      div(
-        cls := "stepper__node-head",
-        span(cls := "stepper__node-title", title),
-        Option.when(isNow)(span(cls := "stepper__now", "now"))
-      ),
-      div(cls := "stepper__node-body", body)
-    )
-
   // The arrows, in the graph's own coordinates (see stepper.css). The usual
   // moves are always drawn, except towards a hidden node; the others (an
   // event coming from the server, a reload asked by the browser, a reload
@@ -392,57 +187,15 @@ object ServerStepByStep:
       Option.when(cancelled)(Move.ToCancelled),
       Some(Move.ToScreen)
     ).flatten
-    val occasional =
-      List(Move.FromStream, Move.Direct, Move.FromBrowser).filter(lit.contains)
-    val (now, others) = (usual ++ occasional).partition(lit.contains)
-
-    def marker(id: String, modifier: String) =
-      svg.marker(
-        svg.idAttr := id,
-        svg.viewBox := "0 0 8 8",
-        svg.refX := "7",
-        svg.refY := "4",
-        svg.markerWidth := "8",
-        svg.markerHeight := "8",
-        svg.orient := "auto",
-        svg.path(svg.d := "M0 0 8 4 0 8z", svg.cls := modifier)
-      )
-
-    def arrow(move: Move, isNow: Boolean) =
-      svg.path(
-        svg.cls := (if isNow then "stepper__arrow stepper__arrow--now"
-                    else "stepper__arrow"),
-        svg.d := movePath(move),
-        svg.markerEnd := (if isNow then "url(#stepper-arrow-head-now)"
-                          else "url(#stepper-arrow-head)")
-      )
-
-    svg.svg(
-      svg.cls := "stepper__arrows",
-      svg.width := "1082",
-      svg.height := "298",
-      svg.viewBox := "0 0 1082 298",
-      svg.fill := "none",
-      aria.hidden := true,
-      svg.defs(
-        marker("stepper-arrow-head", "stepper__arrow-head"),
-        marker(
-          "stepper-arrow-head-now",
-          "stepper__arrow-head stepper__arrow-head--now"
-        )
-      ),
-      others.map(arrow(_, false)),
-      now.map(arrow(_, true)),
-      now
-        .flatMap(moveLabel)
-        .map((label, x, y) =>
-          svg.text(
-            svg.cls := "stepper__arrow-label",
-            svg.x := x.toString,
-            svg.y := y.toString,
-            label
-          )
-        )
+    StepGraph.arrows(
+      width = 1082,
+      height = 298,
+      idPrefix = "stepper",
+      usual = usual,
+      occasional = List(Move.FromStream, Move.Direct, Move.FromBrowser),
+      lit = lit,
+      path = movePath,
+      label = moveLabel
     )
 
   private def movePath(move: Move): String =
@@ -466,23 +219,6 @@ object ServerStepByStep:
       case Move.FromBrowser => Some(("opened or changed", 663, 196))
       case _                => None
 
-  // An event not in a load: its dot and its position
-  private def renderEvent(position: Long): HtmlElement =
-    span(
-      cls := "stepper__event",
-      renderDot(position),
-      span(cls := "stepper__position", aria.hidden := true, position.toString)
-    )
-
-  // One colour per event, from its position
-  private def renderDot(position: Long): HtmlElement =
-    span(
-      cls := s"stepper__dot stepper__dot--${position % 8}",
-      role := "img",
-      aria.label := s"event $position",
-      title := s"event $position"
-    )
-
   // A load: a capsule holding the dots of the events it serves
   private def renderLoad(number: Int, load: Load[?]): HtmlElement =
     val modifier = load.place match
@@ -492,12 +228,11 @@ object ServerStepByStep:
       case LoadPlace.Displayed      => "displayed"
       case LoadPlace.Failed         => "failed"
       case LoadPlace.Cancelled      => "cancelled"
-    span(
-      cls := s"stepper__load stepper__load--$modifier",
-      span(cls := "stepper__load-name", s"Reload $number"),
-      if load.events.isEmpty then
-        List(span(cls := "stepper__load-note", "no event"))
-      else load.events.toList.sorted.map(renderDot)
+    StepGraph.capsule(
+      modifier,
+      s"Reload $number",
+      load.events.toList,
+      Option.when(load.events.isEmpty)("no event")
     )
 
   // What the current step changed, drawn in amber: the nodes it put
@@ -552,9 +287,3 @@ object ServerStepByStep:
       case Node.Cancelled     => "cancelled"
       case Node.Answered      => "answered"
       case Node.OnScreen      => "on-screen"
-
-  private def stepsLeft(count: Int): String =
-    count match
-      case 0 => "no step left"
-      case 1 => "1 step left"
-      case n => s"$n steps left"

@@ -28,17 +28,17 @@ final case class ReplayedStepper[+A](
     history: Vector[ReplayedStepper.Entry[A]],
     displayed: Option[A],
     ignoredCount: Int = 0
-):
+) extends Stepper[ReplayedStepper[A], A]:
   import ReplayedStepper.*
 
-  def hasNextStep(skipIgnored: Boolean): Boolean =
+  override def hasNextStep(skipIgnored: Boolean): Boolean =
     stepsLeft(skipIgnored) > 0 || pipeline.hasAutomaticStepPending
 
-  def stepsLeft(skipIgnored: Boolean): Int =
+  override def stepsLeft(skipIgnored: Boolean): Int =
     if skipIgnored then history.length - ignoredCount
     else history.length
 
-  def step(skipIgnored: Boolean): ReplayedStepper[A] =
+  override def next(skipIgnored: Boolean): ReplayedStepper[A] =
     if !hasNextStep(skipIgnored) then this
     else
       // When skipped, the ignored events at the head leave the history at
@@ -80,7 +80,7 @@ final case class ReplayedStepper[+A](
               ignoredCount = count,
               currentStep = Shown.Trace(step)
             )
-            .step(skipIgnored)
+            .next(skipIgnored)
         // The figures computed are put on screen
         case Some(Entry.Display(value)) =>
           this.copy(
@@ -97,7 +97,7 @@ final case class ReplayedStepper[+A](
         case Some(Entry.FoldOnTop(_)) if pipeline.waiting.isEmpty =>
           this
             .copy(history = remaining.tail, ignoredCount = count)
-            .step(skipIgnored)
+            .next(skipIgnored)
         // The events kept aside during the load: the ones after the snapshot's
         // position are folded on top of it, the others are already in it
         case Some(Entry.FoldOnTop(position)) =>
@@ -116,7 +116,7 @@ final case class ReplayedStepper[+A](
             currentStep = Shown.Trace(step)
           )
 
-  def addStep(step: TraceStep): ReplayedStepper[A] =
+  override def addStep(step: TraceStep): ReplayedStepper[A] =
     if concerns(step) then
       (step.kind, history.lastOption) match
         // An arrival right before its end: no live data of the dashboard

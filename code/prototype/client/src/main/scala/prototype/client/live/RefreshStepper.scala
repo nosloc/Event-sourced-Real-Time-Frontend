@@ -22,7 +22,7 @@ final case class RefreshStepper[A](
     history: Vector[RefreshStepper.Entry],
     ignoredCount: Int,
     displayed: Option[A]
-):
+) extends Stepper[RefreshStepper[A], A]:
   import RefreshStepper.*
 
   /** Checks if there is a next step to be shown (a trace step, or a load
@@ -33,7 +33,7 @@ final case class RefreshStepper[A](
     * @return
     *   true if there is a next step to show, false if the stepper is idle
     */
-  def hasNextStep(skipIgnored: Boolean): Boolean =
+  override def hasNextStep(skipIgnored: Boolean): Boolean =
     stepsLeft(skipIgnored) > 0 || pipeline.hasAnswered ||
       pipeline.hasAutomaticStepPending
 
@@ -44,7 +44,7 @@ final case class RefreshStepper[A](
     * @return
     *   how many steps are left to show
     */
-  def stepsLeft(skipIgnored: Boolean): Int =
+  override def stepsLeft(skipIgnored: Boolean): Int =
     if skipIgnored then history.size - ignoredCount
     else history.size + ignoredCount
 
@@ -55,7 +55,7 @@ final case class RefreshStepper[A](
     * @return
     *   the stepper at the next step, or the same if there is no next step
     */
-  def step(skipIgnored: Boolean): RefreshStepper[A] =
+  override def next(skipIgnored: Boolean): RefreshStepper[A] =
     if !hasNextStep(skipIgnored) then this
     // If we received a load answer on the last step, it is shown now before the next trace step, if any.
     else if pipeline.hasAnswered then
@@ -108,7 +108,7 @@ final case class RefreshStepper[A](
     *   a new stepper with the step added, or the same if the step is not of
     *   this stepper
     */
-  def addStep(step: TraceStep): RefreshStepper[A] =
+  override def addStep(step: TraceStep): RefreshStepper[A] =
     if !concerns(step) then this
     else
       (step.kind, history.lastOption) match

@@ -5,14 +5,22 @@ import prototype.client.live.{LiveData, Tracer}
 
 import com.raquo.laminar.api.L.*
 
-/** The step-by-step mode of one dashboard on one computation level: the real
-  * live data, the same data held until each display step, and the panel that
-  * walks through the steps. `ServerStepByStep` and `BrowserStepByStep` are the
-  * two levels.
+/** The step-by-step mode of one dashboard on one computation level. A is the
+  * type of the dashboard's value.
   */
 trait StepByStep[A]:
+
+  /** The real live data, which keeps running while the mode is on. */
   def live: LiveData[A]
+
+  /** The value the stepper holds: it changes only at a display step, reached
+    * with Next or Play, and starts again from [[live]] on Jump to latest.
+    */
   def steppedData: LiveData[A]
+
+  /** The panel: the controls, the current step and the graph of where each
+    * event (and each reload or snapshot) is.
+    */
   def panel: HtmlElement
 
 object StepByStep:

@@ -1,0 +1,232 @@
+package prototype.client.views.dashboard
+
+import prototype.client.live.{LiveData, Stepper, TraceStep, Tracer}
+import prototype.client.views.components.PopoverPicker
+import prototype.client.views.components.PopoverPicker.Item
+
+import com.raquo.laminar.api.L.*
+
+/** The step-by-step mode of one dashboard, the same on both levels: the stepper
+  * driven by the steps recorded and the controls, the live data it holds until
+  * each display step, and the panel. What differs per level is passed in: the
+  * stepper (its rules, through `Stepper`), how it starts, and how its current
+  * step and its graph are drawn.
+  *
+  * S is the stepper's state, A the type of the dashboard's value.
+  *
+  * @param start
+  *   the stepper at the start, and on each Jump to latest, from the value on
+  *   screen
+  * @param drawn
+  *   what the panel draws of a stepper: the current step and the graph are
+  *   drawn again only when it changes, not on every step recorded
+  */
+final class StepByStepView[S <: Stepper[S, A], A](
+    tracer: Tracer,
+    source: String,
+    val live: LiveData[A],
+    start: Option[A] => S,
+    drawn: S => Any,
+    renderCurrentStep: S => HtmlElement,
+    renderGraph: S => HtmlElement
+) extends StepByStep[A]:
+  import StepByStepView.*
+
+  // The time between two steps while playing, in milliseconds
+  private val speedVar: Var[Int] = Var(1000)
+  private val playingVar: Var[Boolean] = Var(false)
+  // Off: Next skips the events this dashboard ignores
+  private val showIgnoredVar: Var[Boolean] = Var(false)
+
+  private val newSteps: EventStream[Action] =
+    tracer.steps.map(Action.AddStep(_))
+  private val pressedNextBus: EventBus[Action] = new EventBus
+  private val pressedLatestBus: EventBus[Action] = new EventBus
+  private val playBus: EventStream[Action] =
+    speedVar.signal
+      .combineWith(playingVar.signal)
+      .changes
+      .flatMapSwitch((speed, play) =>
+        if play then EventStream.periodic(speed).mapTo(Action.Next)
+        else EventStream.empty
+      )
+
+  private val nextS = pressedNextBus.events.mergeWith(playBus)
+
+  private val stepper: Signal[S] =
+    newSteps
+      .mergeWith(nextS, pressedLatestBus.events)
+      .mergeWith(EventStream.fromValue(Action.Reset)) // Start with a reset
+      .withCurrentValueOf(showIgnoredVar.signal, live.valueS)
+      .scanLeft(start(None)) { case (stepper, (action, showIgnored, real)) =>
+        action match
+          case Action.AddStep(traceStep) => stepper.addStep(traceStep)
+          case Action.Next  => stepper.next(skipIgnored = !showIgnored)
+          case Action.Reset => start(real)
+      }
+
+  // The stepper as the panel draws it: a recorded step only grows its
+  // history, which the current step and the graph do not show
+  private val shown: Signal[S] = stepper.distinctBy(drawn)
+
+  override val steppedData: LiveData[A] = new LiveData[A]:
+    val valueS: Signal[Option[A]] = stepper.map(_.displayed)
+    val errorS: Signal[Option[Throwable]] = Val(None)
+    val loadingS: Signal[Boolean] = Val(false)
+
+  override def panel: HtmlElement =
+    div(
+      cls := "stepper",
+      role := "region",
+      aria.label := "Step by step",
+      div(
+        cls := "stepper__bar",
+        div(
+          cls := "stepper__heading",
+          span(cls := "stepper__source", source),
+          span(
+            cls := "stepper__left",
+            text <-- stepper
+              .combineWith(showIgnoredVar.signal)
+              .map((s, showIgnored) => stepsLeft(s.stepsLeft(!showIgnored)))
+          )
+        ),
+        renderControls(
+          stepper
+            .combineWith(showIgnoredVar.signal)
+            .map((s, showIgnored) => s.hasNextStep(!showIgnored)),
+          playingVar,
+          speedVar,
+          showIgnoredVar,
+          pressedLatestBus.writer,
+          pressedNextBus.writer
+        )
+      ),
+      // Drawn again only when what they show changes (a Next), not on every
+      // step recorded: during a burst thousands are recorded per second
+      // Read out by screen readers at each Next, but not while playing
+      div(
+        aria.live <-- playingVar.signal.map(playing =>
+          if playing then "off" else "polite"
+        ),
+        child <-- shown.map(renderCurrentStep)
+      ),
+      child <-- shown.map(renderGraph)
+    )
+
+object StepByStepView:
+
+  private enum Action:
+    case AddStep(step: TraceStep)
+    case Next
+    case Reset
+
+  // The controls: Jump to latest (starts the stepper again from now),
+  // Play / Pause, the speed, Show ignored, Next step (off while playing)
+  private def renderControls(
+      hasNextS: Signal[Boolean],
+      playingVar: Var[Boolean],
+      speedVar: Var[Int],
+      showIgnoredVar: Var[Boolean],
+      pressedLatest: Observer[Action],
+      pressedNext: Observer[Action]
+  ): HtmlElement =
+    div(
+      cls := "stepper__controls",
+      renderJumpButton(pressedLatest),
+      renderPlayButton(playingVar),
+      renderSpeedSelector(speedVar),
+      renderShowIgnoredToggle(showIgnoredVar),
+      renderNextButton(hasNextS, playingVar.signal, pressedNext)
+    )
+
+  private def renderJumpButton(pressedLatest: Observer[Action]): HtmlElement =
+    button(
+      tpe := "button",
+      cls := "btn stepper__jump",
+      "Jump to latest",
+      onClick.mapTo(Action.Reset) --> pressedLatest
+    )
+
+  // Play while paused, Pause while playing
+  private def renderPlayButton(playingVar: Var[Boolean]): HtmlElement =
+    button(
+      tpe := "button",
+      cls := "btn stepper__play",
+      cls("stepper__play--on") <-- playingVar.signal,
+      aria.label <-- playingVar.signal.map(playing =>
+        if playing then "Pause" else "Play"
+      ),
+      child <-- playingVar.signal.map(playIcon),
+      onClick --> (_ => playingVar.update(!_))
+    )
+
+  // The time between two steps while playing
+  private def renderSpeedSelector(speedVar: Var[Int]): HtmlElement =
+    PopoverPicker(
+      id = "step-speed-selector",
+      label = "Every",
+      items = Val(
+        List(
+          Item(50, "0.05 s"),
+          Item(250, "0.25 s"),
+          Item(500, "0.5 s"),
+          Item(1000, "1 s"),
+          Item(2000, "2 s"),
+          Item(3000, "3 s")
+        )
+      ),
+      selectedVar = speedVar
+    )
+
+  // On: every step, the events this dashboard ignores too
+  private def renderShowIgnoredToggle(
+      showIgnoredVar: Var[Boolean]
+  ): HtmlElement =
+    button(
+      tpe := "button",
+      cls := "btn stepper__toggle",
+      cls("stepper__toggle--on") <-- showIgnoredVar.signal,
+      aria.pressed <-- showIgnoredVar.signal.map(_.toString),
+      title := "Also step through the events this dashboard ignores",
+      span(cls := "stepper__switch", aria.hidden := true),
+      "Show ignored",
+      onClick --> (_ => showIgnoredVar.update(!_))
+    )
+
+  // Off while playing, or when no step is left
+  private def renderNextButton(
+      hasNextS: Signal[Boolean],
+      playingS: Signal[Boolean],
+      pressedNext: Observer[Action]
+  ): HtmlElement =
+    button(
+      tpe := "button",
+      cls := "btn btn--primary stepper__next",
+      disabled <-- hasNextS
+        .combineWith(playingS)
+        .map((hasNext, play) => play || !hasNext),
+      "Next step",
+      span(aria.hidden := true, "→"),
+      onClick.mapTo(Action.Next) --> pressedNext
+    )
+
+  // A triangle to play, two bars to pause
+  private def playIcon(playing: Boolean): SvgElement =
+    svg.svg(
+      svg.width := "14",
+      svg.height := "14",
+      svg.viewBox := "0 0 14 14",
+      svg.fill := "none",
+      aria.hidden := true,
+      svg.path(
+        svg.d := (if playing then "M4.5 2.5v9 M9.5 2.5v9"
+                  else "M3.5 2.5v9l8-4.5z")
+      )
+    )
+
+  private def stepsLeft(count: Int): String =
+    count match
+      case 0 => "no step left"
+      case 1 => "1 step left"
+      case n => s"$n steps left"
