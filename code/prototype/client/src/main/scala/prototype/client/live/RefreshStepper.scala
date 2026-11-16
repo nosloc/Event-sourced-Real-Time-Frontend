@@ -3,10 +3,18 @@ package prototype.client.live
 import prototype.client.live.RefreshModel.Outcome
 import prototype.client.live.TraceStep.Kind
 
-// `source` is the name of the live data this stepper follows, the same as the
-// `name` of its `RefreshedLiveData`: its loads are numbered per live data.
-// `ignoredCount` is the number of `Ignored` entries in `history`, so that
-// what is left to show is known without reading the history
+/** @param source
+  *   is the name of the live data this stepper follows
+  * @param currentStep
+  *   is what the last Next showed
+  * @param pipeline
+  *   is where the events and loads are, and what they left behind for the next
+  * @param history
+  *   is the trace steps recorded, in the order recorded, with the ignored
+  * @param ignoredCount
+  *   is the number of ignored events in `history`, so that what is left to show
+  *   is known without reading the history
+  */
 final case class RefreshStepper[A](
     source: String,
     currentStep: RefreshStepper.Shown,
@@ -17,24 +25,39 @@ final case class RefreshStepper[A](
 ):
   import RefreshStepper.*
 
-  // A Next does something while a trace step is left to show, a load waits
-  // to be displayed, or a step left something behind
+  /** Checks if there is a next step to be shown (a trace step, or a load
+    * answered, or a clean-up of what the last step left behind)
+    *
+    * @param skipIgnored
+    *   Whether the ignored events are skipped or shown as two steps
+    * @return
+    *   true if there is a next step to show, false if the stepper is idle
+    */
   def hasNextStep(skipIgnored: Boolean): Boolean =
     stepsLeft(skipIgnored) > 0 || pipeline.hasAnswered ||
       pipeline.hasAutomaticStepPending
 
-  // The trace steps left to show: an ignored event is two steps when shown,
-  // none when skipped
+  /** Returns the number of trace steps left to show.
+    *
+    * @param skipIgnored
+    *   Whether the ignored events are skipped or shown as two steps
+    * @return
+    *   how many steps are left to show
+    */
   def stepsLeft(skipIgnored: Boolean): Int =
     if skipIgnored then history.size - ignoredCount
     else history.size + ignoredCount
 
+  /** Moves the stepper to the next step, if any.
+    *
+    * @param skipIgnored
+    *   Whether the ignored events are skipped or shown as two steps
+    * @return
+    *   the stepper at the next step, or the same if there is no next step
+    */
   def step(skipIgnored: Boolean): RefreshStepper[A] =
     if !hasNextStep(skipIgnored) then this
-    // A load answered is displayed on a step of its own, before the next
-    // trace step: it is the one that changes the screen. No trace step is
-    // behind it. Answers come one at a time, so there is one load to name,
-    // and its value is the one now on screen
+    // If we received a load answer on the last step, it is shown now before the next trace step, if any.
     else if pipeline.hasAnswered then
       val (number, value) = pipeline.loads
         .collect { case (number, Load(LoadPlace.Answered(_, value), _)) =>
@@ -47,8 +70,6 @@ final case class RefreshStepper[A](
         displayed = Some(value)
       )
     else
-      // When skipped, the ignored events at the head leave the history for
-      // good: each one is dropped once, however long the burst
       val remaining =
         if skipIgnored then
           history.dropWhile {
@@ -58,7 +79,7 @@ final case class RefreshStepper[A](
         else history
       val count = ignoredCount - (history.size - remaining.size)
       remaining.headOption match
-        // No trace step left: the Next only removes what the last step left
+        // No trace step left -> the Next only removes what the last step left
         // behind, so that the last load displayed does not stay forever
         case None =>
           copy(
@@ -67,6 +88,7 @@ final case class RefreshStepper[A](
             history = remaining,
             ignoredCount = count
           )
+        // A trace step is left: it is shown, and the next step will be the next
         case Some(Entry.Step(traceStep)) =>
           showing(traceStep, remaining.tail, count)
         // An ignored event shown takes two Nexts: its arrival now, its "not
@@ -78,28 +100,31 @@ final case class RefreshStepper[A](
             count - 1
           )
 
-  // Only the steps of this stepper are kept: the ones of other live data are
-  // never shown here
+  /** Adds a step to the stepper.
+    *
+    * @param step
+    *   the step to add
+    * @return
+    *   a new stepper with the step added, or the same if the step is not of
+    *   this stepper
+    */
   def addStep(step: TraceStep): RefreshStepper[A] =
     if !concerns(step) then this
     else
       (step.kind, history.lastOption) match
-        // Nothing of this source came between the event's arrival and its
-        // end: the event never reached its live data, it is not shown at all
+        // If ended is recorded right after the arrival, we simply remove it completely from the history
         case (Kind.Ended, Some(Entry.Step(arrival)))
             if isArrivalOf(arrival, step) =>
           copy(history = history.init)
         case (Kind.Ended, _) => this
-        // The event that just arrived is one this dashboard ignores: its
-        // arrival and its "not considered" become one entry, skipped as a
-        // whole. Both are recorded in the same message, so they are next to
-        // each other
+        // If a "not considered" is recorded right after the arrival, we merge them into one ignored event
         case (Kind.NotConsidered(_), Some(Entry.Step(arrival)))
             if isArrivalOf(arrival, step) =>
           copy(
             history = history.init :+ Entry.Ignored(arrival, step),
             ignoredCount = ignoredCount + 1
           )
+        // otherwise, the step is simply added to the history
         case _ => copy(history = history :+ Entry.Step(step))
 
   private def isArrivalOf(arrival: TraceStep, step: TraceStep): Boolean =
@@ -119,9 +144,7 @@ final case class RefreshStepper[A](
       displayed
     )
 
-  // Whether a step is one of this stepper's: the arrival and the end of
-  // every event, and the steps of its own source. The end is never shown: it
-  // only tells `addStep` that the event's steps are all recorded
+  // Whether the stepper is concerned with the step
   private def concerns(traceStep: TraceStep): Boolean =
     traceStep.kind match
       case Kind.Received                  => true
@@ -132,6 +155,15 @@ final case class RefreshStepper[A](
       case Kind.Decoded | Kind.Folded(_)  => false
       case Kind.FiguresComputed(_)        => false
 
+  /** Updates the pipeline with the step
+    *
+    * @param pipeline
+    *   the pipeline to update
+    * @param consideredStep
+    *   the step to consider
+    * @return
+    *   the updated pipeline
+    */
   private def updatedPipeline(
       pipeline: Pipeline[A],
       consideredStep: TraceStep
@@ -153,9 +185,7 @@ final case class RefreshStepper[A](
             cleaned.handleLoad(pos, loadNumber)
           case Outcome.Batched(pos, servedBy) =>
             cleaned.handleBatched(pos, servedBy)
-          // The one cast of the stepper: the trace is untyped, but `concerns`
-          // only lets in the reloads of this stepper's source, a single
-          // `RefreshedLiveData` whose values are `A`
+          // The one cast: safe because `concerns` only lets in this source's reloads
           case Outcome.Answer(pos, loadNumber, value) =>
             cleaned.handleAnswer(loadNumber, pos, value.asInstanceOf[A])
           case Outcome.AnswerAndLaunchPending(answer, load) =>
@@ -182,14 +212,13 @@ object RefreshStepper:
     case Considered
     case NotConsidered
 
-  // Where a load is: owed (`Pending`, its events are the ones batched), running,
-  // or done
+  // Where a load is: pending, in flight, answered, displayed, failed, or canceled
   enum LoadPlace[+A]:
     case Pending
     case InFlight
-    // `position` is how far the server data goes, `value` what it loaded
+    // `value` is what it loaded
     case Answered(position: Long, value: A)
-    // The answer is on screen: a step of its own after `Answered`
+    // The answer is shown on the  screen, an automatic step will remove it
     case Displayed
     case Failed
     case Cancelled
@@ -197,8 +226,13 @@ object RefreshStepper:
   // A load and the events it serves
   final case class Load[+A](place: LoadPlace[A], events: Set[Long])
 
-  /** Where the events of one live data are: in `events` until a load takes
-    * them, then in the load that serves them. An event is in one place only.
+  /** A pipeline is where the events and loads are
+    *
+    * @param events
+    *   A map of the events not yet attached to a load, with their position and
+    *   place
+    * @param loads
+    *   A map of the loads, with their number, events and place
     */
   final case class Pipeline[A](
       events: Map[Long, EventPlace],

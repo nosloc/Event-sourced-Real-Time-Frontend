@@ -3,41 +3,40 @@ package prototype.client.live
 import com.raquo.laminar.api.L.*
 import org.scalajs.dom
 
-/** Records the steps an event goes through in the browser, from the stream to
-  * the screen, so that they can be shown one by one. One tracer per `LiveFeed`:
-  * every live data of a page reaches it through the feed. The tracer keeps no
-  * state: each caller says which event its step belongs to.
-  *
-  * For now a recorded step is only logged to the console.
-  */
 final class Tracer:
 
-  /** Whether the steps are recorded. Off at start: nothing is logged, and the
-    * clock is not read.
-    */
+  // Whether the tracer is on or off
   val enabled: Var[Boolean] = Var(false)
 
-  // Only `record` and `timed` emit; the others read `steps`
+  // The bus that records the steps
   private val bus: EventBus[TraceStep] = new EventBus
 
-  /** The steps recorded, in the order recorded. Nothing while `enabled` is off.
-    */
+  // The exposed stream of steps, for the step-by-step panel
   val steps: EventStream[TraceStep] = bus.events
 
-  /** Prints each recorded step in the console, while the element it is given to
-    * is mounted.
-    */
+  // Easy way to log the steps to the console, for debugging
   def logToConsole: Mod[HtmlElement] =
     steps --> (step => dom.console.log(s"[trace] ${TraceStep.describe(step)}"))
 
-  /** Records that the event at `position` reached the step `kind`: the tracer
-    * reads the clock itself.
+  /** Records a step in the trace only if the tracer is enabled. Otherwise it
+    * does nothing
+    *
+    * @param kind
+    *   the kind of step
+    * @param position
+    *   the position of the event the step belongs to
     */
   def record(kind: TraceStep.Kind, position: Long): Unit =
     record(kind, Some(position))
 
-  /** The same for a position that may be missing: None for a step with no event
-    * behind it (a first load, a company change, the answer of a load).
+  /** Records a step in the trace only if the tracer is enabled. Otherwise it
+    * does nothing
+    *
+    * @param kind
+    *   the kind of step
+    * @param position
+    *   the position of the event the step belongs to, or None when no event is
+    *   behind it
     */
   def record(kind: TraceStep.Kind, position: Option[Long] = None): Unit =
     if enabled.now() then
@@ -50,8 +49,17 @@ final class Tracer:
         )
       )
 
-  /** Runs `block` and records the step `kind` for the event at `position`, with
-    * the time the block took. The step's time is the end of the block.
+  /** Run a piece of code and record a timed step
+    *
+    * @param kind
+    *   the kind of step
+    * @param position
+    *   the position of the event the step belongs to, or None when no event is
+    *   behind it
+    * @param block
+    *   the code to run
+    * @return
+    *   the result of the code after running it and recording the step
     */
   def timed[A](kind: TraceStep.Kind, position: Option[Long])(block: => A): A =
     if enabled.now() then

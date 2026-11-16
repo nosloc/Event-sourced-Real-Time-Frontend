@@ -78,65 +78,13 @@ final class ServerStepByStep[A](
               .map((s, showIgnored) => stepsLeft(s.stepsLeft(!showIgnored)))
           )
         ),
-        // The controls: Jump to latest (starts the stepper again from now),
-        // Play / Pause, the speed, Next step (off while playing)
-        div(
-          cls := "stepper__controls",
-          button(
-            tpe := "button",
-            cls := "btn stepper__jump",
-            "Jump to latest",
-            onClick.mapTo(Action.Reset) --> pressedLatestBus.writer
-          ),
-          // Play while paused, Pause while playing
-          button(
-            tpe := "button",
-            cls := "btn stepper__play",
-            cls("stepper__play--on") <-- playingVar.signal,
-            aria.label <-- playingVar.signal.map(playing =>
-              if playing then "Pause" else "Play"
-            ),
-            child <-- playingVar.signal.map(playIcon),
-            onClick --> (_ => playingVar.update(!_))
-          ),
-          PopoverPicker(
-            id = "step-speed-selector",
-            label = "Every",
-            items = Val(
-              List(
-                Item(50, "0.05 s"),
-                Item(250, "0.25 s"),
-                Item(500, "0.5 s"),
-                Item(1000, "1 s"),
-                Item(2000, "2 s"),
-                Item(3000, "3 s")
-              )
-            ),
-            selectedVar = speedVar
-          ),
-          // On: every step, the events this dashboard ignores too
-          button(
-            tpe := "button",
-            cls := "btn stepper__toggle",
-            cls("stepper__toggle--on") <-- showIgnoredVar.signal,
-            aria.pressed <-- showIgnoredVar.signal.map(_.toString),
-            title := "Also step through the events this dashboard ignores",
-            span(cls := "stepper__switch", aria.hidden := true),
-            "Show ignored",
-            onClick --> (_ => showIgnoredVar.update(!_))
-          ),
-          button(
-            tpe := "button",
-            cls := "btn btn--primary stepper__next",
-            disabled <-- stepper
-              .combineWith(playingVar.signal, showIgnoredVar.signal)
-              .map((stepper, play, showIgnored) =>
-                play || !stepper.hasNextStep(!showIgnored)
-              ),
-            "Next step",
-            span(aria.hidden := true, "→"),
-            onClick.mapTo(Action.Next) --> pressedNextBus.writer
-          )
+        renderControls(
+          stepper,
+          playingVar,
+          speedVar,
+          showIgnoredVar,
+          pressedLatestBus.writer,
+          pressedNextBus.writer
         )
       ),
       // Drawn again only when what they show changes (a Next), not on every
@@ -156,11 +104,12 @@ object ServerStepByStep:
   /** A dashboard's live data on both computation levels, with a stepper on the
     * server level.
     *
-    * On the server level the dashboard reads the real live data, or the
-    * stepper's held one while the step-by-step mode is on. The real one keeps
-    * running when the mode turns on: the switch starts the held one, which
-    * reads it, before it lets go of the real one.
-    *
+    * @param tracer
+    *   the tracer that records the steps
+    * @param source
+    *   the name of the live data source, for the panel
+    * @param levelS
+    *   the signal of the computation level, to switch between the two
     * @param server
     *   builds the live data reloaded from the server: a new one on each switch
     *   to the server level, since a stopped one is not read again
@@ -222,6 +171,104 @@ object ServerStepByStep:
     case AddStep(step: TraceStep)
     case Next
     case Reset
+
+  // The controls: Jump to latest (starts the stepper again from now),
+  // Play / Pause, the speed, Show ignored, Next step (off while playing)
+  private def renderControls(
+      stepperS: Signal[RefreshStepper[?]],
+      playingVar: Var[Boolean],
+      speedVar: Var[Int],
+      showIgnoredVar: Var[Boolean],
+      pressedLatest: Observer[Action],
+      pressedNext: Observer[Action]
+  ): HtmlElement =
+    div(
+      cls := "stepper__controls",
+      renderJumpButton(pressedLatest),
+      renderPlayButton(playingVar),
+      renderSpeedSelector(speedVar),
+      renderShowIgnoredToggle(showIgnoredVar),
+      renderNextButton(
+        stepperS,
+        playingVar.signal,
+        showIgnoredVar.signal,
+        pressedNext
+      )
+    )
+
+  private def renderJumpButton(pressedLatest: Observer[Action]): HtmlElement =
+    button(
+      tpe := "button",
+      cls := "btn stepper__jump",
+      "Jump to latest",
+      onClick.mapTo(Action.Reset) --> pressedLatest
+    )
+
+  // Play while paused, Pause while playing
+  private def renderPlayButton(playingVar: Var[Boolean]): HtmlElement =
+    button(
+      tpe := "button",
+      cls := "btn stepper__play",
+      cls("stepper__play--on") <-- playingVar.signal,
+      aria.label <-- playingVar.signal.map(playing =>
+        if playing then "Pause" else "Play"
+      ),
+      child <-- playingVar.signal.map(playIcon),
+      onClick --> (_ => playingVar.update(!_))
+    )
+
+  // The time between two steps while playing
+  private def renderSpeedSelector(speedVar: Var[Int]): HtmlElement =
+    PopoverPicker(
+      id = "step-speed-selector",
+      label = "Every",
+      items = Val(
+        List(
+          Item(50, "0.05 s"),
+          Item(250, "0.25 s"),
+          Item(500, "0.5 s"),
+          Item(1000, "1 s"),
+          Item(2000, "2 s"),
+          Item(3000, "3 s")
+        )
+      ),
+      selectedVar = speedVar
+    )
+
+  // On: every step, the events this dashboard ignores too
+  private def renderShowIgnoredToggle(
+      showIgnoredVar: Var[Boolean]
+  ): HtmlElement =
+    button(
+      tpe := "button",
+      cls := "btn stepper__toggle",
+      cls("stepper__toggle--on") <-- showIgnoredVar.signal,
+      aria.pressed <-- showIgnoredVar.signal.map(_.toString),
+      title := "Also step through the events this dashboard ignores",
+      span(cls := "stepper__switch", aria.hidden := true),
+      "Show ignored",
+      onClick --> (_ => showIgnoredVar.update(!_))
+    )
+
+  // Off while playing, or when no step is left
+  private def renderNextButton(
+      stepperS: Signal[RefreshStepper[?]],
+      playingS: Signal[Boolean],
+      showIgnoredS: Signal[Boolean],
+      pressedNext: Observer[Action]
+  ): HtmlElement =
+    button(
+      tpe := "button",
+      cls := "btn btn--primary stepper__next",
+      disabled <-- stepperS
+        .combineWith(playingS, showIgnoredS)
+        .map((stepper, play, showIgnored) =>
+          play || !stepper.hasNextStep(!showIgnored)
+        ),
+      "Next step",
+      span(aria.hidden := true, "→"),
+      onClick.mapTo(Action.Next) --> pressedNext
+    )
 
   // A triangle to play, two bars to pause
   private def playIcon(playing: Boolean): SvgElement =

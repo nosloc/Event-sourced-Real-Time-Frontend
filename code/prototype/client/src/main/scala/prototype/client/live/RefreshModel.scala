@@ -11,20 +11,13 @@ object RefreshModel:
     case KeyChanged(key: K)
 
   enum Phase:
-    // Nothing is happening
     case Idle
-    // Waiting for an answer, `pending` is the highest position seen while the load is happening
     case InFlight(pending: Option[Position])
 
-  /** What a step did: a load to launch, an event kept for the next load, or the
-    * answer of a load. `RefreshedLiveData` runs the loads and records them all
-    * in the trace.
-    */
   enum Outcome[+K, +A]:
     case InitialLoad(key: K, loadNumber: Int)
     case Load(key: K, position: Position, loadNumber: Int)
-    // `servedBy` is the load that will cover the event: the one after the
-    // load in flight
+    // `servedBy` is the load that will cover the event
     case Batched(position: Position, servedBy: Int)
     // `value` is what is on screen after the answer
     case Answer(position: Position, loadNumber: Int, value: A)
