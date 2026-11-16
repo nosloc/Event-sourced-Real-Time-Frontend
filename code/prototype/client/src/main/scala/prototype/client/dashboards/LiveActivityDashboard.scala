@@ -77,14 +77,11 @@ object LiveActivityDashboard:
       .combineWith(unitS.combineWith(dateS))
       .withCurrentValueOf(processedEvent)
       .map { case (((therapists, appointments), (unit, date)), position) =>
-        (
-          unit,
-          tracer.timed(
-            TraceStep.Kind.FiguresComputed(name),
-            Option.when(position >= 0)(position)
-          )(
-            ActivityDashboard(therapists, appointments, unit, date)
-          )
+        tracer.timed[(PeriodUnit, ActivityFigures)](
+          all => TraceStep.Kind.FiguresComputed(name, all),
+          Option.when(position >= 0)(position)
+        )(
+          (unit, ActivityDashboard(therapists, appointments, unit, date))
         )
       }
 end LiveActivityDashboard

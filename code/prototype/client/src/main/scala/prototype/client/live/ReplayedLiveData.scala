@@ -18,10 +18,11 @@ import com.raquo.laminar.api.L.*
   * one of its signals is read.
   *
   * K is the type of the key (for example a therapist), A the type of the value,
-  * E the type of the events `decode` keeps.
+  * E the type of the events `decode` keeps. `name` names it in the trace.
   */
 final class ReplayedLiveData[K, A, E](
     feed: LiveFeed,
+    name: String,
     key: Signal[K],
     load: K => IO[(A, Long)],
     decode: EventMessage => Option[E],
@@ -42,7 +43,7 @@ final class ReplayedLiveData[K, A, E](
       .collect { case FeedMessage.Event(message) => message }
       .map(message =>
         decode(message).map(event =>
-          feed.tracer.record(TraceStep.Kind.Decoded, message.position)
+          feed.tracer.record(TraceStep.Kind.Decoded(name), message.position)
           Input.Received(message.position, event)
         )
       )
@@ -51,7 +52,8 @@ final class ReplayedLiveData[K, A, E](
   // The state of the live value: the loads (a status per reload, for the latest
   // key only) and the events received, folded by `LiveModel.step`. The trace
   // tells an event applied to the value (the position moved) from one only
-  // kept aside: still loading, or already in the snapshot
+  // kept aside: still loading, or already in the snapshot. It also records the
+  // loads of the snapshot, with the position the snapshot includes
   private val stateS: Signal[LiveModel.State[K, A, E]] =
     reloadKey
       .flatMapWithStatus(k => Api.stream(load(k)))
@@ -69,8 +71,13 @@ final class ReplayedLiveData[K, A, E](
         input match
           case Input.Received(position, _) =>
             val applied = next.position > state.position
-            feed.tracer.record(TraceStep.Kind.Folded(applied), position)
-          case _ => ()
+            feed.tracer.record(TraceStep.Kind.Folded(name, applied), position)
+          case Input.Started(_) =>
+            feed.tracer.record(TraceStep.Kind.SnapshotRequested(name))
+          case Input.Loaded(_, _, position) =>
+            feed.tracer.record(TraceStep.Kind.SnapshotLoaded(name, position))
+          case Input.Failed(_, _) =>
+            feed.tracer.record(TraceStep.Kind.SnapshotFailed(name))
         next
       )
 
@@ -89,12 +96,14 @@ object ReplayedLiveData:
     */
   def keyless[A, E](
       feed: LiveFeed,
+      name: String,
       load: IO[(A, Long)],
       decode: EventMessage => Option[E],
       evolve: (A, E) => A
   ): ReplayedLiveData[Unit, A, E] =
     new ReplayedLiveData[Unit, A, E](
       feed = feed,
+      name = name,
       key = Signal.fromValue(()),
       load = _ => load,
       decode = decode,

@@ -346,7 +346,31 @@
 .stepper__node--answered { left: 760px; top: 120px; }
 .stepper__node--on-screen { left: 932px; top: 120px; }
 
+/* The browser's graph: the browser's lane with the event going from node
+   to node, and the server's above it, where a snapshot loads. Same
+   coordinates as BrowserStepByStep.renderArrows: change both together.
+   Columns at 72, 244, 416, 588, 760 (150 wide); rows at 10 (server), 120
+   (browser) and 250 (Ignored, Kept aside: lower than on the server's graph,
+   so that Folded can hold its two-line title and the snapshot). A snapshot dropped for a new one
+   has no node: the browser drops it, not the server. */
+.stepper__graph--browser {
+  width: 910px;
+  height: 326px;
+}
+
+.stepper__graph--browser .stepper__node--received { left: 72px; top: 120px; }
+.stepper__graph--browser .stepper__node--ignored { left: 72px; top: 250px; min-height: 68px; }
+.stepper__graph--browser .stepper__node--decoded { left: 244px; top: 120px; }
+.stepper__graph--browser .stepper__node--folded { left: 416px; top: 120px; }
+.stepper__graph--browser .stepper__node--kept-aside { left: 416px; top: 250px; min-height: 68px; }
+.stepper__graph--browser .stepper__node--computed { left: 588px; top: 120px; }
+.stepper__graph--browser .stepper__node--on-screen { left: 760px; top: 120px; }
+.stepper__graph--browser .stepper__node--server { left: 416px; top: 10px; }
+.stepper__graph--browser .stepper__node--failed { left: 588px; top: 10px; }
+
 /* What leaves on the next step */
+.stepper__node--ignored,
+.stepper__node--kept-aside,
 .stepper__node--not-considered,
 .stepper__node--cancelled {
   border: 1.5px dashed var(--line-input);

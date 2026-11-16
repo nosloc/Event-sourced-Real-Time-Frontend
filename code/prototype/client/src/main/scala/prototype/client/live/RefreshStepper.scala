@@ -152,8 +152,12 @@ final case class RefreshStepper[A](
       case Kind.Considered(stepSource)    => stepSource == source
       case Kind.NotConsidered(stepSource) => stepSource == source
       case Kind.Reload(stepSource, _)     => stepSource == source
-      case Kind.Decoded | Kind.Folded(_)  => false
-      case Kind.FiguresComputed(_)        => false
+      // The Browser level's steps
+      case Kind.Decoded(_) | Kind.Folded(_, _) => false
+      case Kind.SnapshotRequested(_) | Kind.SnapshotLoaded(_, _) |
+          Kind.SnapshotFailed(_) =>
+        false
+      case Kind.FiguresComputed(_, _) => false
 
   /** Updates the pipeline with the step
     *

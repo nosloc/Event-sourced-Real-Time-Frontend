@@ -33,8 +33,8 @@ object BillingDashboard:
     * @param computationLevelS
     *   where the figures are computed
     * @param stepperObserver
-    *   receives the stepper of the server level, for the step-by-step panel,
-    *   and None on the browser level or once the dashboard leaves the page
+    *   receives the stepper of the level shown, for the step-by-step panel,
+    *   and None once the dashboard leaves the page
     * @return
     *   the real time billing dashboard
     */
@@ -43,9 +43,9 @@ object BillingDashboard:
       feed: LiveFeed,
       companyIdS: Signal[UUID],
       computationLevelS: Signal[ComputationLevel],
-      stepperObserver: Observer[Option[ServerStepByStep[?]]]
+      stepperObserver: Observer[Option[StepByStep[?]]]
   ): HtmlElement =
-    val (dashboard, handStepperUp) = ServerStepByStep.switchingLevels(
+    val (dashboard, handStepperUp) = StepByStep.switchingLevels(
       feed.tracer,
       LiveBillingDashboard.name,
       computationLevelS,

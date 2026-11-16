@@ -8,6 +8,9 @@ import prototype.shared.appointment.*
 import com.raquo.laminar.api.L.*
 
 object LiveAppointmentsForTherapist:
+  // Its name in the trace
+  val name: String = "therapist appointments"
+
   def apply(
       feed: LiveFeed,
       therapistIdS: Signal[String]
@@ -18,6 +21,7 @@ object LiveAppointmentsForTherapist:
       AppointmentEvent
     ](
       feed = feed,
+      name = name,
       key = therapistIdS.map(AppointmentOf.Therapist(_)),
       load = therapist =>
         Api.appointments

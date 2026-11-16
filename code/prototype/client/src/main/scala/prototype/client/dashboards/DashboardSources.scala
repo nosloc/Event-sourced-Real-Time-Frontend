@@ -5,7 +5,7 @@ import java.util.UUID
 import prototype.api.{Appointment, CompanyId, Therapist}
 import prototype.client.appointments.LiveAppointmentsForCompany
 import prototype.client.live.{LiveData, LiveFeed}
-import prototype.client.therapists.LiveTherapistsForCompany
+import prototype.client.therapists.{LiveTherapists, LiveTherapistsForCompany}
 
 import com.raquo.laminar.api.L.*
 
@@ -36,6 +36,13 @@ final case class DashboardSources(
     ) --> Observer.empty
 
 object DashboardSources:
+
+  /** The names of the replayed live data the sources come from, as the trace
+    * records them: the step-by-step mode keeps only their steps.
+    */
+  val names: Set[String] =
+    Set(LiveTherapists.name, LiveAppointmentsForCompany.name)
+
   def from(
       feed: LiveFeed,
       allTherapists: LiveData[List[Therapist]],

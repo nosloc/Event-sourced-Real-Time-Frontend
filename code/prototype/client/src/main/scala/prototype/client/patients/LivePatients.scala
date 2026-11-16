@@ -6,11 +6,15 @@ import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData}
 import prototype.shared.patient.PatientEvent
 
 object LivePatients:
+  // Its name in the trace
+  val name: String = "patients"
+
   def apply(
       feed: LiveFeed
   ): LiveData[List[Patient]] =
     ReplayedLiveData.keyless[List[Patient], PatientEvent](
       feed = feed,
+      name = name,
       load = Api.patients
         .listPatients()
         .map(response => (response.patients, response.globalPosition)),

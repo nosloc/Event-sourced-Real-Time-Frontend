@@ -12,6 +12,9 @@ import com.raquo.laminar.api.L.*
   * to); the value shows only those with one of the company's therapists.
   */
 object LiveAppointmentsForCompany:
+  // Its name in the trace
+  val name: String = "company appointments"
+
   def apply(
       feed: LiveFeed,
       companyIdS: Signal[CompanyId],
@@ -23,6 +26,7 @@ object LiveAppointmentsForCompany:
       AppointmentEvent
     ](
       feed = feed,
+      name = name,
       key = companyIdS.map(id => AppointmentOf.Company(id.value)),
       load = company =>
         Api.appointments

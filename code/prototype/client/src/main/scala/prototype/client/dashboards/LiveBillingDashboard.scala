@@ -51,8 +51,8 @@ object LiveBillingDashboard:
     companyAppointments
       .withCurrentValueOf(processedEvent)
       .map((appointments, position) =>
-        tracer.timed(
-          TraceStep.Kind.FiguresComputed(name),
+        tracer.timed[BillingFigures](
+          figures => TraceStep.Kind.FiguresComputed(name, figures),
           Option.when(position >= 0)(position)
         )(
           BillingDashboard(appointments, Instant.now())

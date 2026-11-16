@@ -6,11 +6,15 @@ import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData}
 import prototype.shared.company.CompanyEvent
 
 object LiveCompanies:
+  // Its name in the trace
+  val name: String = "companies"
+
   def apply(
       feed: LiveFeed
   ): LiveData[List[Company]] =
     ReplayedLiveData.keyless[List[Company], CompanyEvent](
       feed = feed,
+      name = name,
       load = Api.companies
         .listCompanies()
         .map(response => (response.companies, response.globalPosition)),

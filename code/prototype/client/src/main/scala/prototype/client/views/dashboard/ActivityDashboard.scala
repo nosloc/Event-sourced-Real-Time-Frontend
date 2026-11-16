@@ -27,12 +27,12 @@ object ActivityDashboard:
       feed: LiveFeed,
       companyIdS: Signal[UUID],
       computationLevelS: Signal[ComputationLevel],
-      stepperObserver: Observer[Option[ServerStepByStep[?]]]
+      stepperObserver: Observer[Option[StepByStep[?]]]
   ): HtmlElement =
     val selectedPeriodUnitVar: Var[PeriodUnit] = Var(PeriodUnit.WEEK)
     val selectedPeriodDayVar: Var[LocalDate] = Var(LocalDate.now())
 
-    val (dashboard, handStepperUp) = ServerStepByStep.switchingLevels(
+    val (dashboard, handStepperUp) = StepByStep.switchingLevels(
       feed.tracer,
       LiveActivityDashboard.name,
       computationLevelS,

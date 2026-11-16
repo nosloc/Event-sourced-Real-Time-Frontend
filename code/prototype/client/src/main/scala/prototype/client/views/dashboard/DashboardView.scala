@@ -31,8 +31,8 @@ object DashboardView:
     )
 
     val stepByStepVar: Var[Boolean] = feed.tracer.enabled
-    // The stepper of the dashboard shown on the server level, for the panel
-    val stepperVar: Var[Option[ServerStepByStep[?]]] = Var(None)
+    // The stepper of the dashboard shown, on its level, for the panel
+    val stepperVar: Var[Option[StepByStep[?]]] = Var(None)
 
     // The therapists of every company, loaded once for the page
     val allTherapists: LiveData[List[Therapist]] = LiveTherapists(feed)
@@ -94,20 +94,16 @@ object DashboardView:
         cls("sheet--open") <-- stepByStepVar.signal,
         renderStepByStepButton(stepByStepVar),
         child.maybe <-- stepByStepVar.signal
-          .combineWith(computationLevelVar.signal, stepperVar.signal)
-          .map((stepByStep, computationLevel, stepper) =>
+          .combineWith(stepperVar.signal)
+          .map((stepByStep, stepper) =>
             Option.when(stepByStep)(
-              computationLevel match
-                case ComputationLevel.Browser =>
-                  div(cls := "sheet__message", "Browser step by step")
-                case ComputationLevel.Server =>
-                  stepper match
-                    case Some(stepper) => stepper.panel
-                    case None          =>
-                      div(
-                        cls := "sheet__message",
-                        "Select a company and a dashboard to step through"
-                      )
+              stepper match
+                case Some(stepper) => stepper.panel
+                case None          =>
+                  div(
+                    cls := "sheet__message",
+                    "Select a company and a dashboard to step through"
+                  )
             )
           )
       )
@@ -122,7 +118,7 @@ object DashboardView:
       companyIdS: Signal[UUID],
       computationLevelS: Signal[ComputationLevel],
       selectedDashboardVar: Var[Option[DashboardType]],
-      stepperObserver: Observer[Option[ServerStepByStep[?]]]
+      stepperObserver: Observer[Option[StepByStep[?]]]
   ): HtmlElement =
     div(
       // On the browser level, keeps the sources running while the dashboards

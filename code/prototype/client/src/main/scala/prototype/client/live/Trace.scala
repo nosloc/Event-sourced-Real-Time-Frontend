@@ -52,7 +52,7 @@ final class Tracer:
   /** Run a piece of code and record a timed step
     *
     * @param kind
-    *   the kind of step
+    *   builds the kind of step from the result of the code
     * @param position
     *   the position of the event the step belongs to, or None when no event is
     *   behind it
@@ -61,14 +61,16 @@ final class Tracer:
     * @return
     *   the result of the code after running it and recording the step
     */
-  def timed[A](kind: TraceStep.Kind, position: Option[Long])(block: => A): A =
+  def timed[A](kind: A => TraceStep.Kind, position: Option[Long])(
+      block: => A
+  ): A =
     if enabled.now() then
       val start = dom.window.performance.now()
       val result = block
       val end = dom.window.performance.now()
       bus.emit(
         TraceStep(
-          kind = kind,
+          kind = kind(result),
           position = position,
           at = end,
           duration = Some(end - start)
@@ -104,13 +106,21 @@ object TraceStep:
     // Everything the event triggered synchronously is done. On the Browser
     // level the screen is written; on the Server level a request may have left
     case Ended
-    // Browser level: a replayed live data decoded the event
-    case Decoded
-    // Browser level: the event was applied to the value, or only kept aside
-    // (still loading, or already in the snapshot)
-    case Folded(applied: Boolean)
+    // Browser level: the replayed live data `source` decoded the event
+    case Decoded(source: String)
+    // Browser level: the event was applied to the value of `source`, or only
+    // kept aside (still loading, or already in the snapshot)
+    case Folded(source: String, applied: Boolean)
+    // Browser level: `source` asked the server for its snapshot (first load,
+    // key change, reconnect)
+    case SnapshotRequested(source: String)
+    // Browser level: the snapshot of `source` arrived; it includes the events
+    // up to `position`, and the ones kept aside after it are folded on top
+    case SnapshotLoaded(source: String, position: Long)
+    // Browser level: the snapshot of `source` could not be loaded
+    case SnapshotFailed(source: String)
     // Browser level: the figures of `dashboard` were computed
-    case FiguresComputed(dashboard: String)
+    case FiguresComputed(dashboard: String, newFigures: Any)
     // Server level: the event makes the live data `source` out of date
     case Considered(source: String)
     // Server level: the event doesn't make the live data `source` out of date
@@ -126,13 +136,19 @@ object TraceStep:
     val what = step.kind match
       case Kind.Received        => "Received"
       case Kind.Ended           => "Ended"
-      case Kind.Decoded         => "Decoded"
-      case Kind.Folded(applied) =>
-        if applied then "Folded" else "Not folded"
-      case Kind.FiguresComputed(dashboard) => s"Figures of $dashboard computed"
-      case Kind.Considered(source)         => s"Considered for $source"
-      case Kind.NotConsidered(source)      => s"Not considered for $source"
-      case Kind.Reload(source, outcome)    =>
+      case Kind.Decoded(source)          => s"Decoded by $source"
+      case Kind.Folded(source, applied) =>
+        if applied then s"Folded into $source" else s"Not folded into $source"
+      case Kind.SnapshotRequested(source) =>
+        s"Snapshot of $source requested"
+      case Kind.SnapshotLoaded(source, position) =>
+        s"Snapshot of $source received, up to event $position"
+      case Kind.SnapshotFailed(source) => s"Snapshot of $source failed"
+      case Kind.FiguresComputed(dashboard, _) =>
+        s"Figures of $dashboard computed"
+      case Kind.Considered(source)      => s"Considered for $source"
+      case Kind.NotConsidered(source)   => s"Not considered for $source"
+      case Kind.Reload(source, outcome) =>
         outcome match
           case Outcome.InitialLoad(key, loadNumber) =>
             s"Launched initial load $loadNumber of $source for $key"

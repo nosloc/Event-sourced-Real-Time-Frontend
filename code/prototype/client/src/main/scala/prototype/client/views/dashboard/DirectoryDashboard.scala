@@ -24,10 +24,10 @@ object DirectoryDashboard:
       feed: LiveFeed,
       companyIdS: Signal[UUID],
       computationLevelS: Signal[ComputationLevel],
-      stepperObserver: Observer[Option[ServerStepByStep[?]]]
+      stepperObserver: Observer[Option[StepByStep[?]]]
   ): HtmlElement =
     // A new company drops the figures shown until they are loaded for it
-    val (dashboard, handStepperUp) = ServerStepByStep.switchingLevels(
+    val (dashboard, handStepperUp) = StepByStep.switchingLevels(
       feed.tracer,
       LiveDirectoryDashboard.name,
       computationLevelS,

@@ -1,6 +1,5 @@
 package prototype.client.views.dashboard
 
-import prototype.client.dashboards.ComputationLevel
 import prototype.client.live.{LiveData, RefreshStepper, TraceStep, Tracer}
 import prototype.client.live.RefreshModel.Outcome
 import prototype.client.live.RefreshStepper.{EventPlace, Load, LoadPlace, Shown}
@@ -13,7 +12,7 @@ final class ServerStepByStep[A](
     tracer: Tracer,
     source: String,
     val live: LiveData[A]
-):
+) extends StepByStep[A]:
   import ServerStepByStep.*
 
   // The time between two steps while playing, in milliseconds
@@ -100,61 +99,6 @@ final class ServerStepByStep[A](
     )
 
 object ServerStepByStep:
-
-  /** A dashboard's live data on both computation levels, with a stepper on the
-    * server level.
-    *
-    * @param tracer
-    *   the tracer that records the steps
-    * @param source
-    *   the name of the live data source, for the panel
-    * @param levelS
-    *   the signal of the computation level, to switch between the two
-    * @param server
-    *   builds the live data reloaded from the server: a new one on each switch
-    *   to the server level, since a stopped one is not read again
-    * @param browser
-    *   builds the live data computed in the browser
-    * @param stepperObserver
-    *   receives the stepper while the server level is shown, for the panel, and
-    *   None otherwise
-    * @return
-    *   the live data to show, and the modifier that hands the stepper to
-    *   `stepperObserver`, to mount on the dashboard's element
-    */
-  def switchingLevels[A](
-      tracer: Tracer,
-      source: String,
-      levelS: Signal[ComputationLevel],
-      server: () => LiveData[A],
-      browser: () => LiveData[A],
-      stepperObserver: Observer[Option[ServerStepByStep[?]]]
-  ): (LiveData[A], Mod[HtmlElement]) =
-    // One stepper per switch to the server level, shared by the dashboard and
-    // the panel
-    val stepperS: Signal[Option[ServerStepByStep[A]]] =
-      levelS.distinct.map {
-        case ComputationLevel.Browser => None
-        case ComputationLevel.Server  =>
-          Some(ServerStepByStep(tracer, source, server()))
-      }
-
-    val data: LiveData[A] =
-      LiveData.switching(stepperS) {
-        case Some(stepper) =>
-          LiveData.switching(tracer.enabled.signal)(on =>
-            if on then stepper.steppedData else stepper.live
-          )
-        case None => browser()
-      }
-
-    // Cleared once the dashboard leaves the page: the next one mounts after
-    val handUp: Mod[HtmlElement] = Seq(
-      stepperS --> stepperObserver,
-      onUnmountCallback(_ => stepperObserver.onNext(None))
-    )
-
-    (data, handUp)
 
   // The moves an arrow can show, from one node to the next, or from outside
   // the graph (the event stream, the browser asking for a fresh reload)
