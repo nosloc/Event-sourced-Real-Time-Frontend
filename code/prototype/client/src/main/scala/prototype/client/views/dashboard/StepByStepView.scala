@@ -32,8 +32,8 @@ final class StepByStepView[S <: Stepper[S, A], A](
 ) extends StepByStep[A]:
   import StepByStepView.*
 
-  // The time between two steps while playing, in milliseconds
-  private val speedVar: Var[Int] = Var(1000)
+  // How fast Play goes
+  private val speedVar: Var[Speed] = Var(Speeds.head)
   private val playingVar: Var[Boolean] = Var(false)
   // Off: Next skips the events this dashboard ignores
   private val showIgnoredVar: Var[Boolean] = Var(false)
@@ -47,7 +47,8 @@ final class StepByStepView[S <: Stepper[S, A], A](
       .combineWith(playingVar.signal)
       .changes
       .flatMapSwitch((speed, play) =>
-        if play then EventStream.periodic(speed).mapTo(Action.Next)
+        if play then
+          EventStream.periodic(speed.every).mapTo(Action.Steps(speed.steps))
         else EventStream.empty
       )
 
@@ -62,8 +63,31 @@ final class StepByStepView[S <: Stepper[S, A], A](
         action match
           case Action.AddStep(traceStep) => stepper.addStep(traceStep)
           case Action.Next  => stepper.next(skipIgnored = !showIgnored)
+          case Action.Steps(count) =>
+            steps(stepper, count, skipIgnored = !showIgnored)
+          case Action.NextChange =>
+            untilChange(stepper, skipIgnored = !showIgnored)
           case Action.Reset => start(real)
       }
+
+  // `count` Nexts at once, drawn once (fewer if no step is left)
+  private def steps(from: S, count: Int, skipIgnored: Boolean): S =
+    @scala.annotation.tailrec
+    def go(stepper: S, left: Int): S =
+      if left == 0 || !stepper.hasNextStep(skipIgnored) then stepper
+      else go(stepper.next(skipIgnored), left - 1)
+    go(from, count)
+
+  // Next until the figures on screen change, or no step is left: one jump
+  // over a burst, drawn once. Bounded, so that it never freezes the page
+  private def untilChange(from: S, skipIgnored: Boolean): S =
+    @scala.annotation.tailrec
+    def go(stepper: S, left: Int): S =
+      if left == 0 || !stepper.hasNextStep(skipIgnored) then stepper
+      else
+        val next = stepper.next(skipIgnored)
+        if next.displayed != from.displayed then next else go(next, left - 1)
+    go(from, MaxJump)
 
   // The stepper as the panel draws it: a recorded step only grows its
   // history, which the current step and the graph do not show
@@ -119,14 +143,46 @@ object StepByStepView:
   private enum Action:
     case AddStep(step: TraceStep)
     case Next
+    // Several Nexts at once, while playing fast
+    case Steps(count: Int)
+    // Next until the figures on screen change
+    case NextChange
     case Reset
 
+  // The most steps one "next figures change" takes
+  private val MaxJump = 100000
+
+  /** A speed of Play: a tick every `every` milliseconds, `steps` Nexts per
+    * tick. Above 20 steps a second the page is drawn once per tick, not once
+    * per step.
+    */
+  final case class Speed(every: Int, steps: Int)
+
+  // From the slowest; the first is the one Play starts with
+  private val Speeds: List[Speed] = List(
+    Speed(1000, 1),
+    Speed(250, 1),
+    Speed(50, 1),
+    Speed(50, 10),
+    Speed(50, 100)
+  )
+
+  private def speedName(speed: Speed): String =
+    val perSecond = speed.steps * 1000 / speed.every
+    // Thousands written the Swiss way, as the amounts: 2'000
+    val number =
+      if perSecond >= 1000 then
+        s"${perSecond / 1000}'${f"${perSecond % 1000}%03d"}"
+      else perSecond.toString
+    if perSecond == 1 then "1 step/s" else s"$number steps/s"
+
   // The controls: Jump to latest (starts the stepper again from now),
-  // Play / Pause, the speed, Show ignored, Next step (off while playing)
+  // Play / Pause, the speed, Show ignored, Next step and next figures change
+  // (both off while playing)
   private def renderControls(
       hasNextS: Signal[Boolean],
       playingVar: Var[Boolean],
-      speedVar: Var[Int],
+      speedVar: Var[Speed],
       showIgnoredVar: Var[Boolean],
       pressedLatest: Observer[Action],
       pressedNext: Observer[Action]
@@ -137,7 +193,8 @@ object StepByStepView:
       renderPlayButton(playingVar),
       renderSpeedSelector(speedVar),
       renderShowIgnoredToggle(showIgnoredVar),
-      renderNextButton(hasNextS, playingVar.signal, pressedNext)
+      renderNextButton(hasNextS, playingVar.signal, pressedNext),
+      renderNextChangeButton(hasNextS, playingVar.signal, pressedNext)
     )
 
   private def renderJumpButton(pressedLatest: Observer[Action]): HtmlElement =
@@ -161,21 +218,12 @@ object StepByStepView:
       onClick --> (_ => playingVar.update(!_))
     )
 
-  // The time between two steps while playing
-  private def renderSpeedSelector(speedVar: Var[Int]): HtmlElement =
+  // How fast Play goes, in steps per second
+  private def renderSpeedSelector(speedVar: Var[Speed]): HtmlElement =
     PopoverPicker(
       id = "step-speed-selector",
-      label = "Every",
-      items = Val(
-        List(
-          Item(50, "0.05 s"),
-          Item(250, "0.25 s"),
-          Item(500, "0.5 s"),
-          Item(1000, "1 s"),
-          Item(2000, "2 s"),
-          Item(3000, "3 s")
-        )
-      ),
+      label = "Speed",
+      items = Val(Speeds.map(speed => Item(speed, speedName(speed)))),
       selectedVar = speedVar
     )
 
@@ -209,6 +257,35 @@ object StepByStepView:
       "Next step",
       span(aria.hidden := true, "→"),
       onClick.mapTo(Action.Next) --> pressedNext
+    )
+
+  // Secondary to Next step, like Play: an icon, its name in the tooltip
+  private def renderNextChangeButton(
+      hasNextS: Signal[Boolean],
+      playingS: Signal[Boolean],
+      pressedNext: Observer[Action]
+  ): HtmlElement =
+    button(
+      tpe := "button",
+      cls := "btn stepper__play stepper__skip",
+      title := "Next figures change: step until the figures on screen change",
+      aria.label := "Next figures change",
+      disabled <-- hasNextS
+        .combineWith(playingS)
+        .map((hasNext, play) => play || !hasNext),
+      skipIcon,
+      onClick.mapTo(Action.NextChange) --> pressedNext
+    )
+
+  // A triangle and a bar: skip forward
+  private def skipIcon: SvgElement =
+    svg.svg(
+      svg.width := "14",
+      svg.height := "14",
+      svg.viewBox := "0 0 14 14",
+      svg.fill := "none",
+      aria.hidden := true,
+      svg.path(svg.d := "M2.5 2.5v9l7-4.5z M11.5 2.5v9")
     )
 
   // A triangle to play, two bars to pause
