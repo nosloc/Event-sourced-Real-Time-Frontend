@@ -1,7 +1,6 @@
 package prototype.shared.dashboards
 
-import java.time.{DayOfWeek, Instant, LocalDate as JavaLocalDate, ZoneOffset}
-import java.time.temporal.TemporalAdjusters
+import java.time.{Instant, LocalDate as JavaLocalDate}
 
 import prototype.api.*
 
@@ -9,8 +8,8 @@ import smithy4s.time.LocalDate
 
 object BillingDashboard:
   // Weeks and days are cut in UTC, whatever the machine's zone is: no
-  // time-zone database is needed in the browser
-  private val zone = ZoneOffset.UTC
+  // time-zone database is needed in the browser, and a day is always this long
+  private val secondsPerDay = 86400L
   private val weekCount = 52
   private val oldestCount = 5
 
@@ -72,13 +71,16 @@ object BillingDashboard:
       companyAppointments: List[Appointment],
       now: Instant
   ): List[WeeklyAmount] =
-    val currentWeek = mondayOf(now.atZone(zone).toLocalDate)
-    val byWeek = companyAppointments.groupBy(appt => mondayOf(dayOf(appt)))
+    // Each week is the epoch day of its Monday
+    val currentWeek =
+      mondayOf(Math.floorDiv(now.getEpochSecond, secondsPerDay))
+    val byWeek =
+      companyAppointments.groupBy(appt => mondayOf(epochDayOf(appt)))
     (weekCount - 1 to 0 by -1).toList.map { weeksAgo =>
-      val week = currentWeek.minusWeeks(weeksAgo.toLong)
+      val week = currentWeek - 7L * weeksAgo
       val prestations = byWeek.getOrElse(week, Nil).flatMap(_.prestations)
       WeeklyAmount(
-        weekStart = toSmithyDate(week),
+        weekStart = toSmithyDate(JavaLocalDate.ofEpochDay(week)),
         toBill = amountOf(prestations, PrestationStatus.TO_BILL),
         billed = amountOf(prestations, PrestationStatus.BILLED),
         paid = amountOf(prestations, PrestationStatus.PAID)
@@ -86,14 +88,17 @@ object BillingDashboard:
     }
   end getWeeklyAmounts
 
-  private def dayOf(appointment: Appointment): JavaLocalDate =
-    Instant
-      .ofEpochSecond(appointment.timeRange.start.epochSecond)
-      .atZone(zone)
-      .toLocalDate
+  // The day an appointment starts, as an epoch day (days since 1970-01-01).
+  private def epochDayOf(appointment: Appointment): Long =
+    Math.floorDiv(appointment.timeRange.start.epochSecond, secondsPerDay)
 
-  private def mondayOf(day: JavaLocalDate): JavaLocalDate =
-    day.`with`(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+  private def dayOf(appointment: Appointment): JavaLocalDate =
+    JavaLocalDate.ofEpochDay(epochDayOf(appointment))
+
+  // The Monday of an epoch day's week, as an epoch day. Day 0 (1970-01-01) is
+  // a Thursday, 3 days after a Monday; `floorMod` stays in 0 to 6 before 1970
+  private def mondayOf(epochDay: Long): Long =
+    epochDay - Math.floorMod(epochDay + 3, 7L)
 
   private def toSmithyDate(day: JavaLocalDate): LocalDate =
     LocalDate(day.getYear, day.getMonthValue, day.getDayOfMonth)

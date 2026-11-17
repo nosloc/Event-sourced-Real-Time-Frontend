@@ -1,6 +1,6 @@
 package prototype.shared.dashboards
 
-import java.time.{DayOfWeek, Instant, LocalDate as JavaLocalDate, ZoneOffset}
+import java.time.{DayOfWeek, LocalDate as JavaLocalDate}
 import java.time.temporal.TemporalAdjusters
 
 import prototype.api.*
@@ -8,16 +8,18 @@ import prototype.api.*
 import smithy4s.time.LocalDate
 
 object ActivityDashboard:
-  // Weeks, months and days are cut in UTC, like in the billing: no time-zone
-  // database is needed in the browser
-  private val zone = ZoneOffset.UTC
   // The chosen period and the ones before it, in the evolution
   private val periodsBefore = 5
+  // Weeks, months and days are cut in UTC, like in the billing: no time-zone
+  // database is needed in the browser, and a day is always this long
+  private val secondsPerDay = 86400L
 
   // An appointment belongs to the period of the day it starts
   private final case class Period(start: JavaLocalDate, end: JavaLocalDate):
-    def contains(day: JavaLocalDate): Boolean =
-      !day.isBefore(start) && !day.isAfter(end)
+    val startEpochDay: Long = start.toEpochDay
+    val endEpochDay: Long = end.toEpochDay
+    def contains(epochDay: Long): Boolean =
+      epochDay >= startEpochDay && epochDay <= endEpochDay
 
   def apply(
       therapists: List[Therapist],
@@ -83,7 +85,7 @@ object ActivityDashboard:
       appointments: List[Appointment],
       period: Period
   ): List[Appointment] =
-    appointments.filter(appt => period.contains(dayOf(appt)))
+    appointments.filter(appt => period.contains(epochDayOf(appt)))
 
   // The week (Monday to Sunday) or the month that contains the day
   private def periodOf(unit: PeriodUnit, day: JavaLocalDate): Period =
@@ -107,11 +109,9 @@ object ActivityDashboard:
       case PeriodUnit.WEEK  => day.plusWeeks(periods.toLong)
       case PeriodUnit.MONTH => day.plusMonths(periods.toLong)
 
-  private def dayOf(appointment: Appointment): JavaLocalDate =
-    Instant
-      .ofEpochSecond(appointment.timeRange.start.epochSecond)
-      .atZone(zone)
-      .toLocalDate
+  // The day an appointment starts, as an epoch day (days since 1970-01-01).
+  private def epochDayOf(appointment: Appointment): Long =
+    Math.floorDiv(appointment.timeRange.start.epochSecond, secondsPerDay)
 
   private def toSmithyDate(day: JavaLocalDate): LocalDate =
     LocalDate(day.getYear, day.getMonthValue, day.getDayOfMonth)
