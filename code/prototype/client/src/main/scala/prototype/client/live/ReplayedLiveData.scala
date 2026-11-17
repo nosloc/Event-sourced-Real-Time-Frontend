@@ -77,17 +77,21 @@ final class ReplayedLiveData[K, A, E](
               TraceStep.Kind.SnapshotRequested(name, s"$name for $k")
             )
           case Input.Loaded(_, received, position) =>
-            // Its size, when it is a list: read only for the trace
-            val size = received match
-              case items: Iterable[?] => Some(items.size)
-              case _                  => None
             feed.tracer.record(
-              TraceStep.Kind.SnapshotLoaded(name, position, size)
+              TraceStep.Kind.SnapshotLoaded(name, position, sizeOf(received))
             )
           case Input.Failed(_, _) =>
             feed.tracer.record(TraceStep.Kind.SnapshotFailed(name))
         next
       )
+
+  // The size of a snapshot, when it is a list. It walks the whole list, so it
+  // is only called inside the trace's argument, built only while the
+  // step-by-step mode is on
+  private def sizeOf(value: A): Option[Int] =
+    value match
+      case list: Iterable[?] => Some(list.size)
+      case _                 => None
 
   // Exposed state: read separately, so a failed reload can show its error
   // next to the value still on screen

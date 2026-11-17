@@ -32,11 +32,15 @@ final class Tracer:
     * @param position
     *   the position of the event the step belongs to
     */
-  def record(kind: TraceStep.Kind, position: Long): Unit =
+  def record(kind: => TraceStep.Kind, position: Long): Unit =
     record(kind, Some(position))
 
   /** Records a step in the trace only if the tracer is enabled. Otherwise it
     * does nothing
+    *
+    * `kind` is taken by name: the step is built only once the tracer is known
+    * to be on. With the step-by-step mode off, nothing is built on any page
+    * (only the small closure that holds `kind`).
     *
     * @param kind
     *   the kind of step
@@ -44,7 +48,10 @@ final class Tracer:
     *   the position of the event the step belongs to, or None when no event is
     *   behind it
     */
-  def record(kind: TraceStep.Kind, position: Option[Long] = None): Unit =
+  def record(
+      kind: => TraceStep.Kind,
+      position: Option[Long] = None
+  ): Unit =
     if enabled.now() then
       bus.emit(
         TraceStep(
