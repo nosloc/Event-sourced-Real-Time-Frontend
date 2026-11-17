@@ -72,10 +72,18 @@ final class ReplayedLiveData[K, A, E](
           case Input.Received(position, _) =>
             val applied = next.position > state.position
             feed.tracer.record(TraceStep.Kind.Folded(name, applied), position)
-          case Input.Started(_) =>
-            feed.tracer.record(TraceStep.Kind.SnapshotRequested(name))
-          case Input.Loaded(_, _, position) =>
-            feed.tracer.record(TraceStep.Kind.SnapshotLoaded(name, position))
+          case Input.Started(k) =>
+            feed.tracer.record(
+              TraceStep.Kind.SnapshotRequested(name, s"$name for $k")
+            )
+          case Input.Loaded(_, received, position) =>
+            // Its size, when it is a list: read only for the trace
+            val size = received match
+              case items: Iterable[?] => Some(items.size)
+              case _                  => None
+            feed.tracer.record(
+              TraceStep.Kind.SnapshotLoaded(name, position, size)
+            )
           case Input.Failed(_, _) =>
             feed.tracer.record(TraceStep.Kind.SnapshotFailed(name))
         next

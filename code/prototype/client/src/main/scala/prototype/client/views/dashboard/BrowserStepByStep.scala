@@ -2,7 +2,7 @@ package prototype.client.views.dashboard
 
 import prototype.client.live.{LiveData, ReplayedStepper, TraceStep, Tracer}
 import prototype.client.live.ReplayedStepper.{EventPlace, Shown, SnapshotPlace}
-import prototype.client.views.components.StepGraph
+import prototype.client.views.components.{StepCard, StepGraph}
 
 import com.raquo.laminar.api.L.*
 
@@ -68,13 +68,13 @@ object BrowserStepByStep:
             ("", "Figures computed from the snapshot")
           case (_, Some(EventPlace.Recomputed)) =>
             ("", "Figures computed again, with no event behind them")
-          case (TraceStep.Kind.SnapshotRequested(source), _) =>
+          case (TraceStep.Kind.SnapshotRequested(source, _), _) =>
             val dropped =
               if pipeline.cancelled then
                 "; the browser dropped the one still loading"
               else ""
             ("", s"Snapshot of $source requested from the server$dropped")
-          case (TraceStep.Kind.SnapshotLoaded(source, position), _) =>
+          case (TraceStep.Kind.SnapshotLoaded(source, position, _), _) =>
             ("", s"Snapshot of $source received, up to event $position")
           case (TraceStep.Kind.SnapshotFailed(source), _) =>
             ("", s"Snapshot of $source failed")
@@ -102,25 +102,53 @@ object BrowserStepByStep:
     val (now, lit) = highlighted(stepper)
     val eventNode = place.map(nodeOf)
 
+    // What was clicked, whose card is open: drawn again on each Next, so a
+    // card closes when the panel steps
+    val openedVar = Var(Option.empty[Opened])
+
+    // What opens an event's card: its dot, or the figures it led to
+    def clickableEvent(position: Long)(content: HtmlElement): HtmlElement =
+      StepCard.clickable(
+        s"step-event-$position",
+        s"Details of event $position",
+        () => openedVar.set(Some(Opened.Event(position)))
+      )(content)
+
+    def event(position: Long): HtmlElement =
+      clickableEvent(position)(StepGraph.event(position))
+
+    def figures(onScreen: Boolean): HtmlElement =
+      pipeline.currentEvent.fold(renderFigures(None, onScreen, "no event"))(
+        position =>
+          clickableEvent(position)(
+            renderFigures(Some(position), onScreen, "")
+          )
+      )
+
+    def snapshot(place: SnapshotPlace): HtmlElement =
+      StepCard.clickable(
+        "step-snapshot",
+        "Details of the snapshot",
+        () => openedVar.set(Some(Opened.Snapshot))
+      )(renderSnapshot(place))
+
     // The event shown, in the node of its place
     def eventIn(which: Node): List[HtmlElement] =
       if !eventNode.contains(which) then Nil
       else
         place match
-          case Some(EventPlace.FiguresComputed) =>
-            List(renderFigures(pipeline.currentEvent, false, "no event"))
+          case Some(EventPlace.FiguresComputed) => List(figures(false))
           case Some(EventPlace.FromSnapshot) =>
             List(renderFigures(None, false, "from the snapshot"))
           case Some(EventPlace.Recomputed) =>
             List(renderFigures(None, false, "no event"))
-          case Some(EventPlace.Displayed) =>
-            List(renderFigures(pipeline.currentEvent, true, ""))
-          case _ => pipeline.currentEvent.map(StepGraph.event).toList
+          case Some(EventPlace.Displayed) => List(figures(true))
+          case _ => pipeline.currentEvent.map(event).toList
 
     def snapshotIn(test: SnapshotPlace => Boolean): List[HtmlElement] =
-      pipeline.snapshot.filter(test).map(renderSnapshot).toList
+      pipeline.snapshot.filter(test).map(snapshot).toList
 
-    val waiting = pipeline.waiting.toList.sorted.map(StepGraph.event)
+    val waiting = pipeline.waiting.toList.sorted.map(event)
     val folded = eventIn(Node.Folded) ++ snapshotIn {
       case SnapshotPlace.Received(_) | SnapshotPlace.FoldedOnTop(_) => true
       case _                                                        => false
@@ -168,9 +196,67 @@ object BrowserStepByStep:
           node(Node.Failed, "Snapshot failed", failed)
         ),
         node(Node.Computed, "Figures computed", eventIn(Node.Computed)),
-        node(Node.OnScreen, "On screen", eventIn(Node.OnScreen))
+        node(Node.OnScreen, "On screen", eventIn(Node.OnScreen)),
+        StepCard.popoverCard(
+          openedVar.signal.map(_.map(anchorOf)),
+          openedVar.signal.map(_.map(card(stepper, _)))
+        )
       )
     )
+
+  // What a click opened a card on
+  private enum Opened:
+    case Event(position: Long)
+    case Snapshot
+
+  private def anchorOf(opened: Opened): String =
+    opened match
+      case Opened.Event(position) => s"step-event-$position"
+      case Opened.Snapshot        => "step-snapshot"
+
+  // The card of what was clicked, from what the stepper kept about it
+  private def card(stepper: ReplayedStepper[?], opened: Opened): HtmlElement =
+    opened match
+      case Opened.Event(position) =>
+        stepper.eventCards.get(position) match
+          case None =>
+            StepCard.frame(
+              s"Event $position",
+              StepCard.facts("Arrived" -> "before the panel opened")
+            )
+          case Some(event) =>
+            StepCard.frame(
+              s"Event $position · ${event.eventType}",
+              StepCard.steps(event.steps),
+              StepCard.payload(event.payload)
+            )
+      case Opened.Snapshot =>
+        stepper.snapshotCard.fold(StepCard.frame("Snapshot"))(snapshot =>
+            val size =
+              if snapshot.receivedAt.isEmpty then "not received yet"
+              else snapshot.size.fold("received")(items => s"$items items")
+            val folded = stepper.pipeline.snapshot match
+              case Some(SnapshotPlace.FoldedOnTop(events)) =>
+                if events.isEmpty then "none"
+                else events.toList.sorted.mkString(", ")
+              case _ =>
+                if stepper.pipeline.waiting.isEmpty then "none waiting"
+                else
+                  "waiting: " +
+                    stepper.pipeline.waiting.toList.sorted.mkString(", ")
+            StepCard.frame(
+              s"Snapshot of ${snapshot.source}",
+              StepCard.facts(
+                "Request" -> snapshot.request,
+                "Load" -> snapshot.requestedAt.fold("—")(at =>
+                  StepCard.between(at, snapshot.receivedAt, "loading")
+                ),
+                "Size" -> size,
+                "Events folded on top" -> folded
+              )
+            )
+        )
+
 
   private def nodeOf(place: EventPlace): Node =
     place match
@@ -279,7 +365,7 @@ object BrowserStepByStep:
       case Shown.FoldedOnTop(_, _)  => (Set(Node.Folded), Set(Move.FoldOnTop))
       case Shown.Trace(step) =>
         step.kind match
-          case TraceStep.Kind.Received =>
+          case TraceStep.Kind.Received(_, _) =>
             if pipeline.currentPlace.contains(EventPlace.Ignored) then
               (Set(Node.Ignored), Set(Move.FromStream, Move.ToIgnored))
             else (Set(Node.Received), Set(Move.FromStream))
@@ -293,9 +379,9 @@ object BrowserStepByStep:
             if pipeline.currentPlace.contains(EventPlace.Recomputed) then
               (Set(Node.Computed), Set(Move.Recomputed))
             else (Set(Node.Computed), Set(Move.ToComputed))
-          case TraceStep.Kind.SnapshotRequested(_) =>
+          case TraceStep.Kind.SnapshotRequested(_, _) =>
             (Set(Node.ServerLoading), Set(Move.FromBrowser))
-          case TraceStep.Kind.SnapshotLoaded(_, _) =>
+          case TraceStep.Kind.SnapshotLoaded(_, _, _) =>
             (Set(Node.Folded), Set(Move.ToSnapshot))
           case TraceStep.Kind.SnapshotFailed(_) =>
             (Set(Node.Failed), Set(Move.ToFailed))

@@ -1,5 +1,6 @@
 package prototype.client.live
 
+import prototype.client.live.StepCards.{EventCard, SnapshotCard}
 import prototype.client.live.TraceStep.Kind
 
 /** @param source
@@ -19,6 +20,10 @@ import prototype.client.live.TraceStep.Kind
   * @param ignoredCount
   *   the number of ignored events in `history`, so that what is left to show is
   *   known without reading the history
+  * @param eventCards
+  *   what a click shows about each event on the graph (by position)
+  * @param snapshotCard
+  *   what a click shows about the snapshot on the graph
   */
 final case class ReplayedStepper[+A](
     source: String,
@@ -27,7 +32,9 @@ final case class ReplayedStepper[+A](
     currentStep: ReplayedStepper.Shown,
     history: Vector[ReplayedStepper.Entry[A]],
     displayed: Option[A],
-    ignoredCount: Int = 0
+    ignoredCount: Int = 0,
+    eventCards: Map[Long, EventCard] = Map.empty,
+    snapshotCard: Option[SnapshotCard] = None
 ) extends Stepper[ReplayedStepper[A], A]:
   import ReplayedStepper.*
 
@@ -39,6 +46,12 @@ final case class ReplayedStepper[+A](
     else history.length
 
   override def next(skipIgnored: Boolean): ReplayedStepper[A] =
+    if !hasNextStep(skipIgnored) then this
+    else advance(skipIgnored).withCardsOnGraph
+
+  // One Next (it may take several entries: an event's end, a fold on top with
+  // nothing waiting)
+  private def advance(skipIgnored: Boolean): ReplayedStepper[A] =
     if !hasNextStep(skipIgnored) then this
     else
       // When skipped, the ignored events at the head leave the history at
@@ -62,6 +75,7 @@ final case class ReplayedStepper[+A](
         // Only reached when the ignored events are shown
         case Some(Entry.Ignored(received, _)) =>
           this.copy(
+            eventCards = carded(received),
             pipeline = pipeline.cleaned.moved(
               received.position,
               EventPlace.Ignored
@@ -80,7 +94,7 @@ final case class ReplayedStepper[+A](
               ignoredCount = count,
               currentStep = Shown.Trace(step)
             )
-            .next(skipIgnored)
+            .advance(skipIgnored)
         // The figures computed are put on screen
         case Some(Entry.Display(value)) =>
           this.copy(
@@ -97,7 +111,7 @@ final case class ReplayedStepper[+A](
         case Some(Entry.FoldOnTop(_)) if pipeline.waiting.isEmpty =>
           this
             .copy(history = remaining.tail, ignoredCount = count)
-            .next(skipIgnored)
+            .advance(skipIgnored)
         // The events kept aside during the load: the ones after the snapshot's
         // position are folded on top of it, the others are already in it
         case Some(Entry.FoldOnTop(position)) =>
@@ -113,7 +127,9 @@ final case class ReplayedStepper[+A](
             pipeline = updatedPipeline(pipeline, step),
             history = remaining.tail,
             ignoredCount = count,
-            currentStep = Shown.Trace(step)
+            currentStep = Shown.Trace(step),
+            eventCards = carded(step),
+            snapshotCard = snapshotCarded(step)
           )
 
   override def addStep(step: TraceStep): ReplayedStepper[A] =
@@ -122,7 +138,7 @@ final case class ReplayedStepper[+A](
         // An arrival right before its end: no live data of the dashboard
         // decoded it, the event is ignored
         case (Kind.Ended, Some(Entry.Step(prev)))
-            if step.position == prev.position && prev.kind == Kind.Received =>
+            if step.position == prev.position && isArrival(prev) =>
           this.copy(
             history = history.init :+ Entry.Ignored(prev, step),
             ignoredCount = ignoredCount + 1
@@ -136,7 +152,7 @@ final case class ReplayedStepper[+A](
           )
         // The events kept aside during the load are folded on top of the
         // snapshot on a step of their own, right after it arrived
-        case (Kind.SnapshotLoaded(_, position), _) =>
+        case (Kind.SnapshotLoaded(_, position, _), _) =>
           this.copy(
             history = history :+ Entry.Step(step) :+ Entry.FoldOnTop(position)
           )
@@ -146,16 +162,63 @@ final case class ReplayedStepper[+A](
           )
     else this
 
+  // The event cards once `step` is shown: an arrival opens its event's card,
+  // a later step of the same event joins it
+  private def carded(step: TraceStep): Map[Long, EventCard] =
+    step.position.fold(eventCards)(position =>
+      step.kind match
+        case Kind.Received(eventType, payload) =>
+          eventCards.updated(
+            position,
+            EventCard(eventType, payload, Vector(step))
+          )
+        case _ =>
+          eventCards.get(position).fold(eventCards)(card =>
+            eventCards.updated(position, card.copy(steps = card.steps :+ step))
+          )
+    )
+
+  // The snapshot's card once `step` is shown: opened by its request, filled
+  // by its answer (opened then if the request came before the stepper)
+  private def snapshotCarded(step: TraceStep): Option[SnapshotCard] =
+    step.kind match
+      case Kind.SnapshotRequested(source, request) =>
+        Some(SnapshotCard(source, request, Some(step.at), None, None))
+      case Kind.SnapshotLoaded(source, _, size) =>
+        val card = snapshotCard
+          .filter(_.source == source)
+          .getOrElse(SnapshotCard(source, "", None, None, None))
+        Some(card.copy(receivedAt = Some(step.at), size = size))
+      case _ => snapshotCard
+
+  // Only the cards of what is still on the graph: the event shown, the
+  // events waiting or folded on top, the snapshot
+  private def withCardsOnGraph: ReplayedStepper[A] =
+    val onGraph = pipeline.currentEvent.toSet ++ pipeline.waiting ++
+      (pipeline.snapshot match
+        case Some(SnapshotPlace.FoldedOnTop(events)) => events
+        case _                                       => Set.empty
+      )
+    copy(
+      eventCards = eventCards.filter((position, _) => onGraph(position)),
+      snapshotCard = snapshotCard.filter(_ => pipeline.snapshot.isDefined)
+    )
+
+  private def isArrival(step: TraceStep): Boolean =
+    step.kind match
+      case Kind.Received(_, _) => true
+      case _                   => false
+
   // Whether the stepper is concerned with the step: the arrival and the end
   // of every event, the steps of the dashboard's sources, and its figures
   private def concerns(traceStep: TraceStep): Boolean =
     traceStep.kind match
-      case Kind.Received              => true
+      case Kind.Received(_, _)        => true
       case Kind.Ended                 => true
       case Kind.Decoded(s)            => sources.contains(s)
       case Kind.Folded(s, _)          => sources.contains(s)
-      case Kind.SnapshotRequested(s)  => sources.contains(s)
-      case Kind.SnapshotLoaded(s, _)  => sources.contains(s)
+      case Kind.SnapshotRequested(s, _) => sources.contains(s)
+      case Kind.SnapshotLoaded(s, _, _) => sources.contains(s)
       case Kind.SnapshotFailed(s)     => sources.contains(s)
       case Kind.FiguresComputed(s, _) => s == source
       case Kind.Considered(_)         => false
@@ -180,7 +243,7 @@ final case class ReplayedStepper[+A](
           }
         then pipeline.cleaned.moved(None, EventPlace.FromSnapshot)
         else pipeline.cleaned.moved(None, EventPlace.Recomputed)
-      case Kind.Received =>
+      case Kind.Received(_, _) =>
         pipeline.cleaned.moved(step.position, EventPlace.Received)
       case Kind.Decoded(_) =>
         pipeline.cleaned.moved(step.position, EventPlace.Decoded)
@@ -189,8 +252,9 @@ final case class ReplayedStepper[+A](
           step.position,
           if applied then EventPlace.Folded else EventPlace.KeptAside
         )
-      case Kind.SnapshotRequested(_)        => pipeline.cleaned.requested
-      case Kind.SnapshotLoaded(_, position) => pipeline.cleaned.loaded(position)
+      case Kind.SnapshotRequested(_, _)        => pipeline.cleaned.requested
+      case Kind.SnapshotLoaded(_, position, _) =>
+        pipeline.cleaned.loaded(position)
       case Kind.SnapshotFailed(_)           => pipeline.cleaned.failed
       // Not let in by `concerns`, or handled by `step`
       case _ =>

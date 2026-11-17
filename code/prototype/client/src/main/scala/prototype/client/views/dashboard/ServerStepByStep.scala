@@ -3,7 +3,7 @@ package prototype.client.views.dashboard
 import prototype.client.live.{LiveData, RefreshStepper, TraceStep, Tracer}
 import prototype.client.live.RefreshModel.Outcome
 import prototype.client.live.RefreshStepper.{EventPlace, Load, LoadPlace, Shown}
-import prototype.client.views.components.StepGraph
+import prototype.client.views.components.{StepCard, StepGraph}
 
 import com.raquo.laminar.api.L.*
 
@@ -70,6 +70,24 @@ object ServerStepByStep:
     val pipeline = stepper.pipeline
     val (now, lit) = highlighted(stepper.currentStep)
 
+    // What was clicked, whose card is open: drawn again on each Next, so a
+    // card closes when the panel steps
+    val openedVar = Var(Option.empty[Opened])
+
+    def event(position: Long): HtmlElement =
+      StepCard.clickable(
+        s"step-event-$position",
+        s"Details of event $position",
+        () => openedVar.set(Some(Opened.Event(position)))
+      )(StepGraph.event(position))
+
+    def clickableLoad(number: Int, load: Load[?]): HtmlElement =
+      StepCard.clickable(
+        s"step-load-$number",
+        s"Details of reload $number",
+        () => openedVar.set(Some(Opened.Load(number)))
+      )(renderLoad(number, load))
+
     def eventsAt(place: EventPlace): List[Long] =
       pipeline.events.toList.collect { case (position, `place`) =>
         position
@@ -106,46 +124,46 @@ object ServerStepByStep:
         node(
           Node.Received,
           "Arrived",
-          eventsAt(EventPlace.Received).map(StepGraph.event)
+          eventsAt(EventPlace.Received).map(event)
         ),
         node(
           Node.Considered,
           "Needs a reload",
-          eventsAt(EventPlace.Considered).map(StepGraph.event)
+          eventsAt(EventPlace.Considered).map(event)
         ),
         Option.when(notConsidered.nonEmpty)(
           node(
             Node.NotConsidered,
             "Ignored",
-            notConsidered.map(StepGraph.event)
+            notConsidered.map(event)
           )
         ),
         node(
           Node.Waiting,
           "Waiting for a reload",
           loadsWhere(_ == LoadPlace.Pending).map((number, load) =>
-            renderLoad(number, load)
+            clickableLoad(number, load)
           )
         ),
         node(
           Node.OnServer,
           "Server computing",
           loadsWhere(_ == LoadPlace.InFlight).map((number, load) =>
-            renderLoad(number, load)
+            clickableLoad(number, load)
           )
         ),
         Option.when(failed.nonEmpty)(
           node(
             Node.Failed,
             "Reload failed",
-            failed.map((number, load) => renderLoad(number, load))
+            failed.map((number, load) => clickableLoad(number, load))
           )
         ),
         Option.when(cancelled.nonEmpty)(
           node(
             Node.Cancelled,
             "Reload cancelled",
-            cancelled.map((number, load) => renderLoad(number, load))
+            cancelled.map((number, load) => clickableLoad(number, load))
           )
         ),
         node(
@@ -154,17 +172,74 @@ object ServerStepByStep:
           loadsWhere {
             case LoadPlace.Answered(_, _) => true
             case _                        => false
-          }.map((number, load) => renderLoad(number, load))
+          }.map((number, load) => clickableLoad(number, load))
         ),
         node(
           Node.OnScreen,
           "On screen",
           loadsWhere(_ == LoadPlace.Displayed).map((number, load) =>
-            renderLoad(number, load)
+            clickableLoad(number, load)
           )
+        ),
+        StepCard.popoverCard(
+          openedVar.signal.map(_.map(anchorOf)),
+          openedVar.signal.map(_.map(card(stepper, _)))
         )
       )
     )
+
+  // What a click opened a card on
+  private enum Opened:
+    case Event(position: Long)
+    case Load(number: Int)
+
+  private def anchorOf(opened: Opened): String =
+    opened match
+      case Opened.Event(position) => s"step-event-$position"
+      case Opened.Load(number)    => s"step-load-$number"
+
+  // The card of what was clicked, from what the stepper kept about it
+  private def card(stepper: RefreshStepper[?], opened: Opened): HtmlElement =
+    opened match
+      case Opened.Event(position) =>
+        stepper.eventCards.get(position) match
+          case None =>
+            StepCard.frame(
+              s"Event $position",
+              StepCard.facts("Arrived" -> "before the panel opened")
+            )
+          case Some(event) =>
+            StepCard.frame(
+              s"Event $position · ${event.eventType}",
+              StepCard.steps(event.steps),
+              StepCard.payload(event.payload)
+            )
+      case Opened.Load(number) =>
+        val events = stepper.pipeline.loads
+          .get(number)
+          .fold("none")(load =>
+            if load.events.isEmpty then "none"
+            else load.events.toList.sorted.mkString(", ")
+          )
+        stepper.loadCards.get(number) match
+          case None =>
+            StepCard.frame(
+              s"Reload $number",
+              StepCard.facts(
+                "State" -> "waiting: it leaves once the reload in flight answers",
+                "Events it will serve" -> events
+              )
+            )
+          case Some(load) =>
+            StepCard.frame(
+              s"Reload $number",
+              StepCard.facts(
+                "Request" -> load.request,
+                "Events it serves" -> events,
+                (if load.failed then "Failed after" else "Round trip") ->
+                  StepCard.between(load.launchedAt, load.answeredAt, "in flight")
+              )
+            )
 
   // The arrows, in the graph's own coordinates (see stepper.css). The usual
   // moves are always drawn, except towards a hidden node; the others (an
@@ -243,7 +318,7 @@ object ServerStepByStep:
       case Shown.Display(_)  => (Set(Node.OnScreen), Set(Move.ToScreen))
       case Shown.Trace(step) =>
         step.kind match
-          case TraceStep.Kind.Received =>
+          case TraceStep.Kind.Received(_, _) =>
             (Set(Node.Received), Set(Move.FromStream))
           case TraceStep.Kind.Considered(_) =>
             (Set(Node.Considered), Set(Move.ToConsidered))

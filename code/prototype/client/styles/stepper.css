@@ -517,6 +517,131 @@
   color: var(--muted);
 }
 
+/* What opens a card on the graph: an event's dot, a reload's or a
+   snapshot's capsule. Drawn as before, only a pointer and a focus ring more */
+.stepper__clickable {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.stepper__clickable:hover > * {
+  filter: brightness(0.94);
+}
+
+.stepper__clickable:focus-visible {
+  outline: 2px solid var(--now-strong);
+  outline-offset: 2px;
+}
+
+/* The card: a popover under what was clicked (above it when there is no
+   room), closed by a click elsewhere or Escape */
+.stepper__card {
+  width: min(360px, calc(100vw - 2 * var(--space-4)));
+  max-height: min(420px, calc(100% - 2 * var(--space-1)));
+  margin: var(--space-1) 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  inset: auto;
+  position-area: block-end span-inline-end;
+  position-try-fallbacks: flip-block, flip-inline;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 1px 2px var(--shadow), 0 8px 24px var(--shadow);
+  color: var(--ink);
+}
+
+/* No anchor positioning: in the middle of the window */
+@supports not (anchor-name: --a) {
+  .stepper__card {
+    inset: 0;
+    margin: auto;
+    height: fit-content;
+  }
+}
+
+.stepper__card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+
+.stepper__card-title {
+  font-weight: 600;
+}
+
+.stepper__card-subtitle {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stepper__card-facts,
+.stepper__card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stepper__card-fact,
+.stepper__card-step {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 13px;
+}
+
+.stepper__card-label {
+  color: var(--muted);
+}
+
+.stepper__card-value,
+.stepper__card-time {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.stepper__card-time {
+  color: var(--muted);
+}
+
+.stepper__card-none {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.stepper__card-payload summary {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.stepper__card-payload pre {
+  max-height: 200px;
+  margin: 4px 0 0;
+  padding: var(--space-2);
+  overflow: auto;
+  border-radius: var(--radius-control);
+  background: var(--ground);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
 @media (max-width: 719px) {
   .stepper {
     padding: var(--space-3) var(--space-4);

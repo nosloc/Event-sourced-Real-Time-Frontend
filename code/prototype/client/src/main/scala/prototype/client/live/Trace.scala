@@ -101,8 +101,9 @@ final case class TraceStep(
 object TraceStep:
 
   enum Kind:
-    // The feed received the event, before anything reads it
-    case Received
+    // The feed received the event, before anything reads it: its type and
+    // its payload as sent (JSON)
+    case Received(eventType: String, payload: String)
     // Everything the event triggered synchronously is done. On the Browser
     // level the screen is written; on the Server level a request may have left
     case Ended
@@ -112,11 +113,12 @@ object TraceStep:
     // kept aside (still loading, or already in the snapshot)
     case Folded(source: String, applied: Boolean)
     // Browser level: `source` asked the server for its snapshot (first load,
-    // key change, reconnect)
-    case SnapshotRequested(source: String)
+    // key change, reconnect); `request` is what was asked
+    case SnapshotRequested(source: String, request: String)
     // Browser level: the snapshot of `source` arrived; it includes the events
-    // up to `position`, and the ones kept aside after it are folded on top
-    case SnapshotLoaded(source: String, position: Long)
+    // up to `position`, and the ones kept aside after it are folded on top.
+    // `size` is how many items it holds, when it is a list
+    case SnapshotLoaded(source: String, position: Long, size: Option[Int])
     // Browser level: the snapshot of `source` could not be loaded
     case SnapshotFailed(source: String)
     // Browser level: the figures of `dashboard` were computed
@@ -132,16 +134,22 @@ object TraceStep:
   /** A step as one line of text, for the console and the step-by-step panel.
     */
   def describe(step: TraceStep): String =
+    val event = step.position.fold("no event")(position => s"event $position")
+    val duration = step.duration.fold("")(d => f" in $d%.1f ms")
+    f"${title(step)}$duration: $event at ${step.at}%.1f ms"
+
+  /** What a step did, as a few words, without its event nor its time. */
+  def title(step: TraceStep): String =
     import RefreshModel.Outcome
-    val what = step.kind match
-      case Kind.Received        => "Received"
+    step.kind match
+      case Kind.Received(eventType, _) => s"Received $eventType"
       case Kind.Ended           => "Ended"
       case Kind.Decoded(source)          => s"Decoded by $source"
       case Kind.Folded(source, applied) =>
         if applied then s"Folded into $source" else s"Not folded into $source"
-      case Kind.SnapshotRequested(source) =>
+      case Kind.SnapshotRequested(source, _) =>
         s"Snapshot of $source requested"
-      case Kind.SnapshotLoaded(source, position) =>
+      case Kind.SnapshotLoaded(source, position, _) =>
         s"Snapshot of $source received, up to event $position"
       case Kind.SnapshotFailed(source) => s"Snapshot of $source failed"
       case Kind.FiguresComputed(dashboard, _) =>
@@ -166,6 +174,4 @@ object TraceStep:
           case Outcome.ErrorAndLaunchPending(error, load) =>
             s"Load ${error.loadNumber} of $source failed, " +
               s"launched pending load ${load.loadNumber}"
-    val event = step.position.fold("no event")(position => s"event $position")
-    val duration = step.duration.fold("")(d => f" in $d%.1f ms")
-    f"$what$duration: $event at ${step.at}%.1f ms"
+

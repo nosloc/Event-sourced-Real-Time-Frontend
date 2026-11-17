@@ -45,7 +45,10 @@ final class LiveFeed:
         source.onmessage = event =>
           Json.read[EventMessage](Blob(event.data.toString)) match
             case Right(message) =>
-              tracer.record(TraceStep.Kind.Received, message.position)
+              tracer.record(
+                TraceStep.Kind.Received(message.eventType, message.payload),
+                message.position
+              )
               messages.emit(FeedMessage.Event(message))
               tracer.record(TraceStep.Kind.Ended, message.position)
             case Left(error) =>

@@ -1,6 +1,7 @@
 package prototype.client.live
 
 import prototype.client.live.RefreshModel.Outcome
+import prototype.client.live.StepCards.{EventCard, LoadCard}
 import prototype.client.live.TraceStep.Kind
 
 /** @param source
@@ -14,6 +15,11 @@ import prototype.client.live.TraceStep.Kind
   * @param ignoredCount
   *   is the number of ignored events in `history`, so that what is left to show
   *   is known without reading the history
+  * @param eventCards
+  *   is what a click shows about each event on the graph (by position)
+  * @param loadCards
+  *   is what a click shows about each reload on the graph (by number), once
+  *   launched
   */
 final case class RefreshStepper[A](
     source: String,
@@ -21,7 +27,9 @@ final case class RefreshStepper[A](
     pipeline: RefreshStepper.Pipeline[A],
     history: Vector[RefreshStepper.Entry],
     ignoredCount: Int,
-    displayed: Option[A]
+    displayed: Option[A],
+    eventCards: Map[Long, EventCard] = Map.empty,
+    loadCards: Map[Int, LoadCard] = Map.empty
 ) extends Stepper[RefreshStepper[A], A]:
   import RefreshStepper.*
 
@@ -56,6 +64,11 @@ final case class RefreshStepper[A](
     *   the stepper at the next step, or the same if there is no next step
     */
   override def next(skipIgnored: Boolean): RefreshStepper[A] =
+    if !hasNextStep(skipIgnored) then this
+    else advance(skipIgnored).withCardsOnGraph
+
+  // One Next
+  private def advance(skipIgnored: Boolean): RefreshStepper[A] =
     if !hasNextStep(skipIgnored) then this
     // If we received a load answer on the last step, it is shown now before the next trace step, if any.
     else if pipeline.hasAnswered then
@@ -128,33 +141,133 @@ final case class RefreshStepper[A](
         case _ => copy(history = history :+ Entry.Step(step))
 
   private def isArrivalOf(arrival: TraceStep, step: TraceStep): Boolean =
-    arrival.kind == Kind.Received && arrival.position == step.position
+    (arrival.kind match
+      case Kind.Received(_, _) => true
+      case _                   => false
+    ) && arrival.position == step.position
 
   private def showing(
       traceStep: TraceStep,
       rest: Vector[Entry],
       count: Int
   ): RefreshStepper[A] =
-    RefreshStepper(
-      source,
-      Shown.Trace(traceStep),
-      updatedPipeline(pipeline, traceStep),
-      rest,
-      count,
-      displayed
+    copy(
+      currentStep = Shown.Trace(traceStep),
+      pipeline = updatedPipeline(pipeline, traceStep),
+      history = rest,
+      ignoredCount = count,
+      eventCards = carded(traceStep),
+      loadCards = loadCarded(traceStep)
+    )
+
+  // The event cards once `step` is shown: an arrival opens its event's card,
+  // a later step of the same event joins it, and an answer joins the cards of
+  // the events its load serves
+  private def carded(step: TraceStep): Map[Long, EventCard] =
+    val joined = step.position.fold(eventCards)(position =>
+      step.kind match
+        case Kind.Received(eventType, payload) =>
+          eventCards.updated(
+            position,
+            EventCard(eventType, payload, Vector(step))
+          )
+        case _ =>
+          eventCards.get(position).fold(eventCards)(card =>
+            eventCards.updated(position, card.copy(steps = card.steps :+ step))
+          )
+    )
+    step.kind match
+      case Kind.Reload(_, outcome) =>
+        val served = answeredLoad(outcome)
+          .flatMap(pipeline.loads.get)
+          .fold(Set.empty[Long])(_.events)
+        joined.map((position, card) =>
+          if served(position) then
+            position -> card.copy(steps = card.steps :+ step)
+          else position -> card
+        )
+      case _ => joined
+
+  // The number of the load an outcome answers (or fails)
+  private def answeredLoad(outcome: Outcome[Any, Any]): Option[Int] =
+    outcome match
+      case Outcome.Answer(_, loadNumber, _)          => Some(loadNumber)
+      case Outcome.AnswerAndLaunchPending(answer, _) => Some(answer.loadNumber)
+      case Outcome.Error(loadNumber)                 => Some(loadNumber)
+      case Outcome.ErrorAndLaunchPending(error, _)   => Some(error.loadNumber)
+      case _                                         => None
+
+  // The load cards once `step` is shown: a launch opens its load's card, an
+  // answer or a failure closes it
+  private def loadCarded(step: TraceStep): Map[Int, LoadCard] =
+    def launched(
+        cards: Map[Int, LoadCard],
+        key: Any,
+        loadNumber: Int
+    ): Map[Int, LoadCard] =
+      cards.updated(
+        loadNumber,
+        LoadCard(s"$source for $key", step.at, None, false)
+      )
+    def ended(
+        cards: Map[Int, LoadCard],
+        loadNumber: Int,
+        failed: Boolean
+    ): Map[Int, LoadCard] =
+      cards.get(loadNumber).fold(cards)(card =>
+        cards.updated(
+          loadNumber,
+          card.copy(answeredAt = Some(step.at), failed = failed)
+        )
+      )
+    step.kind match
+      case Kind.Reload(_, outcome) =>
+        outcome match
+          case Outcome.InitialLoad(key, loadNumber) =>
+            launched(loadCards, key, loadNumber)
+          case Outcome.Load(key, _, loadNumber) =>
+            launched(loadCards, key, loadNumber)
+          case Outcome.Answer(_, loadNumber, _) =>
+            ended(loadCards, loadNumber, failed = false)
+          case Outcome.AnswerAndLaunchPending(answer, load) =>
+            launched(
+              ended(loadCards, answer.loadNumber, failed = false),
+              load.key,
+              load.loadNumber
+            )
+          case Outcome.Error(loadNumber) =>
+            ended(loadCards, loadNumber, failed = true)
+          case Outcome.ErrorAndLaunchPending(error, load) =>
+            launched(
+              ended(loadCards, error.loadNumber, failed = true),
+              load.key,
+              load.loadNumber
+            )
+          case Outcome.Batched(_, _) => loadCards
+      case _ => loadCards
+
+  // Only the cards of what is still on the graph: the events not in a load,
+  // the loads and the events they serve
+  private def withCardsOnGraph: RefreshStepper[A] =
+    val onGraph =
+      pipeline.events.keySet ++ pipeline.loads.values.flatMap(_.events)
+    copy(
+      eventCards = eventCards.filter((position, _) => onGraph(position)),
+      loadCards =
+        loadCards.filter((number, _) => pipeline.loads.contains(number))
     )
 
   // Whether the stepper is concerned with the step
   private def concerns(traceStep: TraceStep): Boolean =
     traceStep.kind match
-      case Kind.Received                  => true
+      case Kind.Received(_, _)            => true
       case Kind.Ended                     => true
       case Kind.Considered(stepSource)    => stepSource == source
       case Kind.NotConsidered(stepSource) => stepSource == source
       case Kind.Reload(stepSource, _)     => stepSource == source
       // The Browser level's steps
       case Kind.Decoded(_) | Kind.Folded(_, _) => false
-      case Kind.SnapshotRequested(_) | Kind.SnapshotLoaded(_, _) |
+      case Kind.SnapshotRequested(_, _) | Kind.SnapshotLoaded(_, _, _) |
           Kind.SnapshotFailed(_) =>
         false
       case Kind.FiguresComputed(_, _) => false
@@ -177,7 +290,7 @@ final case class RefreshStepper[A](
     val cleaned = pipeline.automaticStep()
     val position = consideredStep.position
     consideredStep.kind match
-      case Kind.Received      => cleaned.moved(position, EventPlace.Received)
+      case Kind.Received(_, _) => cleaned.moved(position, EventPlace.Received)
       case Kind.Considered(_) => cleaned.moved(position, EventPlace.Considered)
       case Kind.NotConsidered(_) =>
         cleaned.moved(position, EventPlace.NotConsidered)
