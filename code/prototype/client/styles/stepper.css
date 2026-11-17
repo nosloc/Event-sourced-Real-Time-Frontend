@@ -540,17 +540,19 @@
   outline-offset: 2px;
 }
 
-/* The card: a popover under what was clicked (above it when there is no
-   room), closed by a click elsewhere or Escape */
+/* The card: a popover above what was clicked, since the panel sits at the
+   bottom of the window (under it when there is no room above), closed by a
+   click elsewhere or Escape. Its height is fixed, not the room left: a card
+   that shrank to the room would never overflow, so it would never flip */
 .stepper__card {
   width: min(360px, calc(100vw - 2 * var(--space-4)));
-  max-height: min(420px, calc(100% - 2 * var(--space-1)));
+  max-height: min(420px, 60vh);
   margin: var(--space-1) 0;
   padding: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   inset: auto;
-  position-area: block-end span-inline-end;
+  position-area: block-start span-inline-end;
   position-try-fallbacks: flip-block, flip-inline;
   background: var(--panel);
   border: 1px solid var(--line-strong);
