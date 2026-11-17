@@ -68,14 +68,14 @@ object LiveActivityDashboard:
     */
   def replayed(
       tracer: Tracer,
-      processedEvent: Signal[Long],
+      processedEventS: Signal[Long],
       sources: DashboardSources,
       unitS: Signal[PeriodUnit],
       dateS: Signal[LocalDate]
   ): LiveData[(PeriodUnit, ActivityFigures)] =
     sources
       .combineWith(unitS.combineWith(dateS))
-      .withCurrentValueOf(processedEvent)
+      .withCurrentValueOf(processedEventS)
       .map { case (((therapists, appointments), (unit, date)), position) =>
         tracer.timed[(PeriodUnit, ActivityFigures)](
           all => TraceStep.Kind.FiguresComputed(name, all),

@@ -21,7 +21,7 @@ import prototype.client.live.TraceStep.Kind
   *   is what a click shows about each reload on the graph (by number), once
   *   launched
   */
-final case class RefreshStepper[A](
+final case class RefreshStepper[+A](
     source: String,
     currentStep: RefreshStepper.Shown,
     pipeline: RefreshStepper.Pipeline[A],
@@ -33,53 +33,34 @@ final case class RefreshStepper[A](
 ) extends Stepper[RefreshStepper[A], A]:
   import RefreshStepper.*
 
-  /** Checks if there is a next step to be shown (a trace step, or a load
-    * answered, or a clean-up of what the last step left behind)
-    *
-    * @param skipIgnored
-    *   Whether the ignored events are skipped or shown as two steps
-    * @return
-    *   true if there is a next step to show, false if the stepper is idle
-    */
+  // A trace step left to show, a load answered to display, or a clean-up of
+  // what the last step left behind
   override def hasNextStep(skipIgnored: Boolean): Boolean =
     stepsLeft(skipIgnored) > 0 || pipeline.hasAnswered ||
       pipeline.hasAutomaticStepPending
 
-  /** Returns the number of trace steps left to show.
-    *
-    * @param skipIgnored
-    *   Whether the ignored events are skipped or shown as two steps
-    * @return
-    *   how many steps are left to show
-    */
+  // An ignored event shown is two steps: its arrival and its "not considered"
   override def stepsLeft(skipIgnored: Boolean): Int =
     if skipIgnored then history.size - ignoredCount
     else history.size + ignoredCount
 
-  /** Moves the stepper to the next step, if any.
-    *
-    * @param skipIgnored
-    *   Whether the ignored events are skipped or shown as two steps
-    * @return
-    *   the stepper at the next step, or the same if there is no next step
-    */
   override def next(skipIgnored: Boolean): RefreshStepper[A] =
     if !hasNextStep(skipIgnored) then this
     else advance(skipIgnored).withCardsOnGraph
 
-  // One Next
+  // One Next (`next` checked that there is one)
   private def advance(skipIgnored: Boolean): RefreshStepper[A] =
-    if !hasNextStep(skipIgnored) then this
-    // If we received a load answer on the last step, it is shown now before the next trace step, if any.
-    else if pipeline.hasAnswered then
+    // If we received a load answer on the last step, it is shown now before
+    // the next trace step, if any.
+    if pipeline.hasAnswered then
       val (number, value) = pipeline.loads
-        .collect { case (number, Load(LoadPlace.Answered(_, value), _)) =>
+        .collect { case (number, Load(LoadPlace.Answered(value), _)) =>
           (number, value)
         }
         .maxBy(_._1)
       copy(
         currentStep = Shown.Display(number),
-        pipeline = pipeline.automaticStep().displayAnswered(),
+        pipeline = pipeline.automaticStep.answeredDisplayed,
         displayed = Some(value)
       )
     else
@@ -97,7 +78,7 @@ final case class RefreshStepper[A](
         case None =>
           copy(
             currentStep = Shown.Idle,
-            pipeline = pipeline.automaticStep(),
+            pipeline = pipeline.automaticStep,
             history = remaining,
             ignoredCount = count
           )
@@ -125,12 +106,14 @@ final case class RefreshStepper[A](
     if !concerns(step) then this
     else
       (step.kind, history.lastOption) match
-        // If ended is recorded right after the arrival, we simply remove it completely from the history
+        // If ended is recorded right after the arrival, we simply remove it
+        // completely from the history
         case (Kind.Ended, Some(Entry.Step(arrival)))
             if isArrivalOf(arrival, step) =>
           copy(history = history.init)
         case (Kind.Ended, _) => this
-        // If a "not considered" is recorded right after the arrival, we merge them into one ignored event
+        // If a "not considered" is recorded right after the arrival, we merge
+        // them into one ignored event
         case (Kind.NotConsidered(_), Some(Entry.Step(arrival)))
             if isArrivalOf(arrival, step) =>
           copy(
@@ -172,9 +155,12 @@ final case class RefreshStepper[A](
             EventCard(eventType, payload, Vector(step))
           )
         case _ =>
-          eventCards.get(position).fold(eventCards)(card =>
-            eventCards.updated(position, card.copy(steps = card.steps :+ step))
-          )
+          eventCards
+            .get(position)
+            .fold(eventCards)(card =>
+              eventCards
+                .updated(position, card.copy(steps = card.steps :+ step))
+            )
     )
     step.kind match
       case Kind.Reload(_, outcome) =>
@@ -214,12 +200,14 @@ final case class RefreshStepper[A](
         loadNumber: Int,
         failed: Boolean
     ): Map[Int, LoadCard] =
-      cards.get(loadNumber).fold(cards)(card =>
-        cards.updated(
-          loadNumber,
-          card.copy(answeredAt = Some(step.at), failed = failed)
+      cards
+        .get(loadNumber)
+        .fold(cards)(card =>
+          cards.updated(
+            loadNumber,
+            card.copy(answeredAt = Some(step.at), failed = failed)
+          )
         )
-      )
     step.kind match
       case Kind.Reload(_, outcome) =>
         outcome match
@@ -287,38 +275,35 @@ final case class RefreshStepper[A](
   ): Pipeline[A] =
     // What the previous step left behind is removed first, so that it stays
     // on screen for one step
-    val cleaned = pipeline.automaticStep()
+    val cleaned = pipeline.automaticStep
     val position = consideredStep.position
     consideredStep.kind match
       case Kind.Received(_, _) => cleaned.moved(position, EventPlace.Received)
-      case Kind.Considered(_) => cleaned.moved(position, EventPlace.Considered)
+      case Kind.Considered(_)  => cleaned.moved(position, EventPlace.Considered)
       case Kind.NotConsidered(_) =>
         cleaned.moved(position, EventPlace.NotConsidered)
       case Kind.Reload(_, outcome) =>
         outcome match
           case Outcome.InitialLoad(_, loadNumber) =>
-            cleaned.handleInitialLoad(loadNumber)
+            cleaned.launchedFromScratch(loadNumber)
           case Outcome.Load(_, pos, loadNumber) =>
-            cleaned.handleLoad(pos, loadNumber)
+            cleaned.launched(pos, loadNumber)
           case Outcome.Batched(pos, servedBy) =>
-            cleaned.handleBatched(pos, servedBy)
-          // The one cast: safe because `concerns` only lets in this source's reloads
-          case Outcome.Answer(pos, loadNumber, value) =>
-            cleaned.handleAnswer(loadNumber, pos, value.asInstanceOf[A])
+            cleaned.batched(pos, servedBy)
+          // The one cast: safe because `concerns` only lets in this source's
+          // reloads
+          case Outcome.Answer(_, loadNumber, value) =>
+            cleaned.answered(loadNumber, value.asInstanceOf[A])
           case Outcome.AnswerAndLaunchPending(answer, load) =>
             cleaned
-              .handleAnswer(
-                answer.loadNumber,
-                answer.position,
-                answer.value.asInstanceOf[A]
-              )
-              .handleLoad(load.position, load.loadNumber)
+              .answered(answer.loadNumber, answer.value.asInstanceOf[A])
+              .launched(load.position, load.loadNumber)
           case Outcome.Error(loadNumber) =>
-            cleaned.handleError(loadNumber)
+            cleaned.failed(loadNumber)
           case Outcome.ErrorAndLaunchPending(error, load) =>
             cleaned
-              .handleError(error.loadNumber)
-              .handleLoad(load.position, load.loadNumber)
+              .failed(error.loadNumber)
+              .launched(load.position, load.loadNumber)
       case _ => cleaned
 
 object RefreshStepper:
@@ -329,16 +314,17 @@ object RefreshStepper:
     case Considered
     case NotConsidered
 
-  // Where a load is: pending, in flight, answered, displayed, failed, or canceled
+  // Where a load is: pending, in flight, answered, displayed, failed, or
+  // dropped (its answer ignored for a newer load: the request still runs)
   enum LoadPlace[+A]:
     case Pending
     case InFlight
     // `value` is what it loaded
-    case Answered(position: Long, value: A)
-    // The answer is shown on the  screen, an automatic step will remove it
+    case Answered(value: A)
+    // The answer is shown on the screen, an automatic step will remove it
     case Displayed
     case Failed
-    case Cancelled
+    case Dropped
 
   // A load and the events it serves
   final case class Load[+A](place: LoadPlace[A], events: Set[Long])
@@ -351,7 +337,7 @@ object RefreshStepper:
     * @param loads
     *   A map of the loads, with their number, events and place
     */
-  final case class Pipeline[A](
+  final case class Pipeline[+A](
       events: Map[Long, EventPlace],
       loads: Map[Int, Load[A]]
   ):
@@ -362,7 +348,7 @@ object RefreshStepper:
 
     // Load `loadNumber` is launched: it takes the event at `position`, and
     // keeps the events batched for it
-    def handleLoad(position: Long, loadNumber: Int): Pipeline[A] =
+    def launched(position: Long, loadNumber: Int): Pipeline[A] =
       val load = loadOrPending(loadNumber)
       Pipeline(
         events - position,
@@ -373,76 +359,77 @@ object RefreshStepper:
       )
 
     // The event at `position` waits for load `servedBy`, not launched yet
-    def handleBatched(position: Long, servedBy: Int): Pipeline[A] =
+    def batched(position: Long, servedBy: Int): Pipeline[A] =
       val load = loadOrPending(servedBy)
       Pipeline(
         events - position,
         loads.updated(servedBy, load.copy(events = load.events + position))
       )
 
-    def handleAnswer(loadNumber: Int, position: Long, value: A): Pipeline[A] =
-      withLoadPlace(loadNumber, LoadPlace.Answered(position, value))
+    def answered[B >: A](loadNumber: Int, value: B): Pipeline[B] =
+      withLoadPlace(loadNumber, LoadPlace.Answered(value))
 
-    def handleError(loadNumber: Int): Pipeline[A] =
+    def failed(loadNumber: Int): Pipeline[A] =
       withLoadPlace(loadNumber, LoadPlace.Failed)
 
-    // A value loaded from scratch (first open, key change, reconnect): the loads
-    // in flight are cancelled, the events not yet in a load are dropped, and
-    // load `loadNumber` keeps the events batched for it
-    def handleInitialLoad(loadNumber: Int): Pipeline[A] =
-      val cancelled = loads.map((number, load) =>
+    // A value loaded from scratch (first open, key change, reconnect): the
+    // loads in flight are dropped, the events not yet in a load too, and load
+    // `loadNumber` keeps the events batched for it
+    def launchedFromScratch(loadNumber: Int): Pipeline[A] =
+      val dropped = loads.map((number, load) =>
         if load.place == LoadPlace.InFlight then
-          (number, load.copy(place = LoadPlace.Cancelled))
+          (number, load.copy(place = LoadPlace.Dropped))
         else (number, load)
       )
       val batched = loadOrPending(loadNumber).events
       Pipeline(
         Map.empty,
-        cancelled.updated(loadNumber, Load(LoadPlace.InFlight, batched))
+        dropped.updated(loadNumber, Load(LoadPlace.InFlight, batched))
       )
 
     // Whether a load is answered and waits to be displayed
     def hasAnswered: Boolean =
       loads.values.exists(
         _.place match
-          case LoadPlace.Answered(_, _) => true
-          case _                        => false
+          case LoadPlace.Answered(_) => true
+          case _                     => false
       )
 
     // Whether a step left something behind for `automaticStep` to remove
     def hasAutomaticStepPending: Boolean =
       loads.values.exists(
         _.place match
-          case LoadPlace.Pending | LoadPlace.InFlight |
-              LoadPlace.Answered(_, _) =>
+          case LoadPlace.Pending | LoadPlace.InFlight | LoadPlace.Answered(_) =>
             false
-          case LoadPlace.Displayed | LoadPlace.Failed | LoadPlace.Cancelled =>
+          case LoadPlace.Displayed | LoadPlace.Failed | LoadPlace.Dropped =>
             true
-      ) || events.exists((_, place) => place == EventPlace.NotConsidered)
+      ) || events.exists((_, place) => place != EventPlace.Received)
 
     // The loads answered are put on screen
-    def displayAnswered(): Pipeline[A] =
+    def answeredDisplayed: Pipeline[A] =
       copy(loads =
         loads.map((number, load) =>
           load.place match
-            case LoadPlace.Answered(_, _) =>
+            case LoadPlace.Answered(_) =>
               (number, load.copy(place = LoadPlace.Displayed))
             case _ => (number, load)
         )
       )
 
-    // What a step left behind is removed on the next one: an event not
-    // considered, and a load done, with its events. A load answered stays until
-    // it is displayed
-    def automaticStep(): Pipeline[A] =
+    // What a step left behind is removed on the next one: an event considered
+    // or not (a considered one is put back in its load by the load's own step,
+    // so this only clears one the model gave no load, before the stream's
+    // first opening), and a load done, with its events. A load answered stays
+    // until it is displayed
+    def automaticStep: Pipeline[A] =
       Pipeline(
-        events.filter((_, place) => place != EventPlace.NotConsidered),
+        events.filter((_, place) => place == EventPlace.Received),
         loads.filter((_, load) =>
           load.place match
             case LoadPlace.Pending | LoadPlace.InFlight |
-                LoadPlace.Answered(_, _) =>
+                LoadPlace.Answered(_) =>
               true
-            case LoadPlace.Displayed | LoadPlace.Failed | LoadPlace.Cancelled =>
+            case LoadPlace.Displayed | LoadPlace.Failed | LoadPlace.Dropped =>
               false
         )
       )
@@ -452,10 +439,10 @@ object RefreshStepper:
     private def loadOrPending(loadNumber: Int): Load[A] =
       loads.getOrElse(loadNumber, Load(LoadPlace.Pending, Set.empty))
 
-    private def withLoadPlace(
+    private def withLoadPlace[B >: A](
         loadNumber: Int,
-        place: LoadPlace[A]
-    ): Pipeline[A] =
+        place: LoadPlace[B]
+    ): Pipeline[B] =
       copy(loads =
         loads.updated(loadNumber, loadOrPending(loadNumber).copy(place = place))
       )

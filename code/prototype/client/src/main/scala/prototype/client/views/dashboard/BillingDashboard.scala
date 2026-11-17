@@ -33,8 +33,8 @@ object BillingDashboard:
     * @param computationLevelS
     *   where the figures are computed
     * @param stepperObserver
-    *   receives the stepper of the level shown, for the step-by-step panel,
-    *   and None once the dashboard leaves the page
+    *   receives the stepper of the level shown, for the step-by-step panel, and
+    *   None once the dashboard leaves the page
     * @return
     *   the real time billing dashboard
     */

@@ -49,11 +49,11 @@ object LiveDirectoryDashboard:
     */
   def replayed(
       tracer: Tracer,
-      processedEvent: Signal[Long],
+      processedEventS: Signal[Long],
       sources: DashboardSources
   ): LiveData[DirectoryFigures] =
     sources
-      .withCurrentValueOf(processedEvent)
+      .withCurrentValueOf(processedEventS)
       .map { case ((therapists, appointments), position) =>
         tracer.timed[DirectoryFigures](
           figures => TraceStep.Kind.FiguresComputed(name, figures),

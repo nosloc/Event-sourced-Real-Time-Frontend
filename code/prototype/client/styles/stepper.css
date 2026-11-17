@@ -122,7 +122,8 @@
   font-size: 13px;
 }
 
-/* Jump to latest, Play, the speed, Next step */
+/* Jump to latest, Play, the speed, Show ignored, Next step, next figures
+   change */
 .stepper__controls {
   display: flex;
   flex-wrap: wrap;
@@ -336,15 +337,43 @@
   border-radius: 12px;
 }
 
-.stepper__node--received { left: 72px; top: 120px; }
-.stepper__node--considered { left: 244px; top: 120px; }
-.stepper__node--not-considered { left: 244px; top: 222px; min-height: 68px; }
-.stepper__node--waiting { left: 416px; top: 120px; }
-.stepper__node--server { left: 588px; top: 10px; }
-.stepper__node--failed { left: 760px; top: 10px; }
-.stepper__node--cancelled { left: 932px; top: 10px; }
-.stepper__node--answered { left: 760px; top: 120px; }
-.stepper__node--on-screen { left: 932px; top: 120px; }
+.stepper__node--received {
+  left: 72px;
+  top: 120px;
+}
+.stepper__node--considered {
+  left: 244px;
+  top: 120px;
+}
+.stepper__node--not-considered {
+  left: 244px;
+  top: 222px;
+  min-height: 68px;
+}
+.stepper__node--waiting {
+  left: 416px;
+  top: 120px;
+}
+.stepper__node--server {
+  left: 588px;
+  top: 10px;
+}
+.stepper__node--failed {
+  left: 760px;
+  top: 10px;
+}
+.stepper__node--dropped {
+  left: 932px;
+  top: 10px;
+}
+.stepper__node--answered {
+  left: 760px;
+  top: 120px;
+}
+.stepper__node--on-screen {
+  left: 932px;
+  top: 120px;
+}
 
 /* The browser's graph: the browser's lane with the event going from node
    to node, and the server's above it, where a snapshot loads. Same
@@ -358,21 +387,50 @@
   height: 326px;
 }
 
-.stepper__graph--browser .stepper__node--received { left: 72px; top: 120px; }
-.stepper__graph--browser .stepper__node--ignored { left: 72px; top: 250px; min-height: 68px; }
-.stepper__graph--browser .stepper__node--decoded { left: 244px; top: 120px; }
-.stepper__graph--browser .stepper__node--folded { left: 416px; top: 120px; }
-.stepper__graph--browser .stepper__node--kept-aside { left: 416px; top: 250px; min-height: 68px; }
-.stepper__graph--browser .stepper__node--computed { left: 588px; top: 120px; }
-.stepper__graph--browser .stepper__node--on-screen { left: 760px; top: 120px; }
-.stepper__graph--browser .stepper__node--server { left: 416px; top: 10px; }
-.stepper__graph--browser .stepper__node--failed { left: 588px; top: 10px; }
+.stepper__graph--browser .stepper__node--received {
+  left: 72px;
+  top: 120px;
+}
+.stepper__graph--browser .stepper__node--ignored {
+  left: 72px;
+  top: 250px;
+  min-height: 68px;
+}
+.stepper__graph--browser .stepper__node--decoded {
+  left: 244px;
+  top: 120px;
+}
+.stepper__graph--browser .stepper__node--folded {
+  left: 416px;
+  top: 120px;
+}
+.stepper__graph--browser .stepper__node--kept-aside {
+  left: 416px;
+  top: 250px;
+  min-height: 68px;
+}
+.stepper__graph--browser .stepper__node--computed {
+  left: 588px;
+  top: 120px;
+}
+.stepper__graph--browser .stepper__node--on-screen {
+  left: 760px;
+  top: 120px;
+}
+.stepper__graph--browser .stepper__node--server {
+  left: 416px;
+  top: 10px;
+}
+.stepper__graph--browser .stepper__node--failed {
+  left: 588px;
+  top: 10px;
+}
 
 /* What leaves on the next step */
 .stepper__node--ignored,
 .stepper__node--kept-aside,
 .stepper__node--not-considered,
-.stepper__node--cancelled {
+.stepper__node--dropped {
   border: 1.5px dashed var(--line-input);
 }
 
@@ -455,14 +513,30 @@
 }
 
 /* One colour per event, from its position */
-.stepper__dot--0 { background: #d9480f; }
-.stepper__dot--1 { background: #7048e8; }
-.stepper__dot--2 { background: #2f9e44; }
-.stepper__dot--3 { background: #c2255c; }
-.stepper__dot--4 { background: #a16207; }
-.stepper__dot--5 { background: #862e9c; }
-.stepper__dot--6 { background: #5c940d; }
-.stepper__dot--7 { background: #e64980; }
+.stepper__dot--0 {
+  background: var(--dot-0);
+}
+.stepper__dot--1 {
+  background: var(--dot-1);
+}
+.stepper__dot--2 {
+  background: var(--dot-2);
+}
+.stepper__dot--3 {
+  background: var(--dot-3);
+}
+.stepper__dot--4 {
+  background: var(--dot-4);
+}
+.stepper__dot--5 {
+  background: var(--dot-5);
+}
+.stepper__dot--6 {
+  background: var(--dot-6);
+}
+.stepper__dot--7 {
+  background: var(--dot-7);
+}
 
 /* A load: a capsule holding its events */
 .stepper__load {
@@ -511,7 +585,7 @@
   background: var(--error-soft);
 }
 
-.stepper__load--cancelled {
+.stepper__load--dropped {
   border-style: dashed;
   border-color: var(--line-input);
   color: var(--muted);
@@ -582,7 +656,7 @@
 }
 
 .stepper__card-subtitle {
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
@@ -594,7 +668,7 @@
 .stepper__card-section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .stepper__card-fact,
@@ -621,11 +695,6 @@
   color: var(--muted);
 }
 
-.stepper__card-none {
-  color: var(--muted);
-  font-size: 12px;
-}
-
 .stepper__card-payload summary {
   color: var(--muted);
   font-size: 12px;
@@ -635,7 +704,7 @@
 
 .stepper__card-payload pre {
   max-height: 200px;
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
   padding: var(--space-2);
   overflow: auto;
   border-radius: var(--radius-control);

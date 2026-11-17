@@ -46,7 +46,7 @@ object DashboardView:
     div(
       cls := "dashboards",
       feed.bind(),
-      feed.tracer.logToConsole,
+      // feed.tracer.logToConsole,
       h1("Dashboards"),
       div(
         cls := "dashboards__layout",
@@ -250,7 +250,7 @@ object DashboardView:
       stepByStepVar: Var[Boolean]
   ): HtmlElement =
     button(
-      tpe := "button",
+      typ := "button",
       cls := "sheet__handle",
       aria.expanded <-- stepByStepVar.signal,
       "Step by step",

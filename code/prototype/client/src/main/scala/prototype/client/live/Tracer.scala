@@ -3,6 +3,12 @@ package prototype.client.live
 import com.raquo.laminar.api.L.*
 import org.scalajs.dom
 
+/** Records the steps an event goes through in the browser, from the stream to
+  * the screen, so that the step-by-step panel can walk through them. One tracer
+  * per `LiveFeed`: every live data of the page reaches it through the feed. It
+  * keeps no state: each step says which event it belongs to. It records only
+  * while `enabled` is on, the step-by-step mode.
+  */
 final class Tracer:
 
   // Whether the tracer is on or off
@@ -142,16 +148,16 @@ object TraceStep:
   def title(step: TraceStep): String =
     import RefreshModel.Outcome
     step.kind match
-      case Kind.Received(eventType, _) => s"Received $eventType"
-      case Kind.Ended           => "Ended"
-      case Kind.Decoded(source)          => s"Decoded by $source"
+      case Kind.Received(eventType, _)  => s"Received $eventType"
+      case Kind.Ended                   => "Ended"
+      case Kind.Decoded(source)         => s"Decoded by $source"
       case Kind.Folded(source, applied) =>
         if applied then s"Folded into $source" else s"Not folded into $source"
       case Kind.SnapshotRequested(source, _) =>
         s"Snapshot of $source requested"
       case Kind.SnapshotLoaded(source, position, _) =>
         s"Snapshot of $source received, up to event $position"
-      case Kind.SnapshotFailed(source) => s"Snapshot of $source failed"
+      case Kind.SnapshotFailed(source)        => s"Snapshot of $source failed"
       case Kind.FiguresComputed(dashboard, _) =>
         s"Figures of $dashboard computed"
       case Kind.Considered(source)      => s"Considered for $source"
@@ -174,4 +180,3 @@ object TraceStep:
           case Outcome.ErrorAndLaunchPending(error, load) =>
             s"Load ${error.loadNumber} of $source failed, " +
               s"launched pending load ${load.loadNumber}"
-

@@ -27,6 +27,9 @@ import com.raquo.laminar.api.L.*
   *
   * @param feed
   *   the real time feed of events
+  * @param name
+  *   which live data this is in the feed's trace: the loads are numbered per
+  *   instance, so a number alone does not say whose load it is
   * @param key
   *   the signal of the key
   * @param load
@@ -36,17 +39,14 @@ import com.raquo.laminar.api.L.*
   * @param invalidatePrevious
   *   tell if a new key invalidate the previous shown value (delete it from the
   *   screen), or keep it until the `load` completes
-  * @param name
-  *   which live data this is in the feed's trace: the loads are numbered per
-  *   instance, so a number alone does not say whose load it is
   */
 final class RefreshedLiveData[K, A](
     feed: LiveFeed,
+    name: String,
     key: Signal[K],
     load: K => IO[(A, Long)],
     triggerRefresh: EventMessage => Boolean,
-    invalidatePrevious: (K, K) => Boolean = (_: K, _: K) => true,
-    name: String = "unnamed"
+    invalidatePrevious: (K, K) => Boolean = (_: K, _: K) => true
 ) extends LiveData[A]:
 
   // When the stream opened, input it with the current value of the key

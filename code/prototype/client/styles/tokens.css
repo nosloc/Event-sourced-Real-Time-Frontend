@@ -22,6 +22,16 @@
   --now-soft: oklch(95.5% 0.05 88);
   /* "now" as a border or text on --now-soft (the step-by-step panel) */
   --now-strong: oklch(45% 0.1 70);
+  /* One colour per event in the step-by-step graph (its position modulo 8):
+     distinct from each other, none blue, none the teal of the reloads */
+  --dot-0: oklch(60.0% 0.190 38);
+  --dot-1: oklch(54.2% 0.227 288);
+  --dot-2: oklch(61.7% 0.162 146);
+  --dot-3: oklch(53.9% 0.193 6);
+  --dot-4: oklch(55.4% 0.121 66);
+  --dot-5: oklch(47.8% 0.181 319);
+  --dot-6: oklch(60.4% 0.162 132);
+  --dot-7: oklch(64.0% 0.197 3);
 
   --error: oklch(42% 0.17 25);
   --error-soft: oklch(96% 0.025 25);

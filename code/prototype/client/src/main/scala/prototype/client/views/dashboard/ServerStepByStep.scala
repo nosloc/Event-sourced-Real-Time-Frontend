@@ -33,12 +33,12 @@ object ServerStepByStep:
   // the graph (the event stream, the browser asking for a fresh reload)
   private enum Move:
     case FromStream, ToConsidered, ToIgnored, ToWaiting, Direct, FromBrowser,
-      ToServer, ToAnswered, ToFailed, ToCancelled, ToScreen
+      ToServer, ToAnswered, ToFailed, ToDropped, ToScreen
 
   // The nodes of the graph, one per place an event or a load can be in
   private enum Node:
     case Received, Considered, NotConsidered, Waiting, OnServer, Failed,
-      Cancelled, Answered, OnScreen
+      Dropped, Answered, OnScreen
 
   // The step just shown, as one line
   private def renderCurrentStep(stepper: RefreshStepper[?]): HtmlElement =
@@ -63,8 +63,8 @@ object ServerStepByStep:
           )
     )
 
-  // One node per place, laid out as in the mockup: the server's lane on top,
-  // the browser's below. Not considered, Failed and Cancelled only show when
+  // One node per place, laid out in two lanes: the server's on top, the
+  // browser's below. Not considered, Failed and Dropped only show when
   // something is in them
   private def renderGraph(stepper: RefreshStepper[?]): HtmlElement =
     val pipeline = stepper.pipeline
@@ -76,7 +76,7 @@ object ServerStepByStep:
 
     def event(position: Long): HtmlElement =
       StepCard.clickable(
-        s"step-event-$position",
+        StepCard.eventAnchor(position),
         s"Details of event $position",
         () => openedVar.set(Some(Opened.Event(position)))
       )(StepGraph.event(position))
@@ -98,7 +98,7 @@ object ServerStepByStep:
 
     val notConsidered = eventsAt(EventPlace.NotConsidered)
     val failed = loadsWhere(_ == LoadPlace.Failed)
-    val cancelled = loadsWhere(_ == LoadPlace.Cancelled)
+    val dropped = loadsWhere(_ == LoadPlace.Dropped)
 
     def node(which: Node, title: String, body: Seq[HtmlElement]) =
       StepGraph.node(nodeClass(which), title, now.contains(which), body)
@@ -107,19 +107,12 @@ object ServerStepByStep:
       cls := "stepper__graph-scroll",
       div(
         cls := "stepper__graph",
-        span(
-          cls := "stepper__label stepper__lane stepper__lane--server",
-          "Server"
-        ),
-        span(
-          cls := "stepper__label stepper__lane stepper__lane--browser",
-          "Browser"
-        ),
+        StepGraph.lanes,
         renderArrows(
           lit,
           notConsidered.nonEmpty,
           failed.nonEmpty,
-          cancelled.nonEmpty
+          dropped.nonEmpty
         ),
         node(
           Node.Received,
@@ -159,19 +152,21 @@ object ServerStepByStep:
             failed.map((number, load) => clickableLoad(number, load))
           )
         ),
-        Option.when(cancelled.nonEmpty)(
+        Option.when(dropped.nonEmpty)(
           node(
-            Node.Cancelled,
-            "Reload cancelled",
-            cancelled.map((number, load) => clickableLoad(number, load))
+            Node.Dropped,
+            // Not a real cancellation: the request still runs on the
+            // server, the browser only ignores its answer
+            "Answer dropped",
+            dropped.map((number, load) => clickableLoad(number, load))
           )
         ),
         node(
           Node.Answered,
           "Figures received",
           loadsWhere {
-            case LoadPlace.Answered(_, _) => true
-            case _                        => false
+            case LoadPlace.Answered(_) => true
+            case _                     => false
           }.map((number, load) => clickableLoad(number, load))
         ),
         node(
@@ -195,25 +190,14 @@ object ServerStepByStep:
 
   private def anchorOf(opened: Opened): String =
     opened match
-      case Opened.Event(position) => s"step-event-$position"
+      case Opened.Event(position) => StepCard.eventAnchor(position)
       case Opened.Load(number)    => s"step-load-$number"
 
   // The card of what was clicked, from what the stepper kept about it
   private def card(stepper: RefreshStepper[?], opened: Opened): HtmlElement =
     opened match
       case Opened.Event(position) =>
-        stepper.eventCards.get(position) match
-          case None =>
-            StepCard.frame(
-              s"Event $position",
-              StepCard.facts("Arrived" -> "before the panel opened")
-            )
-          case Some(event) =>
-            StepCard.frame(
-              s"Event $position · ${event.eventType}",
-              StepCard.steps(event.steps),
-              StepCard.payload(event.payload)
-            )
+        StepCard.event(position, stepper.eventCards.get(position))
       case Opened.Load(number) =>
         val events = stepper.pipeline.loads
           .get(number)
@@ -221,13 +205,26 @@ object ServerStepByStep:
             if load.events.isEmpty then "none"
             else load.events.toList.sorted.mkString(", ")
           )
+        val pending = stepper.pipeline.loads
+          .get(number)
+          .exists(_.place == LoadPlace.Pending)
         stepper.loadCards.get(number) match
-          case None =>
+          // Not launched yet: it waits for the reload in flight
+          case None if pending =>
             StepCard.frame(
               s"Reload $number",
               StepCard.facts(
                 "State" -> "waiting: it leaves once the reload in flight answers",
                 "Events it will serve" -> events
+              )
+            )
+          // Launched before the panel opened: nothing recorded about it
+          case None =>
+            StepCard.frame(
+              s"Reload $number",
+              StepCard.facts(
+                "State" -> "launched before the panel opened",
+                "Events it serves" -> events
               )
             )
           case Some(load) =>
@@ -237,7 +234,11 @@ object ServerStepByStep:
                 "Request" -> load.request,
                 "Events it serves" -> events,
                 (if load.failed then "Failed after" else "Round trip") ->
-                  StepCard.between(load.launchedAt, load.answeredAt, "in flight")
+                  StepCard.between(
+                    load.launchedAt,
+                    load.answeredAt,
+                    "in flight"
+                  )
               )
             )
 
@@ -250,7 +251,7 @@ object ServerStepByStep:
       lit: Set[Move],
       notConsidered: Boolean,
       failed: Boolean,
-      cancelled: Boolean
+      dropped: Boolean
   ): SvgElement =
     val usual = List(
       Some(Move.ToConsidered),
@@ -259,7 +260,7 @@ object ServerStepByStep:
       Some(Move.ToServer),
       Some(Move.ToAnswered),
       Option.when(failed)(Move.ToFailed),
-      Option.when(cancelled)(Move.ToCancelled),
+      Option.when(dropped)(Move.ToDropped),
       Some(Move.ToScreen)
     ).flatten
     StepGraph.arrows(
@@ -284,7 +285,7 @@ object ServerStepByStep:
       case Move.ToServer     => "M566 150 C 578 150 576 70 586 70"
       case Move.ToAnswered   => "M738 70 C 750 70 748 150 758 150"
       case Move.ToFailed     => "M738 30 L758 30"
-      case Move.ToCancelled  => "M663 10 L663 3 L1007 3 L1007 8"
+      case Move.ToDropped    => "M663 10 L663 3 L1007 3 L1007 8"
       case Move.ToScreen     => "M910 162 L930 162"
 
   // Where an occasional arrow comes from, written at its start
@@ -297,12 +298,12 @@ object ServerStepByStep:
   // A load: a capsule holding the dots of the events it serves
   private def renderLoad(number: Int, load: Load[?]): HtmlElement =
     val modifier = load.place match
-      case LoadPlace.Pending        => "pending"
-      case LoadPlace.InFlight       => "in-flight"
-      case LoadPlace.Answered(_, _) => "answered"
-      case LoadPlace.Displayed      => "displayed"
-      case LoadPlace.Failed         => "failed"
-      case LoadPlace.Cancelled      => "cancelled"
+      case LoadPlace.Pending     => "pending"
+      case LoadPlace.InFlight    => "in-flight"
+      case LoadPlace.Answered(_) => "answered"
+      case LoadPlace.Displayed   => "displayed"
+      case LoadPlace.Failed      => "failed"
+      case LoadPlace.Dropped     => "dropped"
     StepGraph.capsule(
       modifier,
       s"Reload $number",
@@ -328,8 +329,8 @@ object ServerStepByStep:
             outcome match
               case Outcome.InitialLoad(_, _) =>
                 (
-                  Set(Node.OnServer, Node.Cancelled),
-                  Set(Move.FromBrowser, Move.ToCancelled)
+                  Set(Node.OnServer, Node.Dropped),
+                  Set(Move.FromBrowser, Move.ToDropped)
                 )
               case Outcome.Load(_, _, _) =>
                 (Set(Node.OnServer), Set(Move.Direct))
@@ -359,6 +360,6 @@ object ServerStepByStep:
       case Node.Waiting       => "waiting"
       case Node.OnServer      => "server"
       case Node.Failed        => "failed"
-      case Node.Cancelled     => "cancelled"
+      case Node.Dropped       => "dropped"
       case Node.Answered      => "answered"
       case Node.OnScreen      => "on-screen"

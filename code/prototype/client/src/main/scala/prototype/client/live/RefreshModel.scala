@@ -11,18 +11,32 @@ object RefreshModel:
     case KeyChanged(key: K)
 
   enum Phase:
+    // Nothing is happening
     case Idle
+    // Waiting for an answer, `pending` is the highest position seen while the load is happening
     case InFlight(pending: Option[Position])
 
+  /** What a step of the model decided: a load to launch, an event kept for the
+    * next load, or the answer of a load. `RefreshedLiveData` runs the loads,
+    * and records every outcome in the trace. Loads are numbered per live data.
+    *
+    * K is the type of the key, A is the type of the value.
+    */
   enum Outcome[+K, +A]:
+    // A load from scratch for `key` (stream opened, key changed): the loads
+    // still in flight are dropped
     case InitialLoad(key: K, loadNumber: Int)
+    // A load launched at once for the event at `position`
     case Load(key: K, position: Position, loadNumber: Int)
     // `servedBy` is the load that will cover the event
     case Batched(position: Position, servedBy: Int)
     // `value` is what is on screen after the answer
     case Answer(position: Position, loadNumber: Int, value: A)
+    // An answer, and the load owed for the events batched meanwhile
     case AnswerAndLaunchPending(answer: Answer[K, A], load: Load[K, A])
+    // The load failed
     case Error(loadNumber: Int)
+    // A failure, and the load owed for the events batched meanwhile
     case ErrorAndLaunchPending(error: Error[K, A], load: Load[K, A])
 
   /** The refresh model

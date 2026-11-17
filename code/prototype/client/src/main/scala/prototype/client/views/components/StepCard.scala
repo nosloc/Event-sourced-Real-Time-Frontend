@@ -2,11 +2,13 @@ package prototype.client.views.components
 
 import scala.scalajs.js
 
+import prototype.client.live.StepCards.EventCard
 import prototype.client.live.TraceStep
 import prototype.client.views.components.PopoverPicker.{
   anchorName,
   popover,
   popoverTarget,
+  popoverTargetAction,
   positionAnchor
 }
 
@@ -29,10 +31,13 @@ object StepCard:
       content: HtmlElement
   ): HtmlElement =
     button(
-      tpe := "button",
+      typ := "button",
       cls := "stepper__clickable",
       anchorName := s"--$anchor",
       popoverTarget := CardId,
+      // Show, not toggle: with a card open, a click on another object moves
+      // the card to it instead of closing it
+      popoverTargetAction := "show",
       aria.label := label,
       onClick --> (_ => open()),
       content
@@ -52,6 +57,23 @@ object StepCard:
       positionAnchor <-- anchorS.map(_.fold("none")(anchor => s"--$anchor")),
       child.maybe <-- contentS
     )
+
+  /** The name of an event's anchor on the graph, the same on both levels. */
+  def eventAnchor(position: Long): String = s"step-event-$position"
+
+  /** An event's card, the same on both levels: its type, its steps so far and
+    * its payload, or only that it arrived before the panel opened.
+    */
+  def event(position: Long, card: Option[EventCard]): HtmlElement =
+    card match
+      case None =>
+        frame(s"Event $position", facts("Arrived" -> "before the panel opened"))
+      case Some(event) =>
+        frame(
+          s"Event $position · ${event.eventType}",
+          steps(event.steps),
+          payload(event.payload)
+        )
 
   /** A card's content: a title, then its sections. */
   def frame(title: String, sections: Modifier[HtmlElement]*): HtmlElement =
@@ -74,8 +96,8 @@ object StepCard:
       )
     )
 
-  /** The steps an object went through so far, each with its time from the
-    * first one.
+  /** The steps an object went through so far, each with its time from the first
+    * one.
     */
   def steps(steps: Vector[TraceStep]): HtmlElement =
     val start = steps.headOption.fold(0.0)(_.at)

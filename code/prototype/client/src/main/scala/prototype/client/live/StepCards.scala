@@ -13,8 +13,8 @@ object StepCards:
       steps: Vector[TraceStep]
   )
 
-  /** A server reload: what was asked, when it left, and when it was answered
-    * or failed.
+  /** A server reload: what was asked, when it left, and when it was answered or
+    * failed.
     */
   final case class LoadCard(
       request: String,

@@ -31,7 +31,9 @@ object Modal:
       // Escape first closes an open popover (a picker list), not the modal
       documentEvents(
         _.onKeyDown.filter(ev =>
-          ev.key == "Escape" && dom.document.querySelector(":popover-open") == null
+          ev.key == "Escape" && dom.document.querySelector(
+            ":popover-open"
+          ) == null
         )
       ) --> { _ =>
         onClose()

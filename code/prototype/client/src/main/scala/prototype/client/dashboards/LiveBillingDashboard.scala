@@ -45,11 +45,11 @@ object LiveBillingDashboard:
     */
   def replayed(
       tracer: Tracer,
-      processedEvent: Signal[Long],
+      processedEventS: Signal[Long],
       companyAppointments: LiveData[List[Appointment]]
   ): LiveData[BillingFigures] =
     companyAppointments
-      .withCurrentValueOf(processedEvent)
+      .withCurrentValueOf(processedEventS)
       .map((appointments, position) =>
         tracer.timed[BillingFigures](
           figures => TraceStep.Kind.FiguresComputed(name, figures),

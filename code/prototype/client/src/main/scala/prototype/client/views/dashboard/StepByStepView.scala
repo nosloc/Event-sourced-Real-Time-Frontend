@@ -42,27 +42,26 @@ final class StepByStepView[S <: Stepper[S, A], A](
     tracer.steps.map(Action.AddStep(_))
   private val pressedNextBus: EventBus[Action] = new EventBus
   private val pressedLatestBus: EventBus[Action] = new EventBus
-  private val playBus: EventStream[Action] =
+  private val playTicks: EventStream[Action] =
     speedVar.signal
       .combineWith(playingVar.signal)
-      .changes
       .flatMapSwitch((speed, play) =>
         if play then
           EventStream.periodic(speed.every).mapTo(Action.Steps(speed.steps))
         else EventStream.empty
       )
 
-  private val nextS = pressedNextBus.events.mergeWith(playBus)
+  private val nexts = pressedNextBus.events.mergeWith(playTicks)
 
-  private val stepper: Signal[S] =
+  private val stepperS: Signal[S] =
     newSteps
-      .mergeWith(nextS, pressedLatestBus.events)
+      .mergeWith(nexts, pressedLatestBus.events)
       .mergeWith(EventStream.fromValue(Action.Reset)) // Start with a reset
       .withCurrentValueOf(showIgnoredVar.signal, live.valueS)
       .scanLeft(start(None)) { case (stepper, (action, showIgnored, real)) =>
         action match
           case Action.AddStep(traceStep) => stepper.addStep(traceStep)
-          case Action.Next  => stepper.next(skipIgnored = !showIgnored)
+          case Action.Next         => stepper.next(skipIgnored = !showIgnored)
           case Action.Steps(count) =>
             steps(stepper, count, skipIgnored = !showIgnored)
           case Action.NextChange =>
@@ -91,10 +90,10 @@ final class StepByStepView[S <: Stepper[S, A], A](
 
   // The stepper as the panel draws it: a recorded step only grows its
   // history, which the current step and the graph do not show
-  private val shown: Signal[S] = stepper.distinctBy(drawn)
+  private val shownS: Signal[S] = stepperS.distinctBy(drawn)
 
   override val steppedData: LiveData[A] = new LiveData[A]:
-    val valueS: Signal[Option[A]] = stepper.map(_.displayed)
+    val valueS: Signal[Option[A]] = stepperS.map(_.displayed).distinct
     val errorS: Signal[Option[Throwable]] = Val(None)
     val loadingS: Signal[Boolean] = Val(false)
 
@@ -110,13 +109,13 @@ final class StepByStepView[S <: Stepper[S, A], A](
           span(cls := "stepper__source", source),
           span(
             cls := "stepper__left",
-            text <-- stepper
+            text <-- stepperS
               .combineWith(showIgnoredVar.signal)
               .map((s, showIgnored) => stepsLeft(s.stepsLeft(!showIgnored)))
           )
         ),
         renderControls(
-          stepper
+          stepperS
             .combineWith(showIgnoredVar.signal)
             .map((s, showIgnored) => s.hasNextStep(!showIgnored)),
           playingVar,
@@ -133,9 +132,9 @@ final class StepByStepView[S <: Stepper[S, A], A](
         aria.live <-- playingVar.signal.map(playing =>
           if playing then "off" else "polite"
         ),
-        child <-- shown.map(renderCurrentStep)
+        child <-- shownS.map(renderCurrentStep)
       ),
-      child <-- shown.map(renderGraph)
+      child <-- shownS.map(renderGraph)
     )
 
 object StepByStepView:
@@ -199,7 +198,7 @@ object StepByStepView:
 
   private def renderJumpButton(pressedLatest: Observer[Action]): HtmlElement =
     button(
-      tpe := "button",
+      typ := "button",
       cls := "btn stepper__jump",
       "Jump to latest",
       onClick.mapTo(Action.Reset) --> pressedLatest
@@ -208,7 +207,7 @@ object StepByStepView:
   // Play while paused, Pause while playing
   private def renderPlayButton(playingVar: Var[Boolean]): HtmlElement =
     button(
-      tpe := "button",
+      typ := "button",
       cls := "btn stepper__play",
       cls("stepper__play--on") <-- playingVar.signal,
       aria.label <-- playingVar.signal.map(playing =>
@@ -232,7 +231,7 @@ object StepByStepView:
       showIgnoredVar: Var[Boolean]
   ): HtmlElement =
     button(
-      tpe := "button",
+      typ := "button",
       cls := "btn stepper__toggle",
       cls("stepper__toggle--on") <-- showIgnoredVar.signal,
       aria.pressed <-- showIgnoredVar.signal.map(_.toString),
@@ -249,7 +248,7 @@ object StepByStepView:
       pressedNext: Observer[Action]
   ): HtmlElement =
     button(
-      tpe := "button",
+      typ := "button",
       cls := "btn btn--primary stepper__next",
       disabled <-- hasNextS
         .combineWith(playingS)
@@ -266,7 +265,7 @@ object StepByStepView:
       pressedNext: Observer[Action]
   ): HtmlElement =
     button(
-      tpe := "button",
+      typ := "button",
       cls := "btn stepper__play stepper__skip",
       title := "Next figures change: step until the figures on screen change",
       aria.label := "Next figures change",

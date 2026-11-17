@@ -9,6 +9,19 @@ import com.raquo.laminar.api.L.*
   */
 object StepGraph:
 
+  /** The two lanes' labels, the server's on top and the browser's below. */
+  def lanes: List[HtmlElement] =
+    List(
+      span(
+        cls := "stepper__label stepper__lane stepper__lane--server",
+        "Server"
+      ),
+      span(
+        cls := "stepper__label stepper__lane stepper__lane--browser",
+        "Browser"
+      )
+    )
+
   /** A node of the graph, placed by its `modifier` class; the node the current
     * step changed is drawn in amber, with a "now" tag.
     */
@@ -48,7 +61,7 @@ object StepGraph:
 
   /** A capsule holding the dots of `events`, and a note when there is one: a
     * reload, a snapshot, the figures. `modifier` gives its look (pending, in
-    * flight, answered, displayed, failed, cancelled).
+    * flight, answered, displayed, failed, dropped).
     */
   def capsule(
       modifier: String,

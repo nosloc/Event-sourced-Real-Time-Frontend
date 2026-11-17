@@ -4,9 +4,9 @@ import prototype.client.views.components.PopoverPicker.*
 
 import com.raquo.laminar.api.L.*
 
-/** Like `PopoverPicker`, but several values can be picked. The list is the
-  * same native `popover`, and it stays open while rows are toggled (it closes
-  * on Escape or a click outside). The closed button summarizes the choice.
+/** Like `PopoverPicker`, but several values can be picked. The list is the same
+  * native `popover`, and it stays open while rows are toggled (it closes on
+  * Escape or a click outside). The closed button summarizes the choice.
   *
   * The picker holds no state: it reads and writes `selectedVar`, a list in the
   * order the values were picked.
