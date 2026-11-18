@@ -38,7 +38,7 @@ services:
       POSTGRES_PASSWORD: prototype
       POSTGRES_DB: prototype
     ports:
-      - "5442:5432"
+      - "127.0.0.1:5442:5432"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U prototype -d prototype" ]
       interval: 5s
