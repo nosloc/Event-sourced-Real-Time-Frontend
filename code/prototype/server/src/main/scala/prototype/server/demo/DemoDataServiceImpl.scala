@@ -1,10 +1,9 @@
 package prototype.server.demo
 
-import cats.effect.{IO, Outcome, Ref}
+import cats.effect.{IO, Ref}
 import cats.effect.std.Random
 
 import prototype.api.*
-import prototype.server.DevAccount
 
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
@@ -23,32 +22,26 @@ final class DemoDataServiceImpl private (
 
   private val logger = Slf4jLogger.getLogger[IO]
 
-  // A failed or cancelled generation (or a refused one) releases the flag, so
-  // the call can be made again
+  // One generation at a time: the flag is taken for the whole run and
+  // released however it ends (success, failure or cancellation), so the call
+  // can be made again. A refused call never touches it.
   // Uncancelable between taking the flag and installing its release, so a
   // cancellation cannot leave the flag taken
   override def generateDemoData(): IO[GenerateDemoDataOutput] =
     IO.uncancelable { poll =>
       running.getAndSet(true).flatMap { alreadyRunning =>
-        if alreadyRunning then IO.raiseError(DemoDataAlreadyGenerated())
-        else
-          poll(generate).guaranteeCase {
-            case Outcome.Succeeded(_) => IO.unit
-            case _                    => running.set(false)
-          }
+        if alreadyRunning then IO.raiseError(DemoDataBeingGenerated())
+        else poll(generate).guarantee(running.set(false))
       }
     }
 
-  // "Already generated" means some therapist other than dev exists: a database
-  // where therapists were created by hand is not empty either
+  // Adds a new world beside the data already there: the existing therapists
+  // are read only so the planner draws other trigrams
   private def generate: IO[GenerateDemoDataOutput] =
     for
       existing <- therapists
         .listTherapists()
         .map(_.therapists.map(_.therapistId))
-      _ <- IO.raiseWhen(existing.exists(_ != DevAccount.therapistId))(
-        DemoDataAlreadyGenerated()
-      )
       start <- IO.monotonic
       _ <- logger.info("Demo data: building the plan")
       today <- IO.realTimeInstant.map(_.atZone(DayPlanner.zone).toLocalDate)

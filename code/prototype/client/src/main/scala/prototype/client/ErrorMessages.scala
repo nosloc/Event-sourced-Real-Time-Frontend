@@ -41,7 +41,9 @@ object ErrorMessages:
         "A therapist needs a first name and a last name."
       case InvalidPatient(fields) =>
         s"Missing: ${fields.map(fieldLabel).mkString(", ")}."
-      case InvalidInput(message) => message
+      case InvalidInput(message)    => message
+      case DemoDataBeingGenerated() =>
+        "Demo data is already being generated. Please wait."
 
       case _ =>
         // The user gets a short text; the developer gets the whole error (what

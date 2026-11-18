@@ -23,12 +23,11 @@ service DemoDataService {
 operation GenerateDemoData {
     output: GenerateDemoDataOutput
     errors: [
-        DemoDataAlreadyGenerated
+        DemoDataBeingGenerated
     ]
 }
 
 // Structures
-
 // What was written (refused writes are not counted, see skippedWrites)
 structure GenerateDemoDataOutput {
     @required
@@ -84,8 +83,7 @@ structure PrestationStatusCount {
 }
 
 // Errors
-
-// Some therapist other than dev exists, or a generation is running
+// A generation is already running
 @error("client")
 @httpError(409)
-structure DemoDataAlreadyGenerated {}
+structure DemoDataBeingGenerated {}

@@ -1,6 +1,5 @@
 package prototype.client.views.admin
 
-import prototype.api.DemoDataAlreadyGenerated
 import prototype.client.{Api, ErrorMessages}
 import prototype.client.Api.ApiCall
 import prototype.client.companies.LiveCompanies
@@ -25,12 +24,11 @@ object AdminView:
     val errorVar: Var[Option[String]] = Var(None)
     val outcomeVar: Var[Option[Outcome]] = Var(None)
     // Generating, or showing the results
-    val busyS: Signal[Boolean] = generatingVar.signal
-      .combineWith(outcomeVar.signal)
-      .map((generating, outcome) => generating || outcome.isDefined)
-
-  // The account the server creates at boot (DevAccount)
-  private val DevTherapistId = "dev"
+    val busyS: Signal[Boolean] =
+      generatingVar.signal.combineWith(outcomeVar.signal).map {
+        (generating, outcome) =>
+          generating || outcome.isDefined
+      }
 
   def apply(): HtmlElement =
 
@@ -49,20 +47,6 @@ object AdminView:
 
     val demoData = DemoData()
 
-    // Same rule as the server: only the dev account exists. Hidden until the
-    // therapists have loaded, so it never flashes on a page that has data
-    val onlyDevS: Signal[Boolean] = therapists.valueS.map(
-      _.exists(_.forall(_.therapistId.value == DevTherapistId))
-    )
-    // Kept on screen (disabled) while it runs and while the results are shown,
-    // even once the reloaded lists hold the new data. Distinct: a signal emits
-    // again on an equal value, which would rebuild the button and drop the
-    // request that lives on it
-    val showButtonS: Signal[Boolean] = onlyDevS
-      .combineWith(demoData.busyS)
-      .map(_ || _)
-      .distinct
-
     div(
       feed.bind(),
 
@@ -72,7 +56,7 @@ object AdminView:
       patients.keepLoaded,
 
       cls := "admin",
-      renderHead(demoData, showButtonS),
+      renderHead(demoData),
       child.maybe <-- demoData.errorVar.signal.map(
         _.map(msg => div(cls := "banner banner--error", msg))
       ),
@@ -106,19 +90,16 @@ object AdminView:
   end apply
 
   private def renderHead(
-      demoData: DemoData,
-      showButtonS: Signal[Boolean]
+      demoData: DemoData
   ): HtmlElement =
     div(
       cls := "admin__head",
       h1("Administration"),
-      child.maybe <-- showButtonS.map(
-        Option.when(_)(renderGenerateButton(demoData))
-      )
+      renderGenerateButton(demoData)
     )
 
-  // The button stays on screen until the run is over, so the request can live
-  // on it
+  // Always on screen and never rebuilt: the request lives on the button, so a
+  // rebuilt button would drop it
   private def renderGenerateButton(
       demoData: DemoData
   ): HtmlElement =
@@ -140,9 +121,6 @@ object AdminView:
         case Api.Success(output) =>
           demoData.generatingVar.set(false)
           demoData.outcomeVar.set(Some(Outcome.Generated(output)))
-        case Api.Error(DemoDataAlreadyGenerated()) =>
-          demoData.generatingVar.set(false)
-          demoData.outcomeVar.set(Some(Outcome.AlreadyGenerated))
         case Api.Error(error) =>
           demoData.generatingVar.set(false)
           demoData.errorVar.set(Some(ErrorMessages.errorToMessage(error)))

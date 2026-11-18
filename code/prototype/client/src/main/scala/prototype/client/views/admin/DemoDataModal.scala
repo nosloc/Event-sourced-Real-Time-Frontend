@@ -6,29 +6,22 @@ import prototype.client.views.components.Modal
 import com.raquo.laminar.api.L.*
 
 /** The result of "Generate demo data", shown in a modal once the server has
-  * answered: what was created, or that the data already existed.
+  * answered: what was created.
   */
 object DemoDataModal:
 
   enum Outcome:
     case Generated(output: GenerateDemoDataOutput)
-    case AlreadyGenerated
 
   def apply(outcomeVar: Var[Option[Outcome]]): Mod[HtmlElement] =
     child.maybe <-- outcomeVar.signal.map(
       _.map(outcome =>
         Modal(
-          title = outcome match
-            case Outcome.Generated(_)     => "Demo data generated"
-            case Outcome.AlreadyGenerated => "Demo data not generated",
+          title = "Demo data generated",
           onClose = () => outcomeVar.set(None)
         )(
           outcome match
             case Outcome.Generated(output) => renderOutput(output)
-            case Outcome.AlreadyGenerated  =>
-              p(
-                "Demo data already exists or is being generated, so nothing new was generated."
-              )
           ,
           div(
             cls := "form__actions",
