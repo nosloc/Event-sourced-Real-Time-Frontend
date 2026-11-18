@@ -11,6 +11,7 @@ service EventStoreService {
     operations: [
         ListEvents
         GetLatestEvents
+        GetHeadPosition
     ]
     errors: [
         Unauthorized
@@ -32,6 +33,14 @@ operation GetLatestEvents {
     output: EventsPage
 }
 
+// The position of the newest event in the store, whatever its type: what a
+// browser that receives every event should have reached once things settle
+@readonly
+@http(method: "GET", uri: "/api/events/head", code: 200)
+operation GetHeadPosition {
+    output: HeadPosition
+}
+
 // Structures
 structure ListEventsInput {
     @default(0)
@@ -49,6 +58,12 @@ structure EventsPage {
 
     @required
     total: Long
+}
+
+structure HeadPosition {
+    // 0 when the store holds no event
+    @required
+    position: Long
 }
 
 structure GetLatestEventsInput {

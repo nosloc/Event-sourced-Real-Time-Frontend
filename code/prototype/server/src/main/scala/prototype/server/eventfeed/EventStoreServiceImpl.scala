@@ -2,7 +2,7 @@ package prototype.server.eventfeed
 
 import cats.effect.IO
 
-import prototype.api.{EventStoreService, EventsPage}
+import prototype.api.{EventStoreService, EventsPage, HeadPosition}
 import prototype.shared.events.PrototypeEvent
 
 import persistent4s.{EventCodec, EventFilter, EventStore}
@@ -31,6 +31,10 @@ final class EventStoreServiceImpl(
         getEvents(count - bounded, bounded, count)
       }
   end getLatestEvents
+
+  // One query (the highest position), however many events the store holds
+  override def getHeadPosition(): IO[HeadPosition] =
+    eventStore.currentRevision(EventFilter()).map(HeadPosition(_))
 
   private def getEvents(skip: Long, take: Int, total: Long): IO[EventsPage] =
     val parsedTake = EventStoreServiceImpl.boundedTake(take)

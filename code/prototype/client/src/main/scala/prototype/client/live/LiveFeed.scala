@@ -1,6 +1,7 @@
 package prototype.client.live
 
 import prototype.api.EventMessage
+import prototype.client.Api
 import prototype.shared.StreamOpened
 
 import com.raquo.laminar.api.L.*
@@ -37,6 +38,30 @@ final class LiveFeed:
 
   // Records the steps of each event, for the step-by-step mode
   val tracer: Tracer = new Tracer
+
+  // While the stream is open, the store's head every few seconds (or the error
+  // that kept it from being read); None while the stream is closed
+  private val headChecks: EventStream[Option[Either[Throwable, Long]]] =
+    isOpenS.flatMapSwitch(open =>
+      if open then
+        EventStream
+          .periodic(StreamCheckIntervalMillis)
+          .flatMapSwitch(_ =>
+            Api.stream(Api.eventStore.getHeadPosition().map(_.position))
+          )
+          .map(Some(_))
+      else EventStream.fromValue(None)
+    )
+
+  // Where the feed is in relation to the store's head, as `StreamStatus`.
+  val streamStatusS: Signal[StreamStatus] =
+    headChecks
+      .withCurrentValueOf(lastPositionS)
+      .scanLeft(StreamCheck.initial)((check, next) =>
+        val (head, lastReceived) = next
+        StreamCheck.step(check, head, lastReceived)
+      )
+      .map(_.status)
 
   def bind(): Mod[HtmlElement] =
     onMountUnmountCallbackWithState(
@@ -95,4 +120,48 @@ object LiveFeed:
     case Closed
 
   val sseURL = "/api/events/stream"
+
+  // How often `streamStatusS` reads the store's head
+  val StreamCheckIntervalMillis = 2000
+
+  /** Whether the browser keeps up with the store, as `streamStatusS` shows it.
+    */
+  enum StreamStatus:
+    case NotChecked
+    case Closed
+    case UpToDate(head: Long)
+    case Behind(head: Long, received: Long)
+    case Ahead(head: Long, received: Long)
+    case CheckFailed(error: Throwable, failures: Int, last: StreamStatus)
+
+  /** What the checks remember between two answers. */
+  final case class StreamCheck(firstHead: Option[Long], status: StreamStatus)
+
+  object StreamCheck:
+    val initial: StreamCheck = StreamCheck(None, StreamStatus.NotChecked)
+
+    def step(
+        check: StreamCheck,
+        head: Option[Either[Throwable, Long]],
+        lastReceived: Long
+    ): StreamCheck =
+      head match
+        // the stream is closed
+        case None =>
+          check.copy(status = StreamStatus.Closed)
+        case Some(Left(error)) =>
+          val (failures, last) = check.status match
+            case StreamStatus.CheckFailed(_, failures, last) =>
+              (failures + 1, last)
+            case other => (1, other)
+          check.copy(status = StreamStatus.CheckFailed(error, failures, last))
+        case Some(Right(head)) =>
+          val firstHead = check.firstHead.getOrElse(head)
+          val received = lastReceived.max(firstHead)
+          val status =
+            if received == head then StreamStatus.UpToDate(head)
+            else if received < head then StreamStatus.Behind(head, received)
+            else StreamStatus.Ahead(head, received)
+          StreamCheck(Some(firstHead), status)
+  end StreamCheck
 end LiveFeed
