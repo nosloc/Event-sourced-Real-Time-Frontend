@@ -207,24 +207,46 @@
   background: var(--sync-colour);
 }
 
-.sync__sources {
+.sync__panel {
   position: absolute;
   top: calc(100% + var(--space-1));
   right: 0;
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
   width: max-content;
   max-width: min(480px, calc(100vw - 2 * var(--space-4)));
-  margin: 0;
   padding: var(--space-3);
-  list-style: none;
   background: var(--panel);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
   box-shadow: 0 8px 24px var(--shadow);
 }
+
+.sync__sources {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The button to the modal, at the end of the list */
+.sync__more {
+  align-self: flex-end;
+  padding: 2px var(--space-3);
+  background: var(--panel);
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sync__more:hover { background: var(--ground); }
 
 .sync__sources:empty::before {
   content: "Nothing to check";
@@ -314,4 +336,114 @@
 .switch__input:focus-visible + .switch__track {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Sync details: the modal comparing the browser with the server        */
+/* ------------------------------------------------------------------ */
+.modal__dialog--wide {
+  width: min(880px, 100%);
+}
+
+.sync-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.sync-details__source {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  column-gap: var(--space-2);
+  row-gap: var(--space-2);
+  align-items: baseline;
+}
+
+/* Its dot, coloured by the same modifiers as the list's lines */
+.sync-details__source::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.sync-details__source.sync__source--synced::before { background: var(--dot-2); }
+.sync-details__source.sync__source--pending::before { background: var(--warning); }
+.sync-details__source.sync__source--failed::before,
+.sync-details__source.sync__source--diverged::before { background: var(--error); }
+
+.sync-details__name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sync-details__check {
+  grid-column: 2;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.sync-details__source > div {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.sync-details__id {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.sync-details__id code {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.sync-details__kind {
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  background: var(--error-soft);
+  color: var(--error);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.sync-details__versions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-2);
+}
+
+.sync-details__version {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.sync-details__side {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.sync-details__value {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
