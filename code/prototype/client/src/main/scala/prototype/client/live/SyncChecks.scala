@@ -5,9 +5,9 @@ import scala.util.Try
 import com.raquo.laminar.api.L.*
 import org.scalajs.dom
 
-/** The application-wide switch of the checks against the server. The checks
-  * run only while a `SyncBadge` reads them, and a badge shows only while this
-  * is on: off, no check sends a request (for measurements, or a busy store).
+/** The application-wide switch of the checks against the server. The checks run
+  * only while a `SyncBadge` reads them, and a badge shows only while this is
+  * on: off, no check sends a request (for measurements, or a busy store).
   *
   * Off by default; the choice is kept in the browser across reloads.
   */
@@ -26,5 +26,8 @@ object SyncChecks:
 
   def set(enabled: Boolean): Unit =
     enabledVar.set(enabled)
-    Try(dom.window.localStorage.setItem(StorageKey, if enabled then "on" else "off"))
+    Try(
+      dom.window.localStorage
+        .setItem(StorageKey, if enabled then "on" else "off")
+    )
 end SyncChecks

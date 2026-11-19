@@ -8,10 +8,9 @@ import org.scalajs.dom
 /** Whether the live values of a view match the server: a dot and a word, and,
   * opened, one line per source with what its check found, then a button to a
   * modal that shows, for each id that differs, the browser's and the server's
-  * versions side by side. Reading it runs the
-  * checks (and the values, if nothing else reads them), so it shows only while
-  * the global switch (`SyncChecks`) is on: off, it is an empty element and no
-  * check runs.
+  * versions side by side. Reading it runs the checks (and the values, if
+  * nothing else reads them), so it shows only while the global switch
+  * (`SyncChecks`) is on: off, it is an empty element and no check runs.
   */
 object SyncBadge:
 

@@ -58,7 +58,7 @@ object SyncStatus:
     case Failed(error: Throwable, failures: Int)
 
     def level: Level = this match
-      case Synced                                   => Level.Synced
+      case Synced => Level.Synced
       case NotChecked | WaitingForStream(_) | Loading | Suspect(_) =>
         Level.Pending
       case Failed(_, _)   => Level.Failed
@@ -66,7 +66,7 @@ object SyncStatus:
 
     /** In words, for the badge. */
     def describe: String = this match
-      case NotChecked              => "not checked yet"
+      case NotChecked               => "not checked yet"
       case WaitingForStream(stream) =>
         stream match
           case StreamStatus.Closed           => "waiting: the stream is closed"

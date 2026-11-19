@@ -47,8 +47,8 @@ object SyncCheckModel:
     * @param head
     *   the store's head of the last tick, while the stream is up to date
     * @param syncedAt
-    *   the head, key and version of the last match: nothing to read again
-    *   while none of them moves
+    *   the head, key and version of the last match: nothing to read again while
+    *   none of them moves
     */
   final case class State[K](
       check: Check,
@@ -116,7 +116,10 @@ object SyncCheckModel:
                   case Check.Failed(_, failures) => failures + 1
                   case _                         => 1
                 (
-                  idle.copy(check = Check.Failed(error, failures), syncedAt = None),
+                  idle.copy(
+                    check = Check.Failed(error, failures),
+                    syncedAt = None
+                  ),
                   None
                 )
 
@@ -129,7 +132,7 @@ object SyncCheckModel:
 
               case (Some(head), Right(server)) =>
                 local.value match
-                  case None => (idle, None)
+                  case None        => (idle, None)
                   case Some(value) =>
                     same.diff(value, server) match
                       case None =>

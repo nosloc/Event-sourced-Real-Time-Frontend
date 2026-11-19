@@ -1,11 +1,7 @@
 package prototype.client.views
 
 import prototype.api.*
-import prototype.client.{
-  Api,
-  AppRouter,
-  Session
-}
+import prototype.client.{Api, AppRouter, Session}
 import prototype.client.Api.ApiCall
 import prototype.client.Pages.{
   AdminPage,

@@ -5,12 +5,7 @@ import java.util.UUID
 
 import prototype.api.*
 import prototype.client.Api
-import prototype.client.live.{
-  LiveData,
-  LiveFeed,
-  RefreshedLiveData,
-  TraceStep
-}
+import prototype.client.live.{LiveData, LiveFeed, RefreshedLiveData, TraceStep}
 import prototype.shared.dashboards.{
   DirectoryDashboard,
   DirectoryDashboardEvents
@@ -47,8 +42,8 @@ object LiveDirectoryDashboard:
 
   /** Computed in the browser from the company's live therapists and
     * appointments, with the shared `DirectoryDashboard`: no request when an
-    * event arrives. Its status also compares it with the server's figures,
-    * once things settle.
+    * event arrives. Its status also compares it with the server's figures, once
+    * things settle.
     */
   def replayed(
       feed: LiveFeed,

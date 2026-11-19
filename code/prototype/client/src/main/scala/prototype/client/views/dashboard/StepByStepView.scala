@@ -1,12 +1,6 @@
 package prototype.client.views.dashboard
 
-import prototype.client.live.{
-  LiveData,
-  Stepper,
-  SyncStatus,
-  TraceStep,
-  Tracer
-}
+import prototype.client.live.{LiveData, Stepper, SyncStatus, TraceStep, Tracer}
 import prototype.client.views.components.PopoverPicker
 import prototype.client.views.components.PopoverPicker.Item
 

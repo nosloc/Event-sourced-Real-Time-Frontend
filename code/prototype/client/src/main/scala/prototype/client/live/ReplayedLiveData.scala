@@ -18,8 +18,8 @@ import com.raquo.laminar.api.L.*
   * one of its signals is read.
   *
   * K is the type of the key (for example a therapist), A the type of the value,
-  * E the type of the events `decode` keeps. `name` names it in the trace and
-  * in its `syncS`; `same` compares it with the server's.
+  * E the type of the events `decode` keeps. `name` names it in the trace and in
+  * its `syncS`; `same` compares it with the server's.
   */
 final class ReplayedLiveData[K, A, E](
     feed: LiveFeed,
@@ -101,8 +101,8 @@ final class ReplayedLiveData[K, A, E](
   override val loadingS: Signal[Boolean] = stateS.map(_.loading)
   override val errorS: Signal[Option[Throwable]] = stateS.map(_.error)
 
-  /** Compared with a new read of the snapshot, by `same`: see `SyncCheck`.
-    * The source's version is the position of the last event applied.
+  /** Compared with a new read of the snapshot, by `same`: see `SyncCheck`. The
+    * source's version is the position of the last event applied.
     */
   override val syncS: Signal[SyncStatus] =
     SyncCheck(

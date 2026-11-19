@@ -40,7 +40,9 @@ object SyncCheck:
           .map((stream, local) => Input.Tick(stream, local)),
         answers.events
           .withCurrentValueOf(localS)
-          .map((answer, local) => Input.Answered(answer.key, answer.result, local))
+          .map((answer, local) =>
+            Input.Answered(answer.key, answer.result, local)
+          )
       )
 
     val stepS: Signal[(SyncCheckModel.State[K], Option[K])] =

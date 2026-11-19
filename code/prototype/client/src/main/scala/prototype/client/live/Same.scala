@@ -39,9 +39,8 @@ final case class Diff(items: List[Diff.Item]):
 object Diff:
   val ShownIds = 3
 
-  /** One id that differs, with its version on each side as text (None:
-    * missing on that side). Finding what differs between the two is left to
-    * the reader.
+  /** One id that differs, with its version on each side as text (None: missing
+    * on that side). Finding what differs between the two is left to the reader.
     */
   final case class Item(
       id: String,
@@ -51,7 +50,9 @@ object Diff:
 
   /** A value compared whole: one item with both versions. */
   def whole(local: Any, server: Any): Diff =
-    Diff(List(Item("the whole value", Some(local.toString), Some(server.toString))))
+    Diff(
+      List(Item("the whole value", Some(local.toString), Some(server.toString)))
+    )
 end Diff
 
 /** How a live value is compared with the server's: None when they match,

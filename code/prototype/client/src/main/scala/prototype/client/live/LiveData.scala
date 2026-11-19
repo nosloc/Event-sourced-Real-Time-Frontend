@@ -106,8 +106,8 @@ trait LiveData[A]:
 
   /** This live value, also compared with the server's own computation of it
     * (`load`), for a value derived in the browser that the server can compute
-    * too (a dashboard). Its status gets this check besides those of the
-    * sources it comes from.
+    * too (a dashboard). Its status gets this check besides those of the sources
+    * it comes from.
     *
     * @param name
     *   the name of the check in the status

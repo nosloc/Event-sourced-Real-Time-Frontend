@@ -5,12 +5,7 @@ import java.util.UUID
 
 import prototype.api.*
 import prototype.client.Api
-import prototype.client.live.{
-  LiveData,
-  LiveFeed,
-  RefreshedLiveData,
-  TraceStep
-}
+import prototype.client.live.{LiveData, LiveFeed, RefreshedLiveData, TraceStep}
 import prototype.shared.dashboards.{BillingDashboard, BillingDashboardEvents}
 
 import com.raquo.laminar.api.L.*
