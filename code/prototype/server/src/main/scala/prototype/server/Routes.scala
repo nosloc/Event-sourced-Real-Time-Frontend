@@ -20,6 +20,8 @@ object Routes:
       dashboardServiceImpl: DashboardService[IO],
       demoDataServiceImpl: DemoDataService[IO],
       eventStoreServiceImpl: EventStoreService[IO],
+      // Only when the server runs with faults enabled
+      faultInjectionServiceImpl: Option[FaultInjectionService[IO]],
       // Plain http4s routes, not behind the bearer token check
       eventFeedRoutes: HttpRoutes[IO],
       authServiceImpl: AuthService[IO]
@@ -67,6 +69,15 @@ object Routes:
         )
         .middleware(middleware)
         .resource
+      // No faults routes at all when fault injection is off: a 404
+      faults <- faultInjectionServiceImpl.fold(
+        Resource.pure[IO, HttpRoutes[IO]](HttpRoutes.empty[IO])
+      )(impl =>
+        SimpleRestJsonBuilder
+          .routes(impl)
+          .middleware(middleware)
+          .resource
+      )
       auth <- SimpleRestJsonBuilder
         .routes(
           authServiceImpl
@@ -74,4 +85,4 @@ object Routes:
         .middleware(middleware)
         .resource
 
-    yield eventFeedRoutes <+> companies <+> therapists <+> appointments <+> staticRoutes <+> auth <+> patients <+> dashboards <+> demoData <+> eventStore
+    yield eventFeedRoutes <+> companies <+> therapists <+> appointments <+> staticRoutes <+> auth <+> patients <+> dashboards <+> demoData <+> eventStore <+> faults

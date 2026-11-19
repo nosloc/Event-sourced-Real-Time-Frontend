@@ -6,5 +6,6 @@ import pureconfig.ConfigReader
 
 final case class AppConfig(
     postgres: PostgresConfig,
-    ember: EmberConfig
+    ember: EmberConfig,
+    faults: FaultsConfig = FaultsConfig()
 ) derives ConfigReader

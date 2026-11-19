@@ -39,6 +39,7 @@ import prototype.server.eventfeed.{
   EventFeedRoutes,
   EventStoreServiceImpl
 }
+import prototype.server.faults.{FaultInjection, FaultInjectionServiceImpl}
 import prototype.shared.Greeting
 import prototype.shared.events.PrototypeEvent
 
@@ -77,6 +78,7 @@ object App extends IOApp.Simple:
       appointments: AppointmentService[IO],
       eventStore: EventStoreService[IO],
       eventFeed: EventFeed,
+      faults: FaultInjection,
       routes: HttpRoutes[IO]
   )
 
@@ -106,6 +108,10 @@ object App extends IOApp.Simple:
         config.postgres
       )
       events <- database.domain(PrototypeEventCodec.eventCodec)
+      // Always created, with no fault. Only `/api/faults` can set one, and its
+      // routes exist only when faults are enabled (`Routes.all` below): off,
+      // every delay stays 0
+      faults <- FaultInjection.make.toResource
       // Its port is fixed: off in the tests, so they can run while a dev
       // server is up
       _ <-
@@ -190,6 +196,7 @@ object App extends IOApp.Simple:
         dashboardServiceImpl,
         demoDataServiceImpl,
         eventStoreServiceImpl,
+        Option.when(config.faults.enabled)(FaultInjectionServiceImpl(faults)),
         EventFeedRoutes(eventFeed),
         authServiceImpl
       )
@@ -200,6 +207,7 @@ object App extends IOApp.Simple:
       appointmentServiceImpl,
       eventStoreServiceImpl,
       eventFeed,
+      faults,
       routes
     )
 
