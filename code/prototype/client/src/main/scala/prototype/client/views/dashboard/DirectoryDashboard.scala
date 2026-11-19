@@ -13,7 +13,7 @@ import prototype.client.dashboards.{
   LiveDirectoryDashboard
 }
 import prototype.client.live.LiveFeed
-import prototype.client.views.components.StatBox
+import prototype.client.views.components.{StatBox, SyncBadge}
 import prototype.client.views.components.chartJS.*
 
 import com.raquo.laminar.api.L.*
@@ -34,8 +34,8 @@ object DirectoryDashboard:
       server = () => LiveDirectoryDashboard(feed, companyIdS),
       browser = () =>
         LiveDirectoryDashboard.replayed(
-          feed.tracer,
-          feed.lastPositionS,
+          feed,
+          companyIdS,
           sources
         ),
       stepperObserver
@@ -44,6 +44,7 @@ object DirectoryDashboard:
     div(
       cls := "dash",
       handStepperUp,
+      SyncBadge(dashboard),
       child.maybe <-- dashboard.errorS.map(
         _.map(error =>
           div(cls := "dash__error", ErrorMessages.errorToMessage(error))

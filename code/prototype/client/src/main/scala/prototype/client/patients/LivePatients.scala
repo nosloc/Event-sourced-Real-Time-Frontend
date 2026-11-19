@@ -2,7 +2,7 @@ package prototype.client.patients
 
 import prototype.api.Patient
 import prototype.client.Api
-import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData}
+import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData, Same}
 import prototype.shared.patient.PatientEvent
 
 object LivePatients:
@@ -19,5 +19,6 @@ object LivePatients:
         .listPatients()
         .map(response => (response.patients, response.globalPosition)),
       decode = PatientEventDecoder.decode,
-      evolve = PatientListEvolve.evolve
+      evolve = PatientListEvolve.evolve,
+      same = Same.byId(_.id)
     )

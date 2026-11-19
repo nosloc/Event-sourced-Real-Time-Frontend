@@ -8,8 +8,7 @@ import prototype.client.live.{
   LiveData,
   LiveFeed,
   RefreshedLiveData,
-  TraceStep,
-  Tracer
+  TraceStep
 }
 import prototype.shared.dashboards.{ActivityDashboard, ActivityDashboardEvents}
 
@@ -24,6 +23,9 @@ object LiveActivityDashboard:
 
   /** Its name in the trace, read by the step-by-step mode too. */
   val name: String = "activity dashboard"
+
+  // The name of the browser's figures compared with the server's
+  private val CheckName: String = s"$name, browser vs server"
 
   private case class Key(
       companyId: UUID,
@@ -64,24 +66,38 @@ object LiveActivityDashboard:
 
   /** Computed in the browser from the company's live therapists and
     * appointments and the chosen period, with the shared `ActivityDashboard`:
-    * no request when an event arrives or the period changes.
+    * no request when an event arrives or the period changes. Its status also
+    * compares it with the server's figures, once things settle.
     */
   def replayed(
-      tracer: Tracer,
-      processedEventS: Signal[Long],
+      feed: LiveFeed,
+      companyIdS: Signal[UUID],
       sources: DashboardSources,
       unitS: Signal[PeriodUnit],
       dateS: Signal[LocalDate]
   ): LiveData[(PeriodUnit, ActivityFigures)] =
     sources
       .combineWith(unitS.combineWith(dateS))
-      .withCurrentValueOf(processedEventS)
+      .withCurrentValueOf(feed.lastPositionS)
       .map { case (((therapists, appointments), (unit, date)), position) =>
-        tracer.timed[(PeriodUnit, ActivityFigures)](
+        feed.tracer.timed[(PeriodUnit, ActivityFigures)](
           all => TraceStep.Kind.FiguresComputed(name, all),
           Option.when(position >= 0)(position)
         )(
           (unit, ActivityDashboard(therapists, appointments, unit, date))
         )
       }
+      .checkedAgainst(
+        feed,
+        CheckName,
+        companyIdS.combineWith(unitS, dateS).map(Key.apply),
+        key =>
+          Api.dashboards
+            .getActivityDashboard(
+              companyId = CompanyId(key.companyId),
+              unit = key.periodUnit,
+              date = key.periodDay
+            )
+            .map(response => (key.periodUnit, response.dashboard))
+      )
 end LiveActivityDashboard

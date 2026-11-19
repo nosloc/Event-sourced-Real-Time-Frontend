@@ -39,6 +39,9 @@ import com.raquo.laminar.api.L.*
   * @param invalidatePrevious
   *   tell if a new key invalidate the previous shown value (delete it from the
   *   screen), or keep it until the `load` completes
+  * @param same
+  *   compares it with a new read, for `syncS`: a difference while no reload is
+  *   running is an event `triggerRefresh` missed
   */
 final class RefreshedLiveData[K, A](
     feed: LiveFeed,
@@ -46,7 +49,8 @@ final class RefreshedLiveData[K, A](
     key: Signal[K],
     load: K => IO[(A, Long)],
     triggerRefresh: EventMessage => Boolean,
-    invalidatePrevious: (K, K) => Boolean = (_: K, _: K) => true
+    invalidatePrevious: (K, K) => Boolean = (_: K, _: K) => true,
+    same: Same[A] = Same.equal[A]
 ) extends LiveData[A]:
 
   // When the stream opened, input it with the current value of the key
@@ -133,6 +137,25 @@ final class RefreshedLiveData[K, A](
   override val valueS: Signal[Option[A]] = stateS.map(_.value)
   override val loadingS: Signal[Boolean] = stateS.map(_.loading)
   override val errorS: Signal[Option[Throwable]] = stateS.map(_.error)
+
+  /** Compared with a new read once no reload runs: see `SyncCheck`. The
+    * source's version is the position of the value shown.
+    */
+  override val syncS: Signal[SyncStatus] =
+    SyncCheck(
+      feed,
+      name,
+      stateS.map(state =>
+        SyncCheckModel.Local(
+          state.key,
+          state.loading || state.phase != RefreshModel.Phase.Idle,
+          state.position,
+          state.value
+        )
+      ),
+      k => load(k).map((value, _) => value),
+      same
+    )
 
   // The event an outcome belongs to in the trace: the one that launched the
   // load or was batched, the highest one batched for a pending load; None

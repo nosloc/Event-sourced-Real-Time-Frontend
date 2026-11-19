@@ -45,8 +45,8 @@ object ActivityDashboard:
         ),
       browser = () =>
         LiveActivityDashboard.replayed(
-          feed.tracer,
-          feed.lastPositionS,
+          feed,
+          companyIdS,
           sources,
           selectedPeriodUnitVar.signal,
           selectedPeriodDayVar.signal
@@ -61,6 +61,7 @@ object ActivityDashboard:
     div(
       cls := "dash",
       handStepperUp,
+      SyncBadge(dashboard),
       renderPeriodSelector(
         selectedPeriodUnitVar,
         selectedPeriodDayVar,

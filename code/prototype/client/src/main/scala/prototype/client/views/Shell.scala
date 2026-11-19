@@ -15,6 +15,7 @@ import prototype.client.Pages.{
   Page,
   TimetablePage
 }
+import prototype.client.live.SyncChecks
 import prototype.client.views.components.UserInfo
 
 import com.raquo.laminar.api.L.*
@@ -74,6 +75,7 @@ object Shell:
       )
     div(
       cls("topbar__user"),
+      renderSyncSwitch(),
       UserInfo(currentUser),
       button(
         cls("btn"),
@@ -82,4 +84,20 @@ object Shell:
           Session.logout()
         }
       )
+    )
+
+  // The global switch of the checks against the server (see `SyncChecks`)
+  private def renderSyncSwitch(): HtmlElement =
+    label(
+      cls("switch"),
+      title := "Compare what each page shows with the server (sends requests)",
+      input(
+        typ := "checkbox",
+        cls("switch__input"),
+        role := "switch",
+        checked <-- SyncChecks.enabledS,
+        onInput.mapToChecked --> (SyncChecks.set(_))
+      ),
+      span(cls("switch__track"), aria.hidden := true),
+      span(cls("switch__label"), "Sync checks")
     )

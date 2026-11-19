@@ -2,7 +2,7 @@ package prototype.client.companies
 
 import prototype.api.Company
 import prototype.client.Api
-import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData}
+import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData, Same}
 import prototype.shared.company.CompanyEvent
 
 object LiveCompanies:
@@ -19,5 +19,6 @@ object LiveCompanies:
         .listCompanies()
         .map(response => (response.companies, response.globalPosition)),
       decode = CompanyEventDecoder.decode,
-      evolve = CompanyListEvolve.evolve
+      evolve = CompanyListEvolve.evolve,
+      same = Same.byId(_.companyId)
     )

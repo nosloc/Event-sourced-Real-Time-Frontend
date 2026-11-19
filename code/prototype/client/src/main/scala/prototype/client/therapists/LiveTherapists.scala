@@ -2,7 +2,7 @@ package prototype.client.therapists
 
 import prototype.api.Therapist
 import prototype.client.Api
-import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData}
+import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData, Same}
 import prototype.shared.therapist.TherapistEvent
 
 object LiveTherapists:
@@ -19,5 +19,6 @@ object LiveTherapists:
         .listTherapists()
         .map(response => (response.therapists, response.globalPosition)),
       decode = TherapistEventDecoder.decode,
-      evolve = TherapistListEvolve.evolve
+      evolve = TherapistListEvolve.evolve,
+      same = Same.byId(_.therapistId)
     )

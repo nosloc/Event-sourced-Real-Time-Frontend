@@ -146,9 +146,11 @@ object LiveFeed:
         lastReceived: Long
     ): StreamCheck =
       head match
-        // the stream is closed
+        // the stream is closed: the first check after it reopens starts
+        // from the head again (the events missed meanwhile are not sent, and
+        // the sources reload on the reopening)
         case None =>
-          check.copy(status = StreamStatus.Closed)
+          StreamCheck(None, StreamStatus.Closed)
         case Some(Left(error)) =>
           val (failures, last) = check.status match
             case StreamStatus.CheckFailed(_, failures, last) =>
@@ -161,7 +163,13 @@ object LiveFeed:
           val status =
             if received == head then StreamStatus.UpToDate(head)
             else if received < head then StreamStatus.Behind(head, received)
-            else StreamStatus.Ahead(head, received)
+            else
+              check.status match
+                case StreamStatus.Ahead(_, _) =>
+                  StreamStatus.Ahead(head, received)
+                // Ahead once may be an event stored while the head was read:
+                // it counts from the second check in a row
+                case previous => previous
           StreamCheck(Some(firstHead), status)
   end StreamCheck
 end LiveFeed

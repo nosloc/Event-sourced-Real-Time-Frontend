@@ -9,8 +9,7 @@ import prototype.client.live.{
   LiveData,
   LiveFeed,
   RefreshedLiveData,
-  TraceStep,
-  Tracer
+  TraceStep
 }
 import prototype.shared.dashboards.{
   DirectoryDashboard,
@@ -26,6 +25,9 @@ object LiveDirectoryDashboard:
 
   /** Its name in the trace, read by the step-by-step mode too. */
   val name: String = "directory dashboard"
+
+  // The name of the browser's figures compared with the server's
+  private val CheckName: String = s"$name, browser vs server"
 
   def apply(
       feed: LiveFeed,
@@ -45,17 +47,18 @@ object LiveDirectoryDashboard:
 
   /** Computed in the browser from the company's live therapists and
     * appointments, with the shared `DirectoryDashboard`: no request when an
-    * event arrives.
+    * event arrives. Its status also compares it with the server's figures,
+    * once things settle.
     */
   def replayed(
-      tracer: Tracer,
-      processedEventS: Signal[Long],
+      feed: LiveFeed,
+      companyIdS: Signal[UUID],
       sources: DashboardSources
   ): LiveData[DirectoryFigures] =
     sources
-      .withCurrentValueOf(processedEventS)
+      .withCurrentValueOf(feed.lastPositionS)
       .map { case ((therapists, appointments), position) =>
-        tracer.timed[DirectoryFigures](
+        feed.tracer.timed[DirectoryFigures](
           figures => TraceStep.Kind.FiguresComputed(name, figures),
           Option.when(position >= 0)(position)
         )(
@@ -66,4 +69,13 @@ object LiveDirectoryDashboard:
           )
         )
       }
+      .checkedAgainst(
+        feed,
+        CheckName,
+        companyIdS,
+        companyId =>
+          Api.dashboards
+            .getDirectoryDashboard(CompanyId(companyId))
+            .map(_.dashboard)
+      )
 end LiveDirectoryDashboard

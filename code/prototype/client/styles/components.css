@@ -160,3 +160,158 @@
     opacity: 0.55;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Sync badge: whether a view's live values match the server            */
+/* ------------------------------------------------------------------ */
+.sync {
+  --sync-colour: var(--muted);
+  position: relative;
+  font-size: 0.8125rem;
+}
+
+.sync--synced { --sync-colour: var(--dot-2); }
+.sync--pending { --sync-colour: var(--warning); }
+.sync--failed,
+.sync--diverged { --sync-colour: var(--error); }
+
+.sync__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.sync__summary::-webkit-details-marker { display: none; }
+
+.sync__summary:hover { background: var(--ground); }
+
+.sync--diverged .sync__summary {
+  border-color: var(--error);
+  background: var(--error-soft);
+  color: var(--error);
+}
+
+.sync__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sync-colour);
+}
+
+.sync__sources {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: max-content;
+  max-width: min(480px, calc(100vw - 2 * var(--space-4)));
+  margin: 0;
+  padding: var(--space-3);
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  box-shadow: 0 8px 24px var(--shadow);
+}
+
+.sync__sources:empty::before {
+  content: "Nothing to check";
+  color: var(--muted);
+}
+
+.sync__source {
+  display: grid;
+  grid-template-columns: 8px auto;
+  column-gap: var(--space-2);
+  align-items: baseline;
+}
+
+.sync__source::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.sync__source--synced::before { background: var(--dot-2); }
+.sync__source--pending::before { background: var(--warning); }
+.sync__source--failed::before,
+.sync__source--diverged::before { background: var(--error); }
+
+.sync__name { font-weight: 600; }
+
+.sync__check {
+  grid-column: 2;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* A slot that holds the badge while the checks are on, nothing otherwise */
+.sync-slot:empty { display: none; }
+.admin__head .sync-slot { margin-left: auto; }
+.dash > .sync-slot { align-self: flex-end; }
+
+/* ------------------------------------------------------------------ */
+/* Switch: an on/off checkbox drawn as a track and a knob               */
+/* ------------------------------------------------------------------ */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.switch__input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.switch__track {
+  position: relative;
+  flex-shrink: 0;
+  width: 30px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  transition: background-color 0.15s ease;
+}
+
+.switch__track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--panel);
+  transition: transform 0.15s ease;
+}
+
+.switch__input:checked + .switch__track { background: var(--accent); }
+.switch__input:checked + .switch__track::after { transform: translateX(12px); }
+.switch__input:checked ~ .switch__label { color: var(--ink); }
+
+.switch__input:focus-visible + .switch__track {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

@@ -1,6 +1,12 @@
 package prototype.client.views.dashboard
 
-import prototype.client.live.{LiveData, Stepper, TraceStep, Tracer}
+import prototype.client.live.{
+  LiveData,
+  Stepper,
+  SyncStatus,
+  TraceStep,
+  Tracer
+}
 import prototype.client.views.components.PopoverPicker
 import prototype.client.views.components.PopoverPicker.Item
 
@@ -96,6 +102,8 @@ final class StepByStepView[S <: Stepper[S, A], A](
     val valueS: Signal[Option[A]] = stepperS.map(_.displayed).distinct
     val errorS: Signal[Option[Throwable]] = Val(None)
     val loadingS: Signal[Boolean] = Val(false)
+    // The real one's: the held value is behind it on purpose
+    val syncS: Signal[SyncStatus] = live.syncS
 
   override def panel: HtmlElement =
     div(

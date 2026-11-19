@@ -9,8 +9,7 @@ import prototype.client.live.{
   LiveData,
   LiveFeed,
   RefreshedLiveData,
-  TraceStep,
-  Tracer
+  TraceStep
 }
 import prototype.shared.dashboards.{BillingDashboard, BillingDashboardEvents}
 
@@ -23,6 +22,9 @@ object LiveBillingDashboard:
 
   /** Its name in the trace, read by the step-by-step mode too. */
   val name: String = "billing dashboard"
+
+  // The name of the browser's figures compared with the server's
+  private val CheckName: String = s"$name, browser vs server"
 
   def apply(
       feed: LiveFeed,
@@ -41,21 +43,31 @@ object LiveBillingDashboard:
     )
 
   /** Computed in the browser from the company's live appointments, with the
-    * shared `BillingDashboard`: no request when an event arrives.
+    * shared `BillingDashboard`: no request when an event arrives. Its status
+    * also compares it with the server's figures, once things settle.
     */
   def replayed(
-      tracer: Tracer,
-      processedEventS: Signal[Long],
+      feed: LiveFeed,
+      companyIdS: Signal[UUID],
       companyAppointments: LiveData[List[Appointment]]
   ): LiveData[BillingFigures] =
     companyAppointments
-      .withCurrentValueOf(processedEventS)
+      .withCurrentValueOf(feed.lastPositionS)
       .map((appointments, position) =>
-        tracer.timed[BillingFigures](
+        feed.tracer.timed[BillingFigures](
           figures => TraceStep.Kind.FiguresComputed(name, figures),
           Option.when(position >= 0)(position)
         )(
           BillingDashboard(appointments, Instant.now())
         )
+      )
+      .checkedAgainst(
+        feed,
+        CheckName,
+        companyIdS,
+        companyId =>
+          Api.dashboards
+            .getBillingDashboard(CompanyId(companyId))
+            .map(_.dashboard)
       )
 end LiveBillingDashboard

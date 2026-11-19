@@ -4,9 +4,8 @@ import cats.effect.IO
 
 import prototype.api.EventMessage
 import prototype.client.Api
-import prototype.client.live.LiveFeed.{FeedMessage, StreamStatus}
+import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.live.LiveModel.Input
-import prototype.client.live.ReplayedLiveData.{CheckInput, SyncStatus}
 
 import com.raquo.laminar.api.L.*
 
@@ -19,7 +18,8 @@ import com.raquo.laminar.api.L.*
   * one of its signals is read.
   *
   * K is the type of the key (for example a therapist), A the type of the value,
-  * E the type of the events `decode` keeps. `name` names it in the trace.
+  * E the type of the events `decode` keeps. `name` names it in the trace and
+  * in its `syncS`; `same` compares it with the server's.
   */
 final class ReplayedLiveData[K, A, E](
     feed: LiveFeed,
@@ -28,7 +28,7 @@ final class ReplayedLiveData[K, A, E](
     load: K => IO[(A, Long)],
     decode: EventMessage => Option[E],
     evolve: (K, A, E) => A,
-    same: (A, A) => Boolean = (a1: A, a2: A) => a1 == a2
+    same: Same[A] = Same.equal[A]
 ) extends LiveData[A]:
 
   // The key to load, each time a snapshot is needed: when the stream opens
@@ -101,39 +101,24 @@ final class ReplayedLiveData[K, A, E](
   override val loadingS: Signal[Boolean] = stateS.map(_.loading)
   override val errorS: Signal[Option[Throwable]] = stateS.map(_.error)
 
-  // Re-runs on every check of the stream (every 2 s): the stream's statuses
-  // are not deduplicated, so an `UpToDate` at the same head checks again
-  private val checkInputs: EventStream[CheckInput[A]] =
-    feed.streamStatusS.changes
-      .withCurrentValueOf(key)
-      .flatMapSwitch {
-        case (StreamStatus.UpToDate(_), k) =>
-          Api
-            .stream(load(k).map((value, _) => value))
-            .withCurrentValueOf(stateS)
-            .map((result, state) => CheckInput.Loaded(result, state.value))
-        case (stream, _) =>
-          EventStream.fromValue(CheckInput.Waiting(stream))
-      }
-
-  /** Whether the source matches the server's, once the stream is up to date. An
-    * `Inconsistent` seen once may be a read model still catching up; one that
-    * lasts several checks (`checks`) is a real difference.
+  /** Compared with a new read of the snapshot, by `same`: see `SyncCheck`.
+    * The source's version is the position of the last event applied.
     */
-  val statusS: Signal[SyncStatus[A]] =
-    checkInputs.scanLeft(SyncStatus.NotChecked: SyncStatus[A]) {
-      case (_, CheckInput.Waiting(stream)) =>
-        SyncStatus.WaitingForStream(stream)
-      case (_, CheckInput.Loaded(Left(error), _)) =>
-        SyncStatus.CheckFailed(error)
-      case (previous, CheckInput.Loaded(Right(server), local)) =>
-        if local.exists(same(_, server)) then SyncStatus.Synced
-        else
-          val checks = previous match
-            case SyncStatus.Inconsistent(_, _, checks) => checks + 1
-            case _                                     => 1
-          SyncStatus.Inconsistent(local, server, checks)
-    }
+  override val syncS: Signal[SyncStatus] =
+    SyncCheck(
+      feed,
+      name,
+      stateS.map(state =>
+        SyncCheckModel.Local(
+          state.key,
+          state.loading,
+          state.position,
+          state.value
+        )
+      ),
+      k => load(k).map((value, _) => value),
+      same
+    )
 
 object ReplayedLiveData:
 
@@ -148,7 +133,7 @@ object ReplayedLiveData:
       load: IO[(A, Long)],
       decode: EventMessage => Option[E],
       evolve: (A, E) => A,
-      same: (A, A) => Boolean = (a1: A, a2: A) => a1 == a2
+      same: Same[A] = Same.equal[A]
   ): ReplayedLiveData[Unit, A, E] =
     new ReplayedLiveData[Unit, A, E](
       feed = feed,
@@ -159,16 +144,3 @@ object ReplayedLiveData:
       evolve = (_, value, event) => evolve(value, event),
       same = same
     )
-
-  enum SyncStatus[+A]:
-    case NotChecked
-    case WaitingForStream(stream: StreamStatus)
-    case Synced
-    case CheckFailed(error: Throwable)
-    case Inconsistent(local: Option[A], server: A, checks: Int)
-
-  // What a check of the source reacts to: the stream not up to date (nothing
-  // can be concluded), or the server's value read while it is
-  private enum CheckInput[+A]:
-    case Waiting(stream: StreamStatus)
-    case Loaded(result: Either[Throwable, A], local: Option[A])

@@ -4,7 +4,7 @@ import java.util.UUID
 
 import prototype.api.{Appointment, CompanyId, Therapist}
 import prototype.client.appointments.LiveAppointmentsForCompany
-import prototype.client.live.{LiveData, LiveFeed}
+import prototype.client.live.{LiveData, LiveFeed, SyncStatus}
 import prototype.client.therapists.{LiveTherapists, LiveTherapistsForCompany}
 
 import com.raquo.laminar.api.L.*
@@ -25,6 +25,7 @@ final case class DashboardSources(
     combined.valueS
   val loadingS: Signal[Boolean] = combined.loadingS
   val errorS: Signal[Option[Throwable]] = combined.errorS
+  val syncS: Signal[SyncStatus] = combined.syncS
 
   /** Mount this on an element that stays on screen: it keeps the sources
     * running while `activeS` is true, and lets them stop otherwise (their state

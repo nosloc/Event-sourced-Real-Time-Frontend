@@ -52,8 +52,8 @@ object BillingDashboard:
       server = () => LiveBillingDashboard(feed, companyIdS),
       browser = () =>
         LiveBillingDashboard.replayed(
-          feed.tracer,
-          feed.lastPositionS,
+          feed,
+          companyIdS,
           sources.appointments
         ),
       stepperObserver
@@ -62,6 +62,7 @@ object BillingDashboard:
     div(
       cls := "dash",
       handStepperUp,
+      SyncBadge(dashboard),
       child.maybe <-- dashboard.errorS.map(
         _.map(error =>
           div(cls := "dash__error", ErrorMessages.errorToMessage(error))

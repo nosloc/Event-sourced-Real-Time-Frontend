@@ -2,7 +2,7 @@ package prototype.client.appointments
 
 import prototype.api.*
 import prototype.client.Api
-import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData}
+import prototype.client.live.{LiveData, LiveFeed, ReplayedLiveData, Same}
 import prototype.shared.appointment.*
 
 import com.raquo.laminar.api.L.*
@@ -33,7 +33,8 @@ object LiveAppointmentsForCompany:
           .listCompanyAppointments(CompanyId(company.companyId))
           .map(response => (response.appointments, response.globalPosition)),
       decode = AppointmentEventDecoder.decode,
-      evolve = AppointmentListEvolve.evolve
+      evolve = AppointmentListEvolve.evolve,
+      same = Same.byId(_.appointmentId)
     )
       .combineWithFn(companyTherapists)((appointments, therapists) =>
         val therapistIds = therapists.map(_.therapistId).toSet

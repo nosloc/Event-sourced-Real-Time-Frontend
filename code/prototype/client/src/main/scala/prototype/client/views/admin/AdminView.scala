@@ -7,6 +7,7 @@ import prototype.client.live.LiveFeed
 import prototype.client.patients.LivePatients
 import prototype.client.therapists.LiveTherapists
 import prototype.client.views.admin.DemoDataModal.Outcome
+import prototype.client.views.components.SyncBadge
 
 import com.raquo.laminar.api.L.*
 
@@ -56,7 +57,7 @@ object AdminView:
       patients.keepLoaded,
 
       cls := "admin",
-      renderHead(demoData),
+      renderHead(demoData, SyncBadge(companies, therapists, patients)),
       child.maybe <-- demoData.errorVar.signal.map(
         _.map(msg => div(cls := "banner banner--error", msg))
       ),
@@ -90,11 +91,13 @@ object AdminView:
   end apply
 
   private def renderHead(
-      demoData: DemoData
+      demoData: DemoData,
+      syncBadge: HtmlElement
   ): HtmlElement =
     div(
       cls := "admin__head",
       h1("Administration"),
+      syncBadge,
       renderGenerateButton(demoData)
     )
 

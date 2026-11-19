@@ -7,6 +7,7 @@ import prototype.client.Api
 import prototype.client.Api.ApiCall
 import prototype.client.appointments.LiveAppointmentsForTherapist
 import prototype.client.live.LiveFeed
+import prototype.client.views.components.SyncBadge
 import prototype.client.views.timetable.TimetableModel.*
 
 import com.raquo.laminar.api.L.*
@@ -108,7 +109,8 @@ object TimetableView:
         div(
           cls := "timetable__controls",
           TherapistPicker(therapistsVar, selectedTherapistVar),
-          WeekToolbar(weekRangeS, weekOffsetVar, showCreateAppointmentModalVar)
+          WeekToolbar(weekRangeS, weekOffsetVar, showCreateAppointmentModalVar),
+          SyncBadge(allAppointments)
         )
       ),
       WeekGrid(
