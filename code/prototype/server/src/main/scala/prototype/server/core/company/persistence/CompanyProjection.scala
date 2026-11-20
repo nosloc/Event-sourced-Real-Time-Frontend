@@ -16,8 +16,11 @@ import persistent4s.ExactlyOnceEventSourcedProjection
 
 val CompanyProjectionName: String = "company-projection"
 
-final case class CompanyProjection(protected val repository: CompanyRepository)
-    extends ExactlyOnceEventSourcedProjection[
+/** `delay` runs before each event: a read model fault (`App`). */
+final case class CompanyProjection(
+    protected val repository: CompanyRepository,
+    delay: IO[Unit] = IO.unit
+) extends ExactlyOnceEventSourcedProjection[
       IO,
       PrototypeEvent,
       UUID,
@@ -28,7 +31,7 @@ final case class CompanyProjection(protected val repository: CompanyRepository)
 
   private val evolve
       : (Option[CompanyState], CompanyEvent) => IO[Option[CompanyState]] =
-    (state, event) => IO.fromEither(CompanyEvolve.evolve(state, event))
+    (state, event) => delay *> IO.fromEither(CompanyEvolve.evolve(state, event))
 
   override protected val eventHandlers = handlers:
     on[CompanyCreated](_.id).handleF(evolve)

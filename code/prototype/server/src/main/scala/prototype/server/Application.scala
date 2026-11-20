@@ -112,12 +112,11 @@ object App extends IOApp.Simple:
         config.postgres
       )
       events <- database.domain(PrototypeEventCodec.eventCodec)
-      // Always created, with no fault. Only `/api/faults` can set one, and its
-      // routes exist only when faults are enabled (`Routes.all` below): off,
-      // every delay stays 0
-      faults <- FaultInjection.make.toResource
+      // Always created, with no fault. Off, it adds nothing anywhere and
+      // `/api/faults` is not mounted (`Routes.all` below)
+      faults <- FaultInjection.make(config.faults.enabled).toResource
       _ <- (
-        if config.faults.enabled then
+        if faults.enabled then
           Logger[IO].warn(
             "Fault injection is on: the faults can be set on /api/faults"
           )
@@ -155,11 +154,26 @@ object App extends IOApp.Simple:
       // Every stored event, published once for the open event streams
       publishedEvents <- Topic[IO, EventEnvelope[PrototypeEvent]].toResource
       _ <- events.leaderElectedProjectionRuntime.startAll { registered =>
-        registered.run(CompanyProjection(companies))
-        registered.run(TherapistProjection(therapists))
-        registered.run(PatientProjection(patients))
         registered.run(
-          AppointmentProjection(appointments),
+          CompanyProjection(
+            companies,
+            faults.readModelWait(ReadModel.COMPANIES)
+          )
+        )
+        registered.run(
+          TherapistProjection(
+            therapists,
+            faults.readModelWait(ReadModel.THERAPISTS)
+          )
+        )
+        registered.run(
+          PatientProjection(patients, faults.readModelWait(ReadModel.PATIENTS))
+        )
+        registered.run(
+          AppointmentProjection(
+            appointments,
+            faults.readModelWait(ReadModel.APPOINTMENTS)
+          ),
           Some(appointmentUpdates)
         )
         registered.run(EventFeedProjection(publishedEvents))
@@ -207,13 +221,10 @@ object App extends IOApp.Simple:
         dashboardServiceImpl,
         demoDataServiceImpl,
         eventStoreServiceImpl,
-        Option.when(config.faults.enabled)(FaultInjectionServiceImpl(faults)),
+        Option.when(faults.enabled)(FaultInjectionServiceImpl(faults)),
         EventFeedRoutes(eventFeed),
         authServiceImpl
       )
-      // Faults off: the routes as they are, not even a wait of 0
-      slowedRoutes =
-        if config.faults.enabled then SlowSnapshots(faults)(routes) else routes
     yield Services(
       companyService,
       therapistServiceImpl,
@@ -222,7 +233,7 @@ object App extends IOApp.Simple:
       eventStoreServiceImpl,
       eventFeed,
       faults,
-      slowedRoutes
+      SlowSnapshots(faults)(routes)
     )
 
   def run: IO[Unit] = program.useForever

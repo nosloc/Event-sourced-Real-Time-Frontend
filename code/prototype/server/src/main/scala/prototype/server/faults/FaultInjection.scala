@@ -10,8 +10,14 @@ import prototype.api.{DelayMillis, Faults, ReadModel}
   * server, in memory: a restart clears them. Each injection point reads its
   * fault when it runs (a request, an event), so a change applies to the next
   * one.
+  *
+  * Off (`enabled` false): no fault can be set, and the injection points add
+  * nothing at all, not even a wait of 0.
   */
-final class FaultInjection private (state: Ref[IO, Faults]):
+final class FaultInjection private (
+    val enabled: Boolean,
+    state: Ref[IO, Faults]
+):
 
   def current: IO[Faults] = state.get
 
@@ -26,13 +32,18 @@ final class FaultInjection private (state: Ref[IO, Faults]):
   def readModelDelay(readModel: ReadModel): IO[FiniteDuration] =
     current.map(FaultInjection.readModelDelay(_, readModel))
 
+  /** What a read model runs before each event: its delay, or nothing when off.
+    */
+  def readModelWait(readModel: ReadModel): IO[Unit] =
+    if enabled then readModelDelay(readModel).flatMap(IO.sleep) else IO.unit
+
 object FaultInjection:
 
   /** No fault at all. */
   val none: Faults = Faults(DelayMillis(0), Nil)
 
-  def make: IO[FaultInjection] =
-    Ref.of[IO, Faults](none).map(new FaultInjection(_))
+  def make(enabled: Boolean): IO[FaultInjection] =
+    Ref.of[IO, Faults](none).map(new FaultInjection(enabled, _))
 
   /** The delay of one read model: none when it is not listed, the last entry
     * when it is listed twice.

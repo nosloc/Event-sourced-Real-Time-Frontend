@@ -25,10 +25,12 @@ val AppointmentProjectionName: String = "appointment-projection"
 
 /** Every appointment event carries the appointment id, so one projection keeps
   * the appointment and its prestations together: the prestation events update
-  * the list in the state, and the repository decides how it is stored.
+  * the list in the state, and the repository decides how it is stored. `delay`
+  * runs before each event: a read model fault (`App`).
   */
 final case class AppointmentProjection(
-    protected val repository: AppointmentRepository
+    protected val repository: AppointmentRepository,
+    delay: IO[Unit] = IO.unit
 ) extends ExactlyOnceEventSourcedProjection[
       IO,
       PrototypeEvent,
@@ -44,7 +46,7 @@ final case class AppointmentProjection(
       appointment: Option[AppointmentState],
       event: AppointmentEvent
   ): IO[Option[AppointmentState]] =
-    IO.fromEither(AppointmentEvolve.evolve(appointment, event))
+    delay *> IO.fromEither(AppointmentEvolve.evolve(appointment, event))
 
   override protected val eventHandlers = handlers:
     // Let the evolve function do the updates

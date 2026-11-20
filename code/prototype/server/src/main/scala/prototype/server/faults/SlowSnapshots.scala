@@ -11,14 +11,17 @@ import org.http4s.dsl.io.*
   */
 object SlowSnapshots:
 
+  // Faults off: the routes as they are
   def apply(faults: FaultInjection)(routes: HttpRoutes[IO]): HttpRoutes[IO] =
-    Kleisli { request =>
-      val response = routes(request)
-      // After the route answered: the list is already read when the wait starts
-      if isSnapshot(request) then
-        response.semiflatTap(_ => faults.snapshotDelay.flatMap(IO.sleep))
-      else response
-    }
+    if !faults.enabled then routes
+    else
+      Kleisli { request =>
+        val response = routes(request)
+        // After the route answered: the list is already read when the wait starts
+        if isSnapshot(request) then
+          response.semiflatTap(_ => faults.snapshotDelay.flatMap(IO.sleep))
+        else response
+      }
 
   // What requests are concerned
   def isSnapshot(request: Request[IO]): Boolean = request match

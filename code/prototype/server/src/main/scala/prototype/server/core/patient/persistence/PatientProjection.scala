@@ -16,8 +16,10 @@ import persistent4s.ExactlyOnceEventSourcedProjection
 
 val PatientProjectionName: String = "patient-projection"
 
+/** `delay` runs before each event: a read model fault (`App`). */
 final case class PatientProjection(
-    protected val repository: PatientRepository
+    protected val repository: PatientRepository,
+    delay: IO[Unit] = IO.unit
 ) extends ExactlyOnceEventSourcedProjection[
       IO,
       PrototypeEvent,
@@ -29,7 +31,7 @@ final case class PatientProjection(
 
   private val evolve
       : (Option[PatientState], PatientEvent) => IO[Option[PatientState]] =
-    (state, event) => IO.fromEither(PatientEvolve.evolve(state, event))
+    (state, event) => delay *> IO.fromEither(PatientEvolve.evolve(state, event))
 
   override protected val eventHandlers = handlers:
     on[PatientCreated](_.id).handleF(evolve)
