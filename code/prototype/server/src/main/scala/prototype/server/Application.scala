@@ -39,7 +39,11 @@ import prototype.server.eventfeed.{
   EventFeedRoutes,
   EventStoreServiceImpl
 }
-import prototype.server.faults.{FaultInjection, FaultInjectionServiceImpl}
+import prototype.server.faults.{
+  FaultInjection,
+  FaultInjectionServiceImpl,
+  SlowSnapshots
+}
 import prototype.shared.Greeting
 import prototype.shared.events.PrototypeEvent
 
@@ -207,6 +211,9 @@ object App extends IOApp.Simple:
         EventFeedRoutes(eventFeed),
         authServiceImpl
       )
+      // Faults off: the routes as they are, not even a wait of 0
+      slowedRoutes =
+        if config.faults.enabled then SlowSnapshots(faults)(routes) else routes
     yield Services(
       companyService,
       therapistServiceImpl,
@@ -215,7 +222,7 @@ object App extends IOApp.Simple:
       eventStoreServiceImpl,
       eventFeed,
       faults,
-      routes
+      slowedRoutes
     )
 
   def run: IO[Unit] = program.useForever

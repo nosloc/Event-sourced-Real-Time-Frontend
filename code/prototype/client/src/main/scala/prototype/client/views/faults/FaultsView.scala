@@ -130,7 +130,9 @@ object FaultsView:
       renderGroup(
         "Snapshots",
         "Added after the server read a list, before it sends it: the events " +
-          "written meanwhile reach the browser during the wait.",
+          "written meanwhile reach the browser during the wait. The sync " +
+          "checks read these lists too: they answer later, and never above " +
+          "30 s.",
         List(
           renderDelay(
             "Every list",
