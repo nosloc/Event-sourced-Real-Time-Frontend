@@ -109,6 +109,15 @@ object Api:
       .make
       .fold(throw _, identity)
 
+  // Answers 404 when the server runs with faults off
+  val faults: FaultInjectionService[IO] =
+    SimpleRestJsonBuilder(FaultInjectionService)
+      .client(FetchClientBuilder[IO].create)
+      .uri(origin)
+      .middleware(authMiddleware)
+      .make
+      .fold(throw _, identity)
+
   val auth: AuthService[IO] =
     SimpleRestJsonBuilder(AuthService)
       .client(FetchClientBuilder[IO].create)

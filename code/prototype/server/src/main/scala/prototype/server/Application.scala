@@ -112,6 +112,13 @@ object App extends IOApp.Simple:
       // routes exist only when faults are enabled (`Routes.all` below): off,
       // every delay stays 0
       faults <- FaultInjection.make.toResource
+      _ <- (
+        if config.faults.enabled then
+          Logger[IO].warn(
+            "Fault injection is on: the faults can be set on /api/faults"
+          )
+        else Logger[IO].info("Fault injection is off")
+      ).toResource
       // Its port is fixed: off in the tests, so they can run while a dev
       // server is up
       _ <-

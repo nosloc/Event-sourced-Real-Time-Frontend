@@ -7,12 +7,14 @@ import prototype.client.Pages.{
   AdminPage,
   DashboardPage,
   EventSourcingPage,
+  FaultsPage,
   HomePage,
   Page,
   TimetablePage
 }
 import prototype.client.live.SyncChecks
 import prototype.client.views.components.UserInfo
+import prototype.client.views.faults.{FaultsStatus, FaultsView}
 
 import com.raquo.laminar.api.L.*
 
@@ -49,7 +51,8 @@ object Shell:
       renderLink("Timetable", TimetablePage),
       renderLink("Dashboard", DashboardPage),
       renderLink("Admin", AdminPage),
-      renderLink("Event sourcing", EventSourcingPage)
+      renderLink("Event sourcing", EventSourcingPage),
+      renderLink("Faults", FaultsPage)
     )
 
   private def renderLink(label: String, page: Page): HtmlElement =
@@ -71,6 +74,7 @@ object Shell:
       )
     div(
       cls("topbar__user"),
+      child.maybe <-- faultsOnS.map(Option.when(_)(renderFaultsPill())),
       renderSyncSwitch(),
       UserInfo(currentUser),
       button(
@@ -80,6 +84,30 @@ object Shell:
           Session.logout()
         }
       )
+    )
+
+  // Whether the server injects a fault: read once when the page is built (the
+  // shell is built again on each page), then each change made on the Faults
+  // page (`FaultsStatus`). Hidden while it loads, and on an error (a server
+  // with faults off answers 404)
+  private def faultsOnS: Signal[Boolean] =
+    EventStream
+      .merge(
+        Api.stream(Api.faults.getFaults()).collect { case Right(faults) =>
+          faults
+        },
+        FaultsStatus.applied
+      )
+      .map(FaultsView.anyOn)
+      .toSignal(false)
+
+  // Says on every page that a run is slowed on purpose; opens the Faults page
+  private def renderFaultsPill(): HtmlElement =
+    a(
+      cls("faults-pill"),
+      title := "The server adds delays on purpose: see the Faults page",
+      "Faults on",
+      AppRouter.navigateTo(FaultsPage, replaceState = false)
     )
 
   // The global switch of the checks against the server (see `SyncChecks`)

@@ -15,5 +15,6 @@ object Routes:
     Route.static(
       Pages.EventSourcingPage,
       appRoot / "event-sourcing" / endOfSegments
-    )
+    ),
+    Route.static(Pages.FaultsPage, appRoot / "faults" / endOfSegments)
   )

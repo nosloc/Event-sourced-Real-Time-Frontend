@@ -53,7 +53,13 @@ lazy val server =
     .enablePlugins(JavaAppPackaging)
     .settings(commonSettings)
     .settings(
-      Compile / run / fork := true
+      Compile / run / fork := true,
+      // Local settings for `server/run` (FAULTS_ENABLED, ...) from server/.env,
+      // read again at each run. A variable set in the shell wins over the file
+      Compile / run / envVars ++=
+        dotEnv(baseDirectory.value / ".env").filterNot { case (key, _) =>
+          sys.env.contains(key)
+        }
     )
     .settings(
       libraryDependencies ++= List(
@@ -121,3 +127,17 @@ lazy val noPublish = Seq(
   publishLocal / skip := true,
   publish / skip := true
 )
+
+// The KEY=value lines of a .env file, if it exists: blank lines and # comments
+// skipped, quotes around a value dropped. Not checked into git (.gitignore)
+def dotEnv(file: File): Map[String, String] =
+  if (!file.exists) Map.empty
+  else
+    IO.readLines(file)
+      .map(_.trim)
+      .filter(line => line.nonEmpty && !line.startsWith("#") && line.contains("="))
+      .map { line =>
+        val (key, value) = line.splitAt(line.indexOf('='))
+        key.trim -> value.drop(1).trim.stripPrefix("\"").stripSuffix("\"")
+      }
+      .toMap

@@ -21,3 +21,6 @@ dist/
 # ---- OS ----
 .DS_Store
 Thumbs.db
+
+# ---- Local settings (server/.env, read by build.sbt) ----
+.env

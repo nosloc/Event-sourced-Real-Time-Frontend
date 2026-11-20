@@ -1,0 +1,92 @@
+/* ------------------------------------------------------------------ */
+/* Faults page                                                          */
+/* The edit modal reuses the form styles (form__row, form__actions).    */
+/* ------------------------------------------------------------------ */
+.faults {
+  width: 100%;
+  max-width: 720px;
+}
+
+.faults__head {
+  margin-bottom: var(--space-5);
+}
+
+.faults__head h1 {
+  margin: 0 0 var(--space-2);
+}
+
+.faults__intro {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* One box per kind of delay: title, what it does, then the delays */
+.faults__group {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+}
+
+.faults__title {
+  margin: 0 0 var(--space-1);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.faults__hint {
+  margin: 0 0 var(--space-3);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.faults__delays {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Name on the left, value on the right, a line between the rows */
+.faults__delay {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--line);
+}
+
+.faults__name {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.faults__value {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A delay that is on: warning colours, like the "Faults on" pill */
+.faults__value--on {
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.faults > .banner,
+.faults__group + .banner {
+  margin-bottom: var(--space-4);
+}
+
+/* In the edit modal: a small heading above each group of fields */
+.faults__subtitle {
+  margin: var(--space-4) 0 var(--space-2);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}

@@ -5,6 +5,7 @@ import prototype.client.Pages.*
 import prototype.client.views.admin.AdminView
 import prototype.client.views.dashboard.DashboardView
 import prototype.client.views.eventsourcing.EventSourcingView
+import prototype.client.views.faults.FaultsView
 import prototype.client.views.timetable.*
 
 import com.raquo.laminar.api.L.*
@@ -21,7 +22,7 @@ object View:
     pageAndUserS.map {
       case (
             HomePage | TimetablePage | AdminPage | DashboardPage |
-            EventSourcingPage,
+            EventSourcingPage | FaultsPage,
             None
           ) =>
         LoginPage
@@ -48,11 +49,13 @@ object View:
       .handleCase[PageAndUser, String, HtmlElement] {
         case (EventSourcingPage, Some(username)) => username
       }((username, _) => Shell(EventSourcingView(), username))
+      .handleCase[PageAndUser, String, HtmlElement] {
+        case (FaultsPage, Some(username)) => username
+      }((username, _) => Shell(FaultsView(), username))
       .handleCase[PageAndUser, Unit, HtmlElement] {
-        case (LoginPage, _) |
-            (
+        case (LoginPage, _) | (
               HomePage | TimetablePage | AdminPage | DashboardPage |
-              EventSourcingPage,
+              EventSourcingPage | FaultsPage,
               None
             ) =>
           ()

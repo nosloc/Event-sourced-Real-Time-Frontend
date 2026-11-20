@@ -7,22 +7,24 @@ object AppRouter
       routes = Routes.routes,
       getPageTitle = page => page.title,
       serializePage = {
-        case Pages.LoginPage     => "login"
-        case Pages.HomePage      => "home"
-        case Pages.TimetablePage => "timetable"
-        case Pages.AdminPage     => "admin"
-        case Pages.DashboardPage => "dashboards"
+        case Pages.LoginPage         => "login"
+        case Pages.HomePage          => "home"
+        case Pages.TimetablePage     => "timetable"
+        case Pages.AdminPage         => "admin"
+        case Pages.DashboardPage     => "dashboards"
         case Pages.EventSourcingPage => "event-sourcing"
-        case Pages.NotFoundPage  => "notfound"
+        case Pages.FaultsPage        => "faults"
+        case Pages.NotFoundPage      => "notfound"
       },
       deserializePage = {
-        case "login"      => Pages.LoginPage
-        case "home"       => Pages.HomePage
-        case "timetable"  => Pages.TimetablePage
-        case "admin"      => Pages.AdminPage
-        case "dashboards" => Pages.DashboardPage
+        case "login"          => Pages.LoginPage
+        case "home"           => Pages.HomePage
+        case "timetable"      => Pages.TimetablePage
+        case "admin"          => Pages.AdminPage
+        case "dashboards"     => Pages.DashboardPage
         case "event-sourcing" => Pages.EventSourcingPage
-        case _            => Pages.NotFoundPage
+        case "faults"         => Pages.FaultsPage
+        case _                => Pages.NotFoundPage
       },
       routeFallback = _ => Pages.NotFoundPage
     )

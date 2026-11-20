@@ -21,5 +21,6 @@
 @import './styles/dashboards.css';
 @import './styles/stepper.css';
 @import './styles/event-sourcing.css';
+@import './styles/faults.css';
 @import './styles/form.css';
 @import './styles/motion.css';
