@@ -22,7 +22,7 @@ object Versions {
 
   val Logback = "1.6.5"
 
-  val Persistent4s = "0.4.0-RC11"
+  val Persistent4s = "0.4.0-RC15"
 
   val Datafaker = "2.7.0"
 
@@ -34,6 +34,6 @@ object Versions {
   val CatsEffectTesting = "1.6.0"
 
   // Starts a Postgres container for the tests that need a real database
-  val Testcontainers = "1.21.3"
+  val Testcontainers = "1.21.4"
 
 }

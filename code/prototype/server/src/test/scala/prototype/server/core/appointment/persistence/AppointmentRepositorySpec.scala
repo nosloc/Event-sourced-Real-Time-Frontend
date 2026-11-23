@@ -59,7 +59,9 @@ class AppointmentRepositorySpec
   ): IO[A] =
     freshDatabase
       .flatMap(TestDatabase.sessions)
-      .use(sessions => test(AppointmentRepository.make(sessions), sessions))
+      .use(sessions =>
+        test(AppointmentRepository.make(sessions), sessions.pool)
+      )
 
   private def save(
       repository: AppointmentRepository,

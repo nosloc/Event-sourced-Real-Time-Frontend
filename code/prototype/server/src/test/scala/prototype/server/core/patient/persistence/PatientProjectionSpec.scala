@@ -16,6 +16,7 @@ import prototype.shared.patient.{
 }
 
 import persistent4s.{EventEnvelope, EventTypeName}
+import persistent4s.postgres.{PostgresSchema, PostgresSessions}
 
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -27,10 +28,13 @@ import org.scalatest.matchers.should.Matchers
 class PatientProjectionSpec extends AsyncFlatSpec with AsyncIOSpec with Matchers:
 
   private val repository = PatientRepository.make(
-    Resource.eval(
-      IO.raiseError(
-        new AssertionError("Projection handlers must not access the database")
-      )
+    PostgresSessions(
+      Resource.eval(
+        IO.raiseError(
+          new AssertionError("Projection handlers must not access the database")
+        )
+      ),
+      PostgresSchema.Public
     )
   )
   private val projection = PatientProjection(repository)

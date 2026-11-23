@@ -11,6 +11,7 @@ import prototype.shared.company.{CompanyCreated, CompanyInconsistency, CompanySt
 import prototype.shared.events.PrototypeEvent
 
 import persistent4s.{EventEnvelope, EventTypeName}
+import persistent4s.postgres.{PostgresSchema, PostgresSessions}
 
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -25,10 +26,13 @@ class CompanyProjectionSpec
     with Matchers:
 
   private val repository = CompanyRepository.make(
-    Resource.eval(
-      IO.raiseError(
-        new AssertionError("Projection handlers must not access the database")
-      )
+    PostgresSessions(
+      Resource.eval(
+        IO.raiseError(
+          new AssertionError("Projection handlers must not access the database")
+        )
+      ),
+      PostgresSchema.Public
     )
   )
   private val projection = CompanyProjection(repository)

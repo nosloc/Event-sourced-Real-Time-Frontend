@@ -2,17 +2,19 @@ package prototype.server.core.company.persistence
 
 import java.util.UUID
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 
 import prototype.shared.company.CompanyState
 
-import persistent4s.postgres.{DerivedPostgresRepository, PostgresTable}
+import persistent4s.postgres.{
+  DerivedPostgresRepository,
+  PostgresSessions,
+  PostgresTable
+}
 
-import skunk.Session
-
-final class CompanyRepository private (pool: Resource[IO, Session[IO]])
+final class CompanyRepository private (sessions: PostgresSessions[IO])
     extends DerivedPostgresRepository[IO, UUID, CompanyState](
-      pool,
+      sessions,
       CompanyRepository.table
     ):
 
@@ -32,10 +34,10 @@ object CompanyRepository:
 
   /** Creates a new instance of the CompanyRepository.
     *
-    * @param pool
-    *   managed database connection pool
+    * @param sessions
+    *   the database's session pool
     * @return
     *   a new instance of CompanyRepository
     */
-  def make(pool: Resource[IO, Session[IO]]): CompanyRepository =
-    new CompanyRepository(pool)
+  def make(sessions: PostgresSessions[IO]): CompanyRepository =
+    new CompanyRepository(sessions)

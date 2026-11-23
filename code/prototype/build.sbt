@@ -141,3 +141,9 @@ def dotEnv(file: File): Map[String, String] =
         key.trim -> value.drop(1).trim.stripPrefix("\"").stripSuffix("\"")
       }
       .toMap
+
+// What the CI runs. Run `sbt ci` before pushing
+addCommandAlias(
+  "ci",
+  "compile; scalafixAll --check; client/fastLinkJS; server/test"
+)

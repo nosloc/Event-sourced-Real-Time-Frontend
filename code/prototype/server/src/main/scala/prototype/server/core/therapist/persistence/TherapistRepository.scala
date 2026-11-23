@@ -1,6 +1,6 @@
 package prototype.server.core.therapist.persistence
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 
 import prototype.api.Role
 import prototype.shared.therapist.TherapistState
@@ -8,15 +8,15 @@ import prototype.shared.therapist.TherapistState
 import persistent4s.postgres.{
   DerivedPostgresRepository,
   PostgresField,
+  PostgresSessions,
   PostgresTable
 }
 
-import skunk.Session
 import skunk.codec.all.text
 
-final class TherapistRepository private (pool: Resource[IO, Session[IO]])
+final class TherapistRepository private (sessions: PostgresSessions[IO])
     extends DerivedPostgresRepository[IO, String, TherapistState](
-      pool,
+      sessions,
       TherapistRepository.table
     ):
 
@@ -42,5 +42,5 @@ object TherapistRepository:
       .derived[TherapistState](tableName = "therapists")
       .key(_.therapistId)
 
-  def make(pool: Resource[IO, Session[IO]]): TherapistRepository =
-    new TherapistRepository(pool)
+  def make(sessions: PostgresSessions[IO]): TherapistRepository =
+    new TherapistRepository(sessions)

@@ -4,12 +4,7 @@ import java.util.UUID
 
 import cats.effect.IO
 
-import prototype.shared.company.{
-  CompanyCreated,
-  CompanyEvent,
-  CompanyEvolve,
-  CompanyState
-}
+import prototype.shared.company.{CompanyEvent, CompanyEvolve, CompanyState}
 import prototype.shared.events.PrototypeEvent
 
 import persistent4s.ExactlyOnceEventSourcedProjection
@@ -34,4 +29,4 @@ final case class CompanyProjection(
     (state, event) => delay *> IO.fromEither(CompanyEvolve.evolve(state, event))
 
   override protected val eventHandlers = handlers:
-    on[CompanyCreated](_.id).handleF(evolve)
+    onFamily[CompanyEvent](_.id).handleF(evolve)
