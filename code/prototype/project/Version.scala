@@ -34,6 +34,6 @@ object Versions {
   val CatsEffectTesting = "1.6.0"
 
   // Starts a Postgres container for the tests that need a real database
-  val Testcontainers = "1.21.3"
+  val Testcontainers = "1.21.4"
 
 }
