@@ -121,3 +121,9 @@ lazy val noPublish = Seq(
   publishLocal / skip := true,
   publish / skip := true
 )
+
+// What the CI runs. Run `sbt ci` before pushing
+addCommandAlias(
+  "ci",
+  "compile; scalafixAll --check; client/fastLinkJS; server/test"
+)
