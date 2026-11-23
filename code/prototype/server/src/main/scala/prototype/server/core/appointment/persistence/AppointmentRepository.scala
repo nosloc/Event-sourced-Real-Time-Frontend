@@ -2,14 +2,18 @@ package prototype.server.core.appointment.persistence
 
 import java.util.UUID
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import cats.syntax.all.*
 
 import prototype.api.{AppointmentType, PrestationStatus}
 import prototype.shared.appointment.{AppointmentState, PrestationRow}
 import prototype.shared.appointment.given
 
-import persistent4s.postgres.{PostgresAtomicRepository, PostgresRepositoryTable}
+import persistent4s.postgres.{
+  PostgresAtomicRepository,
+  PostgresRepositoryTable,
+  PostgresSessions
+}
 
 import io.circe.Decoder as JsonDecoder
 import skunk.*
@@ -27,8 +31,8 @@ import skunk.syntax.all.*
   * column, in their order. A change to the prestations of an appointment
   * rewrites all of its prestation rows, with their `position`.
   */
-final class AppointmentRepository private (pool: Resource[IO, Session[IO]])
-    extends PostgresAtomicRepository[IO, UUID, AppointmentState](pool):
+final class AppointmentRepository private (sessions: PostgresSessions[IO])
+    extends PostgresAtomicRepository[IO, UUID, AppointmentState](sessions):
 
   import AppointmentRepository.*
 
@@ -69,8 +73,8 @@ final class AppointmentRepository private (pool: Resource[IO, Session[IO]])
 
 object AppointmentRepository:
 
-  def make(pool: Resource[IO, Session[IO]]): AppointmentRepository =
-    new AppointmentRepository(pool)
+  def make(sessions: PostgresSessions[IO]): AppointmentRepository =
+    new AppointmentRepository(sessions)
 
   // How one prestation of the aggregated column is read back
   private given JsonDecoder[PrestationRow] =

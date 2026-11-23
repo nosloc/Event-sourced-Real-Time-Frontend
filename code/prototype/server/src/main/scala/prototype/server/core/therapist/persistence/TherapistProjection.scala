@@ -4,7 +4,6 @@ import cats.effect.IO
 
 import prototype.shared.events.PrototypeEvent
 import prototype.shared.therapist.{
-  TherapistCreated,
   TherapistEvent,
   TherapistEvolve,
   TherapistState
@@ -30,4 +29,4 @@ final case class TherapistProjection(
     (state, event) => IO.fromEither(TherapistEvolve.evolve(state, event))
 
   override protected val eventHandlers = handlers:
-    on[TherapistCreated](_.id).handleF(evolve)
+    onFamily[TherapistEvent](_.id).handleF(evolve)

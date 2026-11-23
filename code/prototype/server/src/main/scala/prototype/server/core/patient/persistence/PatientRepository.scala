@@ -2,17 +2,19 @@ package prototype.server.core.patient.persistence
 
 import java.util.UUID
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 
 import prototype.shared.patient.PatientState
 
-import persistent4s.postgres.{DerivedPostgresRepository, PostgresTable}
+import persistent4s.postgres.{
+  DerivedPostgresRepository,
+  PostgresSessions,
+  PostgresTable
+}
 
-import skunk.Session
-
-final class PatientRepository private (pool: Resource[IO, Session[IO]])
+final class PatientRepository private (sessions: PostgresSessions[IO])
     extends DerivedPostgresRepository[IO, UUID, PatientState](
-      pool,
+      sessions,
       PatientRepository.table
     ):
 
@@ -30,5 +32,5 @@ object PatientRepository:
       .derived[PatientState](tableName = "patients")
       .key(_.patientId)
 
-  def make(pool: Resource[IO, Session[IO]]): PatientRepository =
-    new PatientRepository(pool)
+  def make(sessions: PostgresSessions[IO]): PatientRepository =
+    new PatientRepository(sessions)

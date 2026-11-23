@@ -47,8 +47,8 @@ final case class AppointmentProjection(
     IO.fromEither(AppointmentEvolve.evolve(appointment, event))
 
   override protected val eventHandlers = handlers:
-    // Let the evolve function do the updates
-    // TODO: maybe we should handle whole cases in a single line
+    // Not onFamily: it would also take the two "added to" events, which only
+    // the therapist and patient streams need
     on[AppointmentCreated](_.id).handleF(evolve)
     on[AppointmentUpdated](_.id).handleF(evolve)
     on[AppointmentDeleted](_.id).handleF(evolve)

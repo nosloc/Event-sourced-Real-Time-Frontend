@@ -5,12 +5,7 @@ import java.util.UUID
 import cats.effect.IO
 
 import prototype.shared.events.PrototypeEvent
-import prototype.shared.patient.{
-  PatientCreated,
-  PatientEvent,
-  PatientEvolve,
-  PatientState
-}
+import prototype.shared.patient.{PatientEvent, PatientEvolve, PatientState}
 
 import persistent4s.ExactlyOnceEventSourcedProjection
 
@@ -32,4 +27,4 @@ final case class PatientProjection(
     (state, event) => IO.fromEither(PatientEvolve.evolve(state, event))
 
   override protected val eventHandlers = handlers:
-    on[PatientCreated](_.id).handleF(evolve)
+    onFamily[PatientEvent](_.id).handleF(evolve)
