@@ -100,9 +100,14 @@ lazy val client =
         "org.http4s" %%% "http4s-dom" % Versions.Http4sDom,
         "com.raquo" %%% "waypoint" % Versions.Waypoint,
         "io.circe" %%% "circe-core" % Versions.Circe,
-        "io.circe" %%% "circe-parser" % Versions.Circe
+        "io.circe" %%% "circe-parser" % Versions.Circe,
+
+        // Tests of the pure models (run in Node.js)
+        "org.scalatest" %%% "scalatest" % Versions.ScalaTest % Test
       ),
       scalaJSUseMainModuleInitializer := true,
+      // The app's entry point needs a browser (`document`): not in Node.js
+      Test / scalaJSUseMainModuleInitializer := false,
 
       scalaJSLinkerConfig ~= {
         _.withModuleKind(ModuleKind.ESModule)
@@ -145,5 +150,5 @@ def dotEnv(file: File): Map[String, String] =
 // What the CI runs. Run `sbt ci` before pushing
 addCommandAlias(
   "ci",
-  "compile; scalafixAll --check; client/fastLinkJS; server/test"
+  "compile; scalafixAll --check; client/fastLinkJS; client/test; server/test"
 )
