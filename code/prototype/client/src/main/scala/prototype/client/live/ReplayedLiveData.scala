@@ -8,6 +8,7 @@ import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.live.LiveModel.Input
 
 import com.raquo.laminar.api.L.*
+import org.scalajs.dom
 
 /** A `LiveData` kept up to date by replaying the server's events in the
   * browser, for one key at a time. Its snapshot is loaded once the stream has
@@ -87,7 +88,20 @@ final class ReplayedLiveData[K, A, E](
             )
             // Rejected and retried: the counter goes up only then. The write
             // runs in a new transaction, after this one
-            if next.refetches > state.refetches then refetchBus.writer.onNext(k)
+            if next.refetches > state.refetches then
+              dom.console.warn(
+                s"[$name] snapshot for $k at #$position rejected: events up to " +
+                  s"#${state.highestDiscardedPosition.getOrElse(-1L)} were dropped " +
+                  s"from the tail (${state.tail.size} kept, from " +
+                  s"#${state.tail.headOption.map(_._1).getOrElse(-1L)}). " +
+                  s"Refetch ${next.refetches}"
+              )
+              refetchBus.writer.onNext(k)
+            else if state.refetches > 0 && next.refetches == 0 then
+              dom.console.info(
+                s"[$name] snapshot for $k at #$position accepted after " +
+                  s"${state.refetches} refetch(es), now at #${next.position}"
+              )
           case Input.Failed(_, _) =>
             feed.tracer.record(TraceStep.Kind.SnapshotFailed(name))
         next
