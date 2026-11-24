@@ -13,9 +13,10 @@ import com.raquo.laminar.api.L.*
   * browser, for one key at a time. Its snapshot is loaded once the stream has
   * subscribed, and again after a reconnect or a key change while the stream is
   * open. The events received are applied with `evolve`, in the order received:
-  * those received during the load are not lost, and those already in the
-  * snapshot are not applied twice (see `LiveModel.step`). Nothing runs until
-  * one of its signals is read.
+  * those received during the load are kept aside (the last 256), those already
+  * in the snapshot are not applied twice, and a snapshot whose later events
+  * were dropped is loaded again until one is complete (see `LiveModel.step`).
+  * Nothing runs until one of its signals is read.
   *
   * K is the type of the key (for example a therapist), A the type of the value,
   * E the type of the events `decode` keeps. `name` names it in the trace and in
@@ -31,13 +32,15 @@ final class ReplayedLiveData[K, A, E](
     same: Same[A] = Same.equal[A]
 ) extends LiveData[A]:
 
-  // The key to load, each time a snapshot is needed: when the stream opens
-  // (first time or reconnect), and when the key changes while it is open
+  // A snapshot rejected by `LiveModel.step` asks for a new load here. The bus breaks the loop
+  private val refetchBus = new EventBus[K]
+
   private val reloadKey: EventStream[K] =
     feed.openings
       .sample(key)
       .mergeWith(
-        key.changes.filterWith(feed.isOpenS)
+        key.changes.filterWith(feed.isOpenS),
+        refetchBus.events.filterWith(feed.isOpenS)
       )
 
   private val receivedInput: EventStream[Input[K, A, E]] =
@@ -78,10 +81,13 @@ final class ReplayedLiveData[K, A, E](
             feed.tracer.record(
               TraceStep.Kind.SnapshotRequested(name, s"$name for $k")
             )
-          case Input.Loaded(_, received, position) =>
+          case Input.Loaded(k, received, position) =>
             feed.tracer.record(
               TraceStep.Kind.SnapshotLoaded(name, position, sizeOf(received))
             )
+            // Rejected and retried: the counter goes up only then. The write
+            // runs in a new transaction, after this one
+            if next.refetches > state.refetches then refetchBus.writer.onNext(k)
           case Input.Failed(_, _) =>
             feed.tracer.record(TraceStep.Kind.SnapshotFailed(name))
         next
