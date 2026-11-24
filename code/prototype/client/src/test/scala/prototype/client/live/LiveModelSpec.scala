@@ -104,6 +104,45 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
     state.position shouldBe 400L
   }
 
+  // Loaded and live up to 100, then a reconnect: 101 to 110 were published
+  // while disconnected and never sent, 111 arrives during the reload
+  private def reconnectedAt100: Model =
+    run(
+      initial,
+      Seq(Input.Started("k"), snapshot(100L), Input.Started("k")) ++
+        received(Seq(111L))
+    )
+
+  // The events missing before the last one applied: empty when the value is
+  // the state at some position
+  private def holes(state: Model): List[Long] =
+    state.value.toList.flatMap(applied =>
+      (1L to applied.lastOption.getOrElse(0L)).toList.diff(applied)
+    )
+
+  "A reload on the same key (a reconnect)" should
+    "never apply an event over missing ones" in {
+      val state = reconnectedAt100
+      state.loading shouldBe true
+      holes(state) shouldBe Nil
+    }
+
+  it should "hold each event once after the snapshot" in {
+    val state = run(reconnectedAt100, Seq(snapshot(110L)))
+    state.value shouldBe Some((1L to 111L).toList)
+    state.position shouldBe 111L
+  }
+
+  it should "never apply an event over missing ones after a failed load" in {
+    val state = run(
+      reconnectedAt100,
+      Input.Failed("k", new RuntimeException("load failed")) +:
+        received(Seq(112L))
+    )
+    state.loading shouldBe false
+    holes(state) shouldBe Nil
+  }
+
   "A new key" should "start from nothing" in {
     val rejected = loadDuring(burst = MaxTailSize + 50L, at = 10L)
     val state = run(rejected, Seq(Input.Started("other")))
