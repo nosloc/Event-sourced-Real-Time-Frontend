@@ -80,6 +80,30 @@ class DashboardServiceSpec
       billing shouldBe Left(CompanyNotFound())
   }
 
+  it should "report the older of its two reads' cursors, commit group first" in {
+    // By position alone the therapists' read (5) would look older; in delivery
+    // order the appointments' read (commit group 1) is
+    val therapistsCursor = Cursor(commitGroup = 2L, position = 5L)
+    val appointmentsCursor = Cursor(commitGroup = 1L, position = 9L)
+    for
+      companies <- InMemoryCompanyService()
+      therapists <- InMemoryTherapistService(companies, therapistsCursor)
+      appointments <- InMemoryAppointmentService(therapists, appointmentsCursor)
+      dashboards <- DashboardServiceImpl(companies, therapists, appointments)
+      company <- companies.createCompany("Mine", address).map(_.companyId)
+      directory <- dashboards.getDirectoryDashboard(company)
+      activity <- dashboards.getActivityDashboard(
+        company,
+        PeriodUnit.WEEK,
+        date("2026-10-12")
+      )
+      billing <- dashboards.getBillingDashboard(company)
+    yield
+      directory.cursor shouldBe appointmentsCursor
+      activity.cursor shouldBe appointmentsCursor
+      billing.cursor shouldBe appointmentsCursor
+  }
+
   "The directory" should "count only the therapists and appointments of the company" in {
     for
       w <- newWorld
