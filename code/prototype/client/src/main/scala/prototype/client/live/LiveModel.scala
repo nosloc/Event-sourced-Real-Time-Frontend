@@ -3,8 +3,8 @@ package prototype.client.live
 object LiveModel:
   type Position = Long
 
-  /** What can change the state of a live value: an event received, or a load of
-    * its snapshot that starts, succeeds or fails.
+  /** What can change the state of a live value: an event received, the stream
+    * closing, or a load of its snapshot that starts, succeeds or fails.
     *
     * K is the type of the key, A is the type of the value, E is the type of the
     * event
@@ -12,7 +12,10 @@ object LiveModel:
   enum Input[+K, +A, +E]:
     // The client received an event from the server
     case Received(position: Position, event: E)
-    // A load of the snapshot for this key has started
+    // The stream closed: events are missed until it reopens
+    case Closed
+    // A load of the snapshot for this key has started. Assumed only while the
+    // stream is open: `ReplayedLiveData` starts none while it is closed
     case Started(key: K)
     // The snapshot for this key arrived, with the position it includes
     case Loaded(key: K, value: A, position: Position)
@@ -22,6 +25,11 @@ object LiveModel:
   /** `highestDiscardedPosition` is the highest position ever dropped from the
     * tail, `refetches` counts the snapshots of the current key rejected in a
     * row for that reason.
+    *
+    * `behind`: the value may miss events (stream closed or load started, no
+    * snapshot accepted since), so events only go to the tail.
+    * `closedSinceStarted`: the stream closed during the current load, so its
+    * snapshot may miss events and does not lift `behind`.
     */
   final case class State[K, A, E](
       value: Option[A],
@@ -30,10 +38,12 @@ object LiveModel:
       tail: Vector[(Position, E)],
       highestDiscardedPosition: Option[Position],
       refetches: Int,
+      behind: Boolean,
+      closedSinceStarted: Boolean,
       loading: Boolean,
       error: Option[Throwable]
   ):
-    def applyIncomingEvent = refetches == 0
+    def applyIncomingEvent = refetches == 0 && !behind
 
   def initial[K, A, E]: State[K, A, E] =
     State(
@@ -43,6 +53,8 @@ object LiveModel:
       tail = Vector.empty,
       highestDiscardedPosition = None,
       refetches = 0,
+      behind = false,
+      closedSinceStarted = false,
       loading = false,
       error = None
     )
@@ -79,8 +91,18 @@ object LiveModel:
               highestDiscardedPosition = newHighestDiscardedPosition
             )
 
+      case Closed =>
+        state.copy(behind = true, closedSinceStarted = true)
+
       case Started(key) =>
-        if state.key.contains(key) then state.copy(loading = true, error = None)
+        // A reload may follow missed events (a reconnect): behind until accepted
+        if state.key.contains(key) then
+          state.copy(
+            behind = true,
+            closedSinceStarted = false,
+            loading = true,
+            error = None
+          )
         else
           // A new key: nothing shown yet, and the old position was the old key's
           state.copy(
@@ -88,6 +110,8 @@ object LiveModel:
             key = Some(key),
             position = 0L,
             refetches = 0,
+            behind = true,
+            closedSinceStarted = false,
             loading = true,
             error = None
           )
@@ -114,14 +138,17 @@ object LiveModel:
             eventAfterPosition.map(_._2).foldLeft(value) { case (v, e) =>
               evolve(key, v, e)
             }
+          // Still behind if the stream closed during this load
           state.copy(
             value = Some(newValue),
             key = Some(key),
             position = newPosition,
             refetches = 0,
+            behind = state.closedSinceStarted,
             loading = false,
             error = None
           )
+      // Stays behind: frozen, with the error shown
       case Failed(_, error) =>
         state.copy(loading = false, error = Some(error))
 end LiveModel

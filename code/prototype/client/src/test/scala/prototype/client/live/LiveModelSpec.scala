@@ -143,6 +143,28 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
     holes(state) shouldBe Nil
   }
 
+  "A load during which the stream closed" should
+    "keep the value frozen, even if an event comes before the next reload" in {
+      // Live at 100, a reload read at 100, then the stream closes (101 to 110
+      // missed), the reload answers, and 111 arrives before the next reload
+      val straddled = run(
+        initial,
+        Seq(
+          Input.Started("k"),
+          snapshot(100L),
+          Input.Started("k"),
+          Input.Closed,
+          snapshot(100L)
+        ) ++ received(Seq(111L))
+      )
+      straddled.behind shouldBe true
+      holes(straddled) shouldBe Nil
+      // The reload after the reopening completes it
+      val state = run(straddled, Seq(Input.Started("k"), snapshot(110L)))
+      state.value shouldBe Some((1L to 111L).toList)
+      state.behind shouldBe false
+    }
+
   "A new key" should "start from nothing" in {
     val rejected = loadDuring(burst = MaxTailSize + 50L, at = 10L)
     val state = run(rejected, Seq(Input.Started("other")))

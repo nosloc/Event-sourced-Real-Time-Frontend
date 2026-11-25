@@ -17,7 +17,8 @@ import org.scalajs.dom
   * those received during the load are kept aside (the last 256), those already
   * in the snapshot are not applied twice, and a snapshot whose later events
   * were dropped is loaded again until one is complete (see `LiveModel.step`).
-  * Nothing runs until one of its signals is read.
+  * After the stream closes or a reload starts, the value stays frozen until a
+  * snapshot is accepted. Nothing runs until one of its signals is read.
   *
   * K is the type of the key (for example a therapist), A the type of the value,
   * E the type of the events `decode` keeps. `name` names it in the trace and in
@@ -55,6 +56,10 @@ final class ReplayedLiveData[K, A, E](
       )
       .collectSome
 
+  // The stream closed: events are missed until it reopens
+  private val closedInput: EventStream[Input[K, A, E]] =
+    feed.events.collect { case FeedMessage.Closed => Input.Closed }
+
   // The state of the live value: the loads (a status per reload, for the latest
   // key only) and the events received, folded by `LiveModel.step`. The trace
   // tells an event applied to the value (the position moved) from one only
@@ -71,13 +76,14 @@ final class ReplayedLiveData[K, A, E](
         case Resolved(k, Left(error), _) =>
           Input.Failed(k, error)
       }
-      .mergeWith(receivedInput)
+      .mergeWith(receivedInput, closedInput)
       .scanLeft(LiveModel.initial[K, A, E])((state, input) =>
         val next = LiveModel.step(evolve)(state, input)
         input match
           case Input.Received(position, _) =>
             val applied = next.position > state.position
             feed.tracer.record(TraceStep.Kind.Folded(name, applied), position)
+          case Input.Closed => ()
           case Input.Started(k) =>
             feed.tracer.record(
               TraceStep.Kind.SnapshotRequested(name, s"$name for $k")
