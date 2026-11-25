@@ -31,7 +31,7 @@ object LiveBillingDashboard:
       load = companyId =>
         Api.dashboards
           .getBillingDashboard(CompanyId(companyId))
-          .map(response => (response.dashboard, response.globalPosition)),
+          .map(response => (response.dashboard, response.cursor)),
       triggerRefresh = message =>
         BillingDashboardEvents.types.contains(message.eventType),
       name = name
@@ -47,7 +47,7 @@ object LiveBillingDashboard:
       companyAppointments: LiveData[List[Appointment]]
   ): LiveData[BillingFigures] =
     companyAppointments
-      .withCurrentValueOf(feed.lastPositionS)
+      .withCurrentValueOf(feed.lastReceivedPositionS)
       .map((appointments, position) =>
         feed.tracer.timed[BillingFigures](
           figures => TraceStep.Kind.FiguresComputed(name, figures),

@@ -17,7 +17,7 @@ object LivePatients:
       name = name,
       load = Api.patients
         .listPatients()
-        .map(response => (response.patients, response.globalPosition)),
+        .map(response => (response.patients, response.cursor)),
       decode = PatientEventDecoder.decode,
       evolve = PatientListEvolve.evolve,
       same = Same.byId(_.id)

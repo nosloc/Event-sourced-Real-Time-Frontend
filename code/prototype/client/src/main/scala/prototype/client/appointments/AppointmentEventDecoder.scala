@@ -15,7 +15,7 @@ object AppointmentEventDecoder:
       case Right(event) => Some(event)
       case Left(error)  =>
         dom.console.warn(
-          s"Event #${message.position} (${message.eventType}) not decoded: ${error.getMessage}"
+          s"Event #${message.cursor.position} (${message.eventType}) not decoded: ${error.getMessage}"
         )
         None
     }

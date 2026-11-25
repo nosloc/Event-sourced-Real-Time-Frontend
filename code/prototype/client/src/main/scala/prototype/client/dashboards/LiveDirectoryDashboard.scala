@@ -34,7 +34,7 @@ object LiveDirectoryDashboard:
       load = companyId =>
         Api.dashboards
           .getDirectoryDashboard(CompanyId(companyId))
-          .map(response => (response.dashboard, response.globalPosition)),
+          .map(response => (response.dashboard, response.cursor)),
       triggerRefresh = message =>
         DirectoryDashboardEvents.types.contains(message.eventType),
       name = name
@@ -51,7 +51,7 @@ object LiveDirectoryDashboard:
       sources: DashboardSources
   ): LiveData[DirectoryFigures] =
     sources
-      .withCurrentValueOf(feed.lastPositionS)
+      .withCurrentValueOf(feed.lastReceivedPositionS)
       .map { case ((therapists, appointments), position) =>
         feed.tracer.timed[DirectoryFigures](
           figures => TraceStep.Kind.FiguresComputed(name, figures),

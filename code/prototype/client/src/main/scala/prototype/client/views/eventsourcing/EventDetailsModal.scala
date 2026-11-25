@@ -18,7 +18,7 @@ object EventDetailsModal:
     child.maybe <-- selectedVar.signal.map(
       _.map(event =>
         Modal(
-          title = s"${event.eventType} · #${event.position}",
+          title = s"${event.eventType} · #${event.cursor.position}",
           onClose = () => selectedVar.set(None)
         )(
           div(
@@ -35,10 +35,12 @@ object EventDetailsModal:
                 else event.tags.map(tag => span(tag))
               )
             ),
-            row("Position", s"#${event.position}"),
+            row("Position", s"#${event.cursor.position}"),
+            row("Commit group", event.cursor.commitGroup.toString),
             p(
               cls := "event-details__note",
-              "Position in the store; numbers can skip."
+              "Position in the store; numbers can skip. Events are delivered " +
+                "by commit group, then position."
             ),
             pre(cls := "event-details__payload", indented(event.payload))
           )

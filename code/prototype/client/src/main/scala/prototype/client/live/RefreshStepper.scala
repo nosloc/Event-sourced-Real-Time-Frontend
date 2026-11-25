@@ -286,10 +286,10 @@ final case class RefreshStepper[+A](
         outcome match
           case Outcome.InitialLoad(_, loadNumber) =>
             cleaned.launchedFromScratch(loadNumber)
-          case Outcome.Load(_, pos, loadNumber) =>
-            cleaned.launched(pos, loadNumber)
-          case Outcome.Batched(pos, servedBy) =>
-            cleaned.batched(pos, servedBy)
+          case Outcome.Load(_, cursor, loadNumber) =>
+            cleaned.launched(cursor.position, loadNumber)
+          case Outcome.Batched(cursor, servedBy) =>
+            cleaned.batched(cursor.position, servedBy)
           // The one cast: safe because `concerns` only lets in this source's
           // reloads
           case Outcome.Answer(_, loadNumber, value) =>
@@ -297,13 +297,13 @@ final case class RefreshStepper[+A](
           case Outcome.AnswerAndLaunchPending(answer, load) =>
             cleaned
               .answered(answer.loadNumber, answer.value.asInstanceOf[A])
-              .launched(load.position, load.loadNumber)
+              .launched(load.cursor.position, load.loadNumber)
           case Outcome.Error(loadNumber) =>
             cleaned.failed(loadNumber)
           case Outcome.ErrorAndLaunchPending(error, load) =>
             cleaned
               .failed(error.loadNumber)
-              .launched(load.position, load.loadNumber)
+              .launched(load.cursor.position, load.loadNumber)
       case _ => cleaned
 
 object RefreshStepper:

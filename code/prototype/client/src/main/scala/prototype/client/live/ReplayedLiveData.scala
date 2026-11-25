@@ -2,7 +2,7 @@ package prototype.client.live
 
 import cats.effect.IO
 
-import prototype.api.EventMessage
+import prototype.api.{Cursor, EventMessage}
 import prototype.client.Api
 import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.live.LiveModel.Input
@@ -28,7 +28,7 @@ final class ReplayedLiveData[K, A, E](
     feed: LiveFeed,
     name: String,
     key: Signal[K],
-    load: K => IO[(A, Long)],
+    load: K => IO[(A, Cursor)],
     decode: EventMessage => Option[E],
     evolve: (K, A, E) => A,
     same: Same[A] = Same.equal[A]
@@ -50,8 +50,11 @@ final class ReplayedLiveData[K, A, E](
       .collect { case FeedMessage.Event(message) => message }
       .map(message =>
         decode(message).map(event =>
-          feed.tracer.record(TraceStep.Kind.Decoded(name), message.position)
-          Input.Received(message.position, event)
+          feed.tracer.record(
+            TraceStep.Kind.Decoded(name),
+            message.cursor.position
+          )
+          Input.Received(message.cursor, event)
         )
       )
       .collectSome
@@ -62,7 +65,7 @@ final class ReplayedLiveData[K, A, E](
 
   // The state of the live value: the loads (a status per reload, for the latest
   // key only) and the events received, folded by `LiveModel.step`. The trace
-  // tells an event applied to the value (the position moved) from one only
+  // tells an event applied to the value (the cursor moved) from one only
   // kept aside: still loading, or already in the snapshot. It also records the
   // loads of the snapshot, with the position the snapshot includes
   private val stateS: Signal[LiveModel.State[K, A, E]] =
@@ -71,8 +74,8 @@ final class ReplayedLiveData[K, A, E](
       .map {
         case Pending(k) =>
           Input.Started(k)
-        case Resolved(k, Right((value, position)), _) =>
-          Input.Loaded(k, value, position)
+        case Resolved(k, Right((value, cursor)), _) =>
+          Input.Loaded(k, value, cursor)
         case Resolved(k, Left(error), _) =>
           Input.Failed(k, error)
       }
@@ -80,33 +83,40 @@ final class ReplayedLiveData[K, A, E](
       .scanLeft(LiveModel.initial[K, A, E])((state, input) =>
         val next = LiveModel.step(evolve)(state, input)
         input match
-          case Input.Received(position, _) =>
-            val applied = next.position > state.position
-            feed.tracer.record(TraceStep.Kind.Folded(name, applied), position)
+          case Input.Received(cursor, _) =>
+            val applied = next.cursor != state.cursor
+            feed.tracer.record(
+              TraceStep.Kind.Folded(name, applied),
+              cursor.position
+            )
           case Input.Closed => ()
           case Input.Started(k) =>
             feed.tracer.record(
               TraceStep.Kind.SnapshotRequested(name, s"$name for $k")
             )
-          case Input.Loaded(k, received, position) =>
+          case Input.Loaded(k, received, cursor) =>
             feed.tracer.record(
-              TraceStep.Kind.SnapshotLoaded(name, position, sizeOf(received))
+              TraceStep.Kind.SnapshotLoaded(
+                name,
+                cursor.position,
+                sizeOf(received)
+              )
             )
             // Rejected and retried: the counter goes up only then. The write
             // runs in a new transaction, after this one
             if next.refetches > state.refetches then
               dom.console.warn(
-                s"[$name] snapshot for $k at #$position rejected: events up to " +
-                  s"#${state.highestDiscardedPosition.getOrElse(-1L)} were dropped " +
-                  s"from the tail (${state.tail.size} kept, from " +
-                  s"#${state.tail.headOption.map(_._1).getOrElse(-1L)}). " +
+                s"[$name] snapshot for $k at #${cursor.position} rejected: " +
+                  s"events up to #${state.highestDiscarded.map(_.position).getOrElse(-1L)} " +
+                  s"were dropped from the tail (${state.tail.size} kept, from " +
+                  s"#${state.tail.headOption.map(_._1.position).getOrElse(-1L)}). " +
                   s"Refetch ${next.refetches}"
               )
               refetchBus.writer.onNext(k)
             else if state.refetches > 0 && next.refetches == 0 then
               dom.console.info(
-                s"[$name] snapshot for $k at #$position accepted after " +
-                  s"${state.refetches} refetch(es), now at #${next.position}"
+                s"[$name] snapshot for $k at #${cursor.position} accepted after " +
+                  s"${state.refetches} refetch(es), now at #${next.cursor.position}"
               )
           case Input.Failed(_, _) =>
             feed.tracer.record(TraceStep.Kind.SnapshotFailed(name))
@@ -128,7 +138,8 @@ final class ReplayedLiveData[K, A, E](
   override val errorS: Signal[Option[Throwable]] = stateS.map(_.error)
 
   /** Compared with a new read of the snapshot, by `same`: see `SyncCheck`. The
-    * source's version is the position of the last event applied.
+    * source's version is the position of the last event applied (compared for
+    * equality only, and positions are unique).
     */
   override val syncS: Signal[SyncStatus] =
     SyncCheck(
@@ -138,7 +149,7 @@ final class ReplayedLiveData[K, A, E](
         SyncCheckModel.Local(
           state.key,
           state.loading,
-          state.position,
+          state.cursor.position,
           state.value
         )
       ),
@@ -156,7 +167,7 @@ object ReplayedLiveData:
   def keyless[A, E](
       feed: LiveFeed,
       name: String,
-      load: IO[(A, Long)],
+      load: IO[(A, Cursor)],
       decode: EventMessage => Option[E],
       evolve: (A, E) => A,
       same: Same[A] = Same.equal[A]

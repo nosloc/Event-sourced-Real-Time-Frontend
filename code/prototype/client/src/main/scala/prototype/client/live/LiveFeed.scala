@@ -30,10 +30,18 @@ final class LiveFeed:
   // The real time event bus
   private val messages: EventBus[FeedMessage] = new EventBus[FeedMessage]
   val events: EventStream[FeedMessage] = messages.events
-  // The position of the last event received, -1 before the first one
-  val lastPositionS: Signal[Long] =
+  // The highest position received, -1 before the first event: compared with
+  // the store's head (a position). Not the last: a late commit has a lower one
+  val highestPositionS: Signal[Long] =
     events
-      .collect { case FeedMessage.Event(message) => message.position }
+      .collect { case FeedMessage.Event(message) => message.cursor.position }
+      .scanLeft(-1L)(_ max _)
+
+  // The position of the last event received, -1 before the first one: the
+  // event a step of the trace belongs to
+  val lastReceivedPositionS: Signal[Long] =
+    events
+      .collect { case FeedMessage.Event(message) => message.cursor.position }
       .toSignal(-1L)
 
   // Records the steps of each event, for the step-by-step mode
@@ -56,7 +64,7 @@ final class LiveFeed:
   // Where the feed is in relation to the store's head, as `StreamStatus`.
   val streamStatusS: Signal[StreamStatus] =
     headChecks
-      .withCurrentValueOf(lastPositionS)
+      .withCurrentValueOf(highestPositionS)
       .scanLeft(StreamCheck.initial)((check, next) =>
         val (head, lastReceived) = next
         StreamCheck.step(check, head, lastReceived)
@@ -72,10 +80,10 @@ final class LiveFeed:
             case Right(message) =>
               tracer.record(
                 TraceStep.Kind.Received(message.eventType, message.payload),
-                message.position
+                message.cursor.position
               )
               messages.emit(FeedMessage.Event(message))
-              tracer.record(TraceStep.Kind.Ended, message.position)
+              tracer.record(TraceStep.Kind.Ended, message.cursor.position)
             case Left(error) =>
               dom.console.warn(
                 s"Stream message not decoded: ${error.getMessage}"

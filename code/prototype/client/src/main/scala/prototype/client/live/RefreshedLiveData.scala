@@ -2,7 +2,7 @@ package prototype.client.live
 
 import cats.effect.IO
 
-import prototype.api.EventMessage
+import prototype.api.{Cursor, EventMessage}
 import prototype.client.Api
 import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.live.RefreshModel.{Input, Outcome}
@@ -47,7 +47,7 @@ final class RefreshedLiveData[K, A](
     feed: LiveFeed,
     name: String,
     key: Signal[K],
-    load: K => IO[(A, Long)],
+    load: K => IO[(A, Cursor)],
     triggerRefresh: EventMessage => Boolean,
     invalidatePrevious: (K, K) => Boolean = (_: K, _: K) => true,
     same: Same[A] = Same.equal[A]
@@ -67,13 +67,13 @@ final class RefreshedLiveData[K, A](
       if triggerRefresh(message) then
         feed.tracer.record(
           TraceStep.Kind.Considered(name),
-          message.position
+          message.cursor.position
         )
-        Some(Input.EventArrived(message.position))
+        Some(Input.EventArrived(message.cursor))
       else
         feed.tracer.record(
           TraceStep.Kind.NotConsidered(name),
-          message.position
+          message.cursor.position
         )
         None
     }.collectSome
@@ -121,8 +121,8 @@ final class RefreshedLiveData[K, A](
       }
       .flatMapSwitch(k => Api.stream(load(k)).map(k -> _))
       .tapEach {
-        case (k, Right((value, position))) =>
-          loadResults.emit(Input.Loaded(k, value, position))
+        case (k, Right((value, cursor))) =>
+          loadResults.emit(Input.Loaded(k, value, cursor))
         case (k, Left(error)) =>
           loadResults.emit(Input.Failed(k, error))
       }
@@ -139,7 +139,8 @@ final class RefreshedLiveData[K, A](
   override val errorS: Signal[Option[Throwable]] = stateS.map(_.error)
 
   /** Compared with a new read once no reload runs: see `SyncCheck`. The
-    * source's version is the position of the value shown.
+    * source's version is the position of the value shown (compared for
+    * equality only, and positions are unique).
     */
   override val syncS: Signal[SyncStatus] =
     SyncCheck(
@@ -149,7 +150,7 @@ final class RefreshedLiveData[K, A](
         SyncCheckModel.Local(
           state.key,
           state.loading || state.phase != RefreshModel.Phase.Idle,
-          state.position,
+          state.cursor.position,
           state.value
         )
       ),
@@ -157,14 +158,15 @@ final class RefreshedLiveData[K, A](
       same
     )
 
-  // The event an outcome belongs to in the trace: the one that launched the
-  // load or was batched, the highest one batched for a pending load; None
-  // for an answer alone and for a load with no event behind it
+  // The event an outcome belongs to in the trace (by its position): the one
+  // that launched the load or was batched, the highest one batched for a
+  // pending load; None for an answer alone and for a load with no event
+  // behind it
   private def eventBehind(outcome: Outcome[K, A]): Option[Long] =
     outcome match
-      case Outcome.Load(_, position, _)               => Some(position)
-      case Outcome.Batched(position, _)               => Some(position)
-      case Outcome.AnswerAndLaunchPending(_, load)    => Some(load.position)
-      case Outcome.ErrorAndLaunchPending(_, load)     => Some(load.position)
+      case Outcome.Load(_, cursor, _)                 => Some(cursor.position)
+      case Outcome.Batched(cursor, _)                 => Some(cursor.position)
+      case Outcome.AnswerAndLaunchPending(_, load)    => Some(load.cursor.position)
+      case Outcome.ErrorAndLaunchPending(_, load)     => Some(load.cursor.position)
       case Outcome.InitialLoad(_, _)                  => None
       case Outcome.Answer(_, _, _) | Outcome.Error(_) => None

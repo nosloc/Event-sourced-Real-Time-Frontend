@@ -50,7 +50,7 @@ object LiveActivityDashboard:
             date = key.periodDay
           )
           .map(response =>
-            ((key.periodUnit, response.dashboard), response.globalPosition)
+            ((key.periodUnit, response.dashboard), response.cursor)
           ),
       triggerRefresh = message =>
         ActivityDashboardEvents.types.contains(message.eventType),
@@ -73,7 +73,7 @@ object LiveActivityDashboard:
   ): LiveData[(PeriodUnit, ActivityFigures)] =
     sources
       .combineWith(unitS.combineWith(dateS))
-      .withCurrentValueOf(feed.lastPositionS)
+      .withCurrentValueOf(feed.lastReceivedPositionS)
       .map { case (((therapists, appointments), (unit, date)), position) =>
         feed.tracer.timed[(PeriodUnit, ActivityFigures)](
           all => TraceStep.Kind.FiguresComputed(name, all),

@@ -47,7 +47,7 @@ object EventTable:
       cls := "admin__row",
       cls("event-sourcing__row--arrived") <-- arrivedS,
       tabIndex := 0,
-      td(s"#${event.position}"),
+      td(s"#${event.cursor.position}"),
       td(cls := "event-sourcing__time", EventDetailsModal.timeOf(event)),
       td(event.eventType),
       td(

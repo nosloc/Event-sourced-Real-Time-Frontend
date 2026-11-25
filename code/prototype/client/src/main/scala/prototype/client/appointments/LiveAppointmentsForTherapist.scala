@@ -26,7 +26,7 @@ object LiveAppointmentsForTherapist:
       load = therapist =>
         Api.appointments
           .listTherapistAppointments(TherapistId(therapist.trigram))
-          .map(response => (response.appointments, response.globalPosition)),
+          .map(response => (response.appointments, response.cursor)),
       decode = AppointmentEventDecoder.decode,
       evolve = AppointmentListEvolve.evolve,
       same = Same.byId(_.appointmentId)

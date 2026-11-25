@@ -142,13 +142,13 @@ object EventSourcingModel:
   /** Not held yet, and not older than the whole held window (a replay) */
   def isNewEvent(held: List[EventMessage], event: EventMessage): Boolean =
     !held.exists(_.eventId == event.eventId) &&
-      held.lastOption.forall(_.position < event.position)
+      held.lastOption.forall(_.cursor.position < event.cursor.position)
 
   /** The live events already held and newer than the page are not in its total
     */
   def totalAfterLatest(page: EventsPage, held: List[EventMessage]): Long =
-    val pageNewest = page.events.map(_.position).maxOption.getOrElse(0L)
-    page.total + held.count(_.position > pageNewest)
+    val pageNewest = page.events.map(_.cursor.position).maxOption.getOrElse(0L)
+    page.total + held.count(_.cursor.position > pageNewest)
 
   /** Both lists without duplicates, newest first, at most `MaxEventsSize` */
   def mergeEvents(
@@ -158,7 +158,7 @@ object EventSourcingModel:
     val allEvents: Map[String, EventMessage] =
       (oldEvents ++ newEvents).map(e => e.eventId -> e).toMap
     allEvents.values.toList
-      .sortBy(-_.position)
+      .sortBy(-_.cursor.position)
       .take(MaxEventsSize)
   end mergeEvents
 
