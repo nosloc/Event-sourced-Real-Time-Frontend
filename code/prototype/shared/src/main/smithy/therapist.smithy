@@ -92,6 +92,10 @@ structure CreateTherapistInput {
 structure CreateTherapistOutput {
     @required
     therapist: Therapist
+
+    // The cursor of the last event the command wrote
+    @required
+    cursor: Cursor
 }
 
 @error("client")

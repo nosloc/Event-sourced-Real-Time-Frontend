@@ -8,7 +8,7 @@ import prototype.api.*
   * the services that only need therapists to exist (dashboards). The real one
   * stores events in Postgres and reads from a projection. Like the real one, it
   * refuses an unknown company and an id that is already taken. No event store
-  * behind it: its list reports `cursor`, the same on every read.
+  * behind it: its list and its command report `cursor`, the same every time.
   */
 final class InMemoryTherapistService private (
     companies: CompanyService[IO],
@@ -42,7 +42,7 @@ final class InMemoryTherapistService private (
           else (all + (therapistId -> therapist), true)
         }
         .flatMap(created =>
-          if created then IO.pure(CreateTherapistOutput(therapist))
+          if created then IO.pure(CreateTherapistOutput(therapist, cursor))
           else IO.raiseError(TherapistAlreadyExists())
         )
 

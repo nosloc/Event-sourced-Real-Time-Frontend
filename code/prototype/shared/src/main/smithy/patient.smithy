@@ -63,6 +63,10 @@ structure CreatePatientInput {
 structure CreatePatientOutput {
     @required
     patientId: PatientId
+
+    // The cursor of the last event the command wrote
+    @required
+    cursor: Cursor
 }
 
 @error("client")

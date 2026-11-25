@@ -6,6 +6,7 @@ import prototype.api.*
 import prototype.server.core.therapist.commands.CreateTherapist
 import prototype.server.core.therapist.domain.TherapistError.*
 import prototype.server.core.therapist.persistence.TherapistRepository
+import prototype.server.eventfeed.ApiCursor
 import prototype.server.eventfeed.ApiCursor.toApi
 import prototype.shared.events.PrototypeEvent
 import prototype.shared.therapist.TherapistState
@@ -48,7 +49,7 @@ class TherapistServiceImpl(
       role: Role
   ): IO[CreateTherapistOutput] =
     for
-      _ <- CreateTherapist.Handler.runOrRaise[IO](
+      events <- CreateTherapist.Handler.runOrRaise[IO](
         CreateTherapist(
           therapistId.value,
           firstName,
@@ -64,6 +65,8 @@ class TherapistServiceImpl(
       _ <- logger.info(
         s"Created therapist ${therapistId.value} for company ${companyId.value}"
       )
+      cursor <- ApiCursor.required(ApiCursor.lastWritten(events))
     yield CreateTherapistOutput(
-      Therapist(firstName, lastName, therapistId, companyId, role)
+      Therapist(firstName, lastName, therapistId, companyId, role),
+      cursor
     )

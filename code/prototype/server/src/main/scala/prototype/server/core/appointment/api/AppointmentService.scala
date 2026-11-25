@@ -5,7 +5,7 @@ import java.util.concurrent.TimeoutException
 
 import scala.concurrent.duration.*
 
-import cats.effect.IO
+import cats.effect.{IO, Ref}
 import cats.syntax.all.*
 
 import prototype.api.*
@@ -23,12 +23,14 @@ import prototype.server.core.appointment.persistence.{
   AppointmentProjection,
   AppointmentRepository
 }
+import prototype.server.eventfeed.ApiCursor
 import prototype.server.eventfeed.ApiCursor.toApi
 import prototype.shared.appointment.AppointmentState
 import prototype.shared.events.PrototypeEvent
 
 import persistent4s.{
   CommandRuntime,
+  EventEnvelope,
   EventSourcedCommandHandler,
   SyncCommandHandler
 }
@@ -117,25 +119,40 @@ class AppointmentServiceImpl(
   private val updatePrestationSync = waitingFor(UpdatePrestationStatus.Handler)
   private val deletePrestationSync = waitingFor(DeletePrestation.Handler)
 
+  // `runSync` returns only the projection's states and drops the events the
+  // command wrote. This copy of the handler also puts those events in
+  // `written`, so their cursor can be read afterwards, even when the wait for
+  // the projection times out (the events are written by then)
+  private def keepingEvents[C](
+      sync: SyncCommandHandler[IO, C, PrototypeEvent, UUID, AppointmentState],
+      written: Ref[IO, List[EventEnvelope[PrototypeEvent]]]
+  ): SyncCommandHandler[IO, C, PrototypeEvent, UUID, AppointmentState] =
+    sync.copy(execute = command => sync.execute(command).flatTap(written.set))
+
   // Runs the command and returns the appointment as the projection saved it
-  // (None once deleted). An update that changes nothing produces no event, and
-  // a projection slower than the timeout does not undo a saved change: in both
+  // (None once deleted), with the cursor of the last event it wrote (None when
+  // it wrote none). An update that changes nothing produces no event, and a
+  // projection slower than the timeout does not undo a saved change: in both
   // cases the read model is read instead.
   private def runAndRead[C](
       sync: SyncCommandHandler[IO, C, PrototypeEvent, UUID, AppointmentState],
       command: C,
       id: UUID
-  ): IO[Option[AppointmentState]] =
-    sync
-      .runSync(command)
-      .flatMap(states => states.get(id).fold(appointments.find(id))(IO.pure))
-      .recoverWith { case _: TimeoutException =>
-        // The change is saved: only the read model is late. Say so in the
-        // logs, since a projection this slow (or stuck) needs looking at
-        logger.warn(
-          s"Appointment $id: the change is saved, but the projection did not confirm it within $syncTimeout; answering from the read model"
-        ) *> appointments.find(id)
-      }
+  ): IO[(Option[AppointmentState], Option[Cursor])] =
+    for
+      written <- IO.ref(List.empty[EventEnvelope[PrototypeEvent]])
+      found <- keepingEvents(sync, written)
+        .runSync(command)
+        .flatMap(states => states.get(id).fold(appointments.find(id))(IO.pure))
+        .recoverWith { case _: TimeoutException =>
+          // The change is saved: only the read model is late. Say so in the
+          // logs, since a projection this slow (or stuck) needs looking at
+          logger.warn(
+            s"Appointment $id: the change is saved, but the projection did not confirm it within $syncTimeout; answering from the read model"
+          ) *> appointments.find(id)
+        }
+      events <- written.get
+    yield (found, ApiCursor.lastWritten(events))
 
   // For a change after which the appointment must still exist
   private def existing(found: Option[AppointmentState]): IO[Appointment] =
@@ -191,7 +208,7 @@ class AppointmentServiceImpl(
   ): IO[CreateAppointmentOutput] =
     for
       id <- IO.randomUUID
-      found <- runAndRead(
+      (found, written) <- runAndRead(
         createAppointmentSync,
         CreateAppointment(
           id,
@@ -203,6 +220,7 @@ class AppointmentServiceImpl(
         id
       )
       _ <- logger.info(s"Created appointment $id")
+      cursor <- ApiCursor.required(written)
       appointment <- found match
         case Some(state) => fromState(state)
         case None        =>
@@ -216,7 +234,7 @@ class AppointmentServiceImpl(
               Nil
             )
           )
-    yield CreateAppointmentOutput(appointment)
+    yield CreateAppointmentOutput(appointment, cursor)
 
   // The type, the participants and the time are all replaced
   override def updateAppointment(
@@ -228,7 +246,7 @@ class AppointmentServiceImpl(
   ): IO[UpdateAppointmentOutput] =
     val id = appointmentId.value
     for
-      found <- runAndRead(
+      (found, cursor) <- runAndRead(
         updateAppointmentSync,
         UpdateAppointment(
           id,
@@ -241,14 +259,17 @@ class AppointmentServiceImpl(
       )
       _ <- logger.info(s"Updated appointment $id")
       appointment <- existing(found)
-    yield UpdateAppointmentOutput(appointment)
+    yield UpdateAppointmentOutput(appointment, cursor)
 
-  override def deleteAppointment(appointmentId: AppointmentId): IO[Unit] =
+  override def deleteAppointment(
+      appointmentId: AppointmentId
+  ): IO[DeleteAppointmentOutput] =
     val id = appointmentId.value
     for
-      _ <- runAndRead(deleteAppointmentSync, DeleteAppointment(id), id)
+      (_, written) <- runAndRead(deleteAppointmentSync, DeleteAppointment(id), id)
       _ <- logger.info(s"Deleted appointment $id")
-    yield ()
+      cursor <- ApiCursor.required(written)
+    yield DeleteAppointmentOutput(cursor)
 
   // The prestation id is generated here
   override def createPrestation(
@@ -260,14 +281,15 @@ class AppointmentServiceImpl(
     val id = appointmentId.value
     for
       prestationId <- IO.randomUUID
-      found <- runAndRead(
+      (found, written) <- runAndRead(
         createPrestationSync,
         CreatePrestation(id, prestationId, label, unitPrice, quantity),
         id
       )
       _ <- logger.info(s"Added prestation $prestationId to appointment $id")
       appointment <- existing(found)
-    yield CreatePrestationOutput(appointment)
+      cursor <- ApiCursor.required(written)
+    yield CreatePrestationOutput(appointment, cursor)
 
   override def updatePrestationStatus(
       appointmentId: AppointmentId,
@@ -276,7 +298,7 @@ class AppointmentServiceImpl(
   ): IO[UpdatePrestationStatusOutput] =
     val id = appointmentId.value
     for
-      found <- runAndRead(
+      (found, written) <- runAndRead(
         updatePrestationSync,
         UpdatePrestationStatus(id, prestationId.value, status),
         id
@@ -285,15 +307,16 @@ class AppointmentServiceImpl(
         s"Changed prestation ${prestationId.value} of appointment $id to ${status.stringValue}"
       )
       appointment <- existing(found)
-    yield UpdatePrestationStatusOutput(appointment)
+      cursor <- ApiCursor.required(written)
+    yield UpdatePrestationStatusOutput(appointment, cursor)
 
   override def deletePrestation(
       appointmentId: AppointmentId,
       prestationId: PrestationId
-  ): IO[Unit] =
+  ): IO[DeletePrestationOutput] =
     val id = appointmentId.value
     for
-      _ <- runAndRead(
+      (_, written) <- runAndRead(
         deletePrestationSync,
         DeletePrestation(id, prestationId.value),
         id
@@ -301,4 +324,5 @@ class AppointmentServiceImpl(
       _ <- logger.info(
         s"Deleted prestation ${prestationId.value} of appointment $id"
       )
-    yield ()
+      cursor <- ApiCursor.required(written)
+    yield DeletePrestationOutput(cursor)

@@ -86,6 +86,10 @@ structure CreateCompanyInput {
 structure CreateCompanyOutput {
     @required
     companyId: CompanyId
+
+    // The cursor of the last event the command wrote
+    @required
+    cursor: Cursor
 }
 
 @error("client")

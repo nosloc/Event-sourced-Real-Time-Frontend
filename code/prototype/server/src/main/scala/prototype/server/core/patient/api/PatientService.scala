@@ -6,6 +6,7 @@ import prototype.api.*
 import prototype.server.core.patient.commands.CreatePatient
 import prototype.server.core.patient.domain.PatientError.*
 import prototype.server.core.patient.persistence.PatientRepository
+import prototype.server.eventfeed.ApiCursor
 import prototype.server.eventfeed.ApiCursor.toApi
 import prototype.shared.events.PrototypeEvent
 import prototype.shared.patient.PatientState
@@ -31,7 +32,7 @@ class PatientServiceImpl(
   ): IO[CreatePatientOutput] =
     for
       id <- IO.randomUUID
-      _ <- CreatePatient.Handler.runOrRaise[IO](
+      events <- CreatePatient.Handler.runOrRaise[IO](
         CreatePatient(
           id,
           firstName,
@@ -43,7 +44,8 @@ class PatientServiceImpl(
         case EMPTY_PATIENT_FIELDS(fields) => InvalidPatient(fields)
       }
       _ <- logger.info(s"Created patient $id")
-    yield CreatePatientOutput(PatientId(id))
+      cursor <- ApiCursor.required(ApiCursor.lastWritten(events))
+    yield CreatePatientOutput(PatientId(id), cursor)
 
   // Sorted by last then first name: a projection has no stable order
   override def listPatients(): IO[ListPatientsOutput] =

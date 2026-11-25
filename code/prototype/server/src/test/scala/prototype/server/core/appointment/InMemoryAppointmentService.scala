@@ -9,7 +9,7 @@ import prototype.api.*
   * appointment rules (busy people, time range, status changes): those are
   * tested on the real handlers. Like the real one, it lists only the
   * appointments of a known therapist, in time order. No event store behind it:
-  * its lists report `cursor`, the same on every read.
+  * its lists and its commands report `cursor`, the same every time.
   */
 final class InMemoryAppointmentService private (
     therapists: TherapistService[IO],
@@ -47,7 +47,7 @@ final class InMemoryAppointmentService private (
       )
       appointments
         .update(_ + (appointment.appointmentId -> appointment))
-        .as(CreateAppointmentOutput(appointment))
+        .as(CreateAppointmentOutput(appointment, cursor))
     }
 
   override def getAppointment(
@@ -105,10 +105,12 @@ final class InMemoryAppointmentService private (
         appointmentType = apptType,
         timeRange = timeRange
       )
-    ).map(UpdateAppointmentOutput.apply)
+    ).map(UpdateAppointmentOutput(_, Some(cursor)))
 
-  override def deleteAppointment(appointmentId: AppointmentId): IO[Unit] =
-    appointments.update(_ - appointmentId)
+  override def deleteAppointment(
+      appointmentId: AppointmentId
+  ): IO[DeleteAppointmentOutput] =
+    appointments.update(_ - appointmentId).as(DeleteAppointmentOutput(cursor))
 
   override def createPrestation(
       appointmentId: AppointmentId,
@@ -128,7 +130,7 @@ final class InMemoryAppointmentService private (
       change(appointmentId)(a =>
         a.copy(prestations = a.prestations :+ prestation)
       )
-        .map(CreatePrestationOutput.apply)
+        .map(CreatePrestationOutput(_, cursor))
     }
 
   override def updatePrestationStatus(
@@ -142,17 +144,17 @@ final class InMemoryAppointmentService private (
           if p.prestationId == prestationId then p.copy(status = status) else p
         )
       )
-    ).map(UpdatePrestationStatusOutput.apply)
+    ).map(UpdatePrestationStatusOutput(_, cursor))
 
   override def deletePrestation(
       appointmentId: AppointmentId,
       prestationId: PrestationId
-  ): IO[Unit] =
+  ): IO[DeletePrestationOutput] =
     change(appointmentId)(a =>
       a.copy(prestations =
         a.prestations.filterNot(_.prestationId == prestationId)
       )
-    ).void
+    ).as(DeletePrestationOutput(cursor))
 
 object InMemoryAppointmentService:
   def apply(

@@ -53,7 +53,7 @@ Content-Type: application/json
 ###
 @appointmentId = {{create.response.body.$.appointment.appointmentId}}
 
-# Expected: 204
+# Expected: 200, with the cursor of the deletion
 DELETE http://127.0.0.1:9000/api/appointments/{{appointmentId}}
 Authorization: Bearer {{token}}
 

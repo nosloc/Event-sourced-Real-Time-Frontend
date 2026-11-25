@@ -20,7 +20,7 @@ final class InMemoryCompanyService private (
       val id = CompanyId(uuid)
       companies
         .update(_ + (id -> Company(id, name, address)))
-        .as(CreateCompanyOutput(id))
+        .as(CreateCompanyOutput(id, Cursor(0L, 0L)))
     }
 
   override def listCompanies(): IO[ListCompaniesOutput] =

@@ -6,6 +6,7 @@ import prototype.api.*
 import prototype.server.core.company.commands.CreateCompany
 import prototype.server.core.company.domain.CompanyError.*
 import prototype.server.core.company.persistence.CompanyRepository
+import prototype.server.eventfeed.ApiCursor
 import prototype.server.eventfeed.ApiCursor.toApi
 import prototype.shared.company.CompanyState
 import prototype.shared.events.PrototypeEvent
@@ -27,7 +28,7 @@ class CompanyServiceImpl(
   ): IO[CreateCompanyOutput] =
     for
       id <- IO.randomUUID
-      _ <- CreateCompany.Handler.runOrRaise[IO](
+      events <- CreateCompany.Handler.runOrRaise[IO](
         CreateCompany(id, name, address)
       ) {
         case COMPANY_ALREADY_EXISTS(_)  => CompanyAlreadyExists()
@@ -36,7 +37,8 @@ class CompanyServiceImpl(
         case COMPANY_ADDRESS_INVALID(_) => InvalidCompany()
       }
       _ <- logger.info(s"Created company $name with id $id\n")
-    yield CreateCompanyOutput(CompanyId(id))
+      cursor <- ApiCursor.required(ApiCursor.lastWritten(events))
+    yield CreateCompanyOutput(CompanyId(id), cursor)
 
   override def listCompanies(): IO[ListCompaniesOutput] =
     companies.allCompanies.map((companies, cursor) =>

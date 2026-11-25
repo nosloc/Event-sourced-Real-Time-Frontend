@@ -62,9 +62,10 @@ operation CreateAppointment {
 }
 
 @idempotent
-@http(method: "DELETE", uri: "/api/appointments/{appointmentId}", code: 204)
+@http(method: "DELETE", uri: "/api/appointments/{appointmentId}", code: 200)
 operation DeleteAppointment {
     input: DeleteAppointmentInput
+    output: DeleteAppointmentOutput
     errors: [
         AppointmentNotFound
     ]
@@ -107,9 +108,10 @@ operation CreatePrestation {
 }
 
 @idempotent
-@http(method: "DELETE", uri: "/api/appointments/{appointmentId}/prestations/{prestationId}", code: 204)
+@http(method: "DELETE", uri: "/api/appointments/{appointmentId}/prestations/{prestationId}", code: 200)
 operation DeletePrestation {
     input: DeletePrestationInput
+    output: DeletePrestationOutput
     errors: [
         AppointmentNotFound
         PrestationNotFound
@@ -209,6 +211,10 @@ structure CreateAppointmentInput {
 structure CreateAppointmentOutput {
     @required
     appointment: Appointment
+
+    // The cursor of the last event the command wrote
+    @required
+    cursor: Cursor
 }
 
 @error("client")
@@ -275,9 +281,19 @@ structure UpdateAppointmentInput {
     timeRange: TimeRange
 }
 
+structure DeleteAppointmentOutput {
+    // The cursor of the last event the command wrote
+    @required
+    cursor: Cursor
+}
+
 structure UpdateAppointmentOutput {
     @required
     appointment: Appointment
+
+    // The cursor of the last event the command wrote; absent when it wrote
+    // none (an update that changes nothing)
+    cursor: Cursor
 }
 
 structure GetAppointmentInput {
@@ -309,6 +325,16 @@ structure CreatePrestationInput {
 structure CreatePrestationOutput {
     @required
     appointment: Appointment
+
+    // The cursor of the last event the command wrote
+    @required
+    cursor: Cursor
+}
+
+structure DeletePrestationOutput {
+    // The cursor of the last event the command wrote
+    @required
+    cursor: Cursor
 }
 
 structure DeletePrestationInput {
@@ -337,6 +363,10 @@ structure UpdatePrestationStatusInput {
 structure UpdatePrestationStatusOutput {
     @required
     appointment: Appointment
+
+    // The cursor of the last event the command wrote
+    @required
+    cursor: Cursor
 }
 
 @error("client")
