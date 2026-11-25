@@ -1,7 +1,12 @@
 package prototype.client.live
 
+import prototype.api.Cursor
+import prototype.shared.Cursors
+import prototype.shared.Cursors.given
+
+import scala.math.Ordering.Implicits.infixOrderingOps
+
 object LiveModel:
-  type Position = Long
 
   /** What can change the state of a live value: an event received, the stream
     * closing, or a load of its snapshot that starts, succeeds or fails.
@@ -11,18 +16,18 @@ object LiveModel:
     */
   enum Input[+K, +A, +E]:
     // The client received an event from the server
-    case Received(position: Position, event: E)
+    case Received(cursor: Cursor, event: E)
     // The stream closed: events are missed until it reopens
     case Closed
     // A load of the snapshot for this key has started. Assumed only while the
     // stream is open: `ReplayedLiveData` starts none while it is closed
     case Started(key: K)
-    // The snapshot for this key arrived, with the position it includes
-    case Loaded(key: K, value: A, position: Position)
+    // The snapshot for this key arrived, with the cursor it includes
+    case Loaded(key: K, value: A, cursor: Cursor)
     // The load of the snapshot failed
     case Failed(key: K, error: Throwable)
 
-  /** `highestDiscardedPosition` is the highest position ever dropped from the
+  /** `highestDiscarded` is the highest cursor ever dropped from the
     * tail, `refetches` counts the snapshots of the current key rejected in a
     * row for that reason.
     *
@@ -34,9 +39,9 @@ object LiveModel:
   final case class State[K, A, E](
       value: Option[A],
       key: Option[K],
-      position: Position,
-      tail: Vector[(Position, E)],
-      highestDiscardedPosition: Option[Position],
+      cursor: Cursor,
+      tail: Vector[(Cursor, E)],
+      highestDiscarded: Option[Cursor],
       refetches: Int,
       behind: Boolean,
       closedSinceStarted: Boolean,
@@ -49,9 +54,9 @@ object LiveModel:
     State(
       value = None,
       key = None,
-      position = 0L,
+      cursor = Cursors.Start,
       tail = Vector.empty,
-      highestDiscardedPosition = None,
+      highestDiscarded = None,
       refetches = 0,
       behind = false,
       closedSinceStarted = false,
@@ -66,29 +71,29 @@ object LiveModel:
   )(state: State[K, A, E], input: Input[K, A, E]): State[K, A, E] =
     import Input.*
     input match
-      case Received(position, event) =>
+      case Received(cursor, event) =>
         // The most recent events, in the order received
         val (discarded, newTail) =
-          (state.tail :+ (position -> event)).splitAt(
+          (state.tail :+ (cursor -> event)).splitAt(
             state.tail.size + 1 - MaxTailSize
           )
-        val newHighestDiscardedPosition =
-          (state.highestDiscardedPosition ++ discarded.map(_._1)).maxOption
+        val newHighestDiscarded =
+          (state.highestDiscarded ++ discarded.map(_._1)).maxOption
 
         (state.key, state.value) match
           case (Some(key), Some(value))
-              if position > state.position && state.applyIncomingEvent =>
+              if cursor > state.cursor && state.applyIncomingEvent =>
             val newValue = evolve(key, value, event)
             state.copy(
               value = Some(newValue),
-              position = position,
-              highestDiscardedPosition = newHighestDiscardedPosition,
+              cursor = cursor,
+              highestDiscarded = newHighestDiscarded,
               tail = newTail
             )
           case _ =>
             state.copy(
               tail = newTail,
-              highestDiscardedPosition = newHighestDiscardedPosition
+              highestDiscarded = newHighestDiscarded
             )
 
       case Closed =>
@@ -104,11 +109,11 @@ object LiveModel:
             error = None
           )
         else
-          // A new key: nothing shown yet, and the old position was the old key's
+          // A new key: nothing shown yet, and the old cursor was the old key's
           state.copy(
             value = None,
             key = Some(key),
-            position = 0L,
+            cursor = Cursors.Start,
             refetches = 0,
             behind = true,
             closedSinceStarted = false,
@@ -116,33 +121,33 @@ object LiveModel:
             error = None
           )
 
-      case Loaded(key, value, position) =>
-        if state.highestDiscardedPosition.exists(_ > position) then
+      case Loaded(key, value, cursor) =>
+        if state.highestDiscarded.exists(_ > cursor) then
           // Events after the snapshot were dropped, so it cannot be completed:
           // show it only if newer, freeze the value and ask for a new load
-          val (newValue, newPosition) =
-            if state.position < position then (Some(value), position)
-            else (state.value, state.position)
+          val (newValue, newCursor) =
+            if state.cursor < cursor then (Some(value), cursor)
+            else (state.value, state.cursor)
           state.copy(
             refetches = state.refetches + 1,
             loading = true,
             value = newValue,
-            position = newPosition
+            cursor = newCursor
           )
         else
-          val eventAfterPosition =
-            state.tail.filter(_._1 > position)
-          val newPosition =
-            eventAfterPosition.map(_._1).maxOption.getOrElse(position)
+          val eventsAfterCursor =
+            state.tail.filter(_._1 > cursor)
+          val newCursor =
+            eventsAfterCursor.map(_._1).maxOption.getOrElse(cursor)
           val newValue =
-            eventAfterPosition.map(_._2).foldLeft(value) { case (v, e) =>
+            eventsAfterCursor.map(_._2).foldLeft(value) { case (v, e) =>
               evolve(key, v, e)
             }
           // Still behind if the stream closed during this load
           state.copy(
             value = Some(newValue),
             key = Some(key),
-            position = newPosition,
+            cursor = newCursor,
             refetches = 0,
             behind = state.closedSinceStarted,
             loading = false,

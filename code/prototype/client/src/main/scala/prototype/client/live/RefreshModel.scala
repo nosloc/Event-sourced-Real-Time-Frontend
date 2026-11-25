@@ -1,20 +1,25 @@
 package prototype.client.live
 
+import prototype.api.Cursor
+import prototype.shared.Cursors
+import prototype.shared.Cursors.given
+
+import scala.math.Ordering.Implicits.infixOrderingOps
+
 object RefreshModel:
-  type Position = Long
 
   enum Input[+K, +A]:
     case Opened(key: K)
-    case EventArrived(position: Position)
-    case Loaded(key: K, value: A, position: Position)
+    case EventArrived(cursor: Cursor)
+    case Loaded(key: K, value: A, cursor: Cursor)
     case Failed(key: K, error: Throwable)
     case KeyChanged(key: K)
 
   enum Phase:
     // Nothing is happening
     case Idle
-    // Waiting for an answer, `pending` is the highest position seen while the load is happening
-    case InFlight(pending: Option[Position])
+    // Waiting for an answer, `pending` is the highest cursor seen while the load is happening
+    case InFlight(pending: Option[Cursor])
 
   /** What a step of the model decided: a load to launch, an event kept for the
     * next load, or the answer of a load. `RefreshedLiveData` runs the loads,
@@ -26,12 +31,12 @@ object RefreshModel:
     // A load from scratch for `key` (stream opened, key changed): the loads
     // still in flight are dropped
     case InitialLoad(key: K, loadNumber: Int)
-    // A load launched at once for the event at `position`
-    case Load(key: K, position: Position, loadNumber: Int)
+    // A load launched at once for the event at `cursor`
+    case Load(key: K, cursor: Cursor, loadNumber: Int)
     // `servedBy` is the load that will cover the event
-    case Batched(position: Position, servedBy: Int)
+    case Batched(cursor: Cursor, servedBy: Int)
     // `value` is what is on screen after the answer
-    case Answer(position: Position, loadNumber: Int, value: A)
+    case Answer(cursor: Cursor, loadNumber: Int, value: A)
     // An answer, and the load owed for the events batched meanwhile
     case AnswerAndLaunchPending(answer: Answer[K, A], load: Load[K, A])
     // The load failed
@@ -49,8 +54,8 @@ object RefreshModel:
     *   true if a new value is being loaded
     * @param error
     *   the error that occurred
-    * @param position
-    *   the position of the currently displayed value
+    * @param cursor
+    *   the cursor of the currently displayed value
     * @param phase
     *   which phase the model is in
     */
@@ -59,7 +64,7 @@ object RefreshModel:
       value: Option[A],
       loading: Boolean,
       error: Option[Throwable],
-      position: Position,
+      cursor: Cursor,
       phase: Phase,
       loadNumber: Int
   )
@@ -70,7 +75,7 @@ object RefreshModel:
       value = None,
       loading = false,
       error = None,
-      position = 0L,
+      cursor = Cursors.Start,
       phase = Phase.Idle,
       loadNumber = 0
     )
@@ -115,11 +120,11 @@ object RefreshModel:
             )
           // No event arrived: a reload is owed, but nothing was batched
           case Phase.InFlight(pending) =>
-            val newPending = pending.getOrElse(state.position)
+            val newPending = pending.getOrElse(state.cursor)
             (state.copy(phase = Phase.InFlight(Some(newPending))), None)
 
       // When an event arrives, trigger a refresh or store it as pending
-      case EventArrived(position) =>
+      case EventArrived(cursor) =>
         state.phase match
           case Phase.Idle =>
             state.key match
@@ -131,16 +136,16 @@ object RefreshModel:
                     phase = Phase.InFlight(None),
                     loadNumber = newLoadNumber
                   ),
-                  Some(Outcome.Load(k, position, newLoadNumber))
+                  Some(Outcome.Load(k, cursor, newLoadNumber))
                 )
               case None => (state, None)
-          case Phase.InFlight(posOpt) =>
-            val newPos = posOpt match
-              case Some(p) => Math.max(p, position)
-              case None    => position
+          case Phase.InFlight(pendingOpt) =>
+            val newPending = pendingOpt match
+              case Some(p) => Cursors.ordering.max(p, cursor)
+              case None    => cursor
             (
-              state.copy(phase = Phase.InFlight(Some(newPos))),
-              Some(Outcome.Batched(position, newLoadNumber))
+              state.copy(phase = Phase.InFlight(Some(newPending))),
+              Some(Outcome.Batched(cursor, newLoadNumber))
             )
 
       // Ignore a result that doesn't match the current key
@@ -149,12 +154,12 @@ object RefreshModel:
 
       // Ignore the result if in Idle, take the value otherwise.
       // Trigger the pending load if any
-      case Loaded(key, value, position) =>
+      case Loaded(key, value, cursor) =>
         // An answer older than the value on screen does not replace it, but
         // still ends the load
         val answered =
-          if state.value.isEmpty || position >= state.position then
-            state.copy(value = Some(value), error = None, position = position)
+          if state.value.isEmpty || cursor >= state.cursor then
+            state.copy(value = Some(value), error = None, cursor = cursor)
           else state.copy(error = None)
         // What is on screen after this answer: the new value, or the one kept
         // when the answer is older than it
@@ -165,10 +170,10 @@ object RefreshModel:
             (
               answered.copy(loading = false, phase = Phase.Idle),
               Some(
-                Outcome.Answer(position, state.loadNumber, shown)
+                Outcome.Answer(cursor, state.loadNumber, shown)
               )
             )
-          case Phase.InFlight(Some(newPosition)) =>
+          case Phase.InFlight(Some(newCursor)) =>
             (
               answered.copy(
                 loading = true,
@@ -177,8 +182,8 @@ object RefreshModel:
               ),
               Some(
                 Outcome.AnswerAndLaunchPending(
-                  Outcome.Answer(position, state.loadNumber, shown),
-                  Outcome.Load(key, newPosition, newLoadNumber)
+                  Outcome.Answer(cursor, state.loadNumber, shown),
+                  Outcome.Load(key, newCursor, newLoadNumber)
                 )
               )
             )
@@ -200,7 +205,7 @@ object RefreshModel:
               ),
               Some(Outcome.Error(state.loadNumber))
             )
-          case Phase.InFlight(Some(newPos)) =>
+          case Phase.InFlight(Some(newPending)) =>
             (
               state.copy(
                 loading = true,
@@ -211,7 +216,7 @@ object RefreshModel:
               Some(
                 Outcome.ErrorAndLaunchPending(
                   Outcome.Error(state.loadNumber),
-                  Outcome.Load(key, newPos, newLoadNumber)
+                  Outcome.Load(key, newPending, newLoadNumber)
                 )
               )
             )

@@ -1,13 +1,16 @@
 package prototype.client.live
 
+import prototype.api.Cursor
 import prototype.client.live.LiveModel.{Input, MaxTailSize, State}
+import prototype.shared.Cursors
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /** `LiveModel.step` on a tiny model: one key ("k"), the value is the list of
-  * the events applied, and each event is its own position, so the value shows
-  * which events were applied and in which order.
+  * the events applied, and each event is its own position (in commit group 0,
+  * so delivery order is position order), so the value shows which events were
+  * applied and in which order.
   */
 class LiveModelSpec extends AnyFlatSpec with Matchers:
 
@@ -23,11 +26,14 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
   private def run(start: Model, inputs: Seq[In]): Model =
     inputs.foldLeft(start)(LiveModel.step(evolve))
 
+  // The cursor of the event at this position
+  private def cursorAt(position: Long): Cursor = Cursor(0L, position)
+
   private def received(positions: Seq[Long]): Seq[In] =
-    positions.map(p => Input.Received(p, p))
+    positions.map(p => Input.Received(at(p), p))
 
   private def snapshot(upTo: Long): In =
-    Input.Loaded("k", (1L to upTo).toList, upTo)
+    Input.Loaded("k", (1L to upTo).toList, at(upTo))
 
   // A load of "k" during which `burst` events arrive (positions 1 to `burst`),
   // answered by a snapshot at position `at`
@@ -40,20 +46,20 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
   "A load" should "apply the events received during it, after the snapshot" in {
     val state = loadDuring(burst = 3L, at = 2L)
     state.value shouldBe Some(List(1L, 2L, 3L))
-    state.position shouldBe 3L
+    state.cursor shouldBe at(3L)
     state.loading shouldBe false
   }
 
   it should "then apply the events received after it" in {
     val state = run(loadDuring(burst = 3L, at = 2L), received(Seq(4L)))
     state.value shouldBe Some(List(1L, 2L, 3L, 4L))
-    state.position shouldBe 4L
+    state.cursor shouldBe at(4L)
   }
 
   it should "be accepted from an empty projection (position -1)" in {
     // Nothing was dropped: "nothing dropped" must not compare above -1
     val state =
-      run(initial, Seq(Input.Started("k"), Input.Loaded("k", Nil, -1L)))
+      run(initial, Seq(Input.Started("k"), Input.Loaded("k", Nil, at(-1L))))
     state.value shouldBe Some(Nil)
     state.refetches shouldBe 0
     state.loading shouldBe false
@@ -67,14 +73,14 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
       state.loading shouldBe true
       // The snapshot is newer than the empty screen: shown, without the tail
       state.value shouldBe Some((1L to 10L).toList)
-      state.position shouldBe 10L
+      state.cursor shouldBe at(10L)
     }
 
   it should "keep the value frozen until a load is accepted" in {
     val rejected = loadDuring(burst = MaxTailSize + 50L, at = 10L)
     val state = run(rejected, received(Seq(MaxTailSize + 51L)))
     state.value shouldBe rejected.value
-    state.position shouldBe rejected.position
+    state.cursor shouldBe rejected.cursor
     // The event is kept in the tail for the next snapshot
     state.tail.last shouldBe ((MaxTailSize + 51L) -> (MaxTailSize + 51L))
   }
@@ -88,7 +94,7 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
     )
     // 51 to `last` are still in the tail: 201 to `last` are applied
     state.value shouldBe Some((1L to last).toList)
-    state.position shouldBe last
+    state.cursor shouldBe at(last)
     state.refetches shouldBe 0
     state.loading shouldBe false
   }
@@ -96,12 +102,12 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
   it should "keep a newer value on screen rather than an older snapshot" in {
     // Loaded and live up to 400; the tail rolled, dropping events up to 144
     val live = run(loadDuring(burst = 300L, at = 300L), received(301L to 400L))
-    live.position shouldBe 400L
+    live.cursor shouldBe at(400L)
     // A reload (a reconnect) answered at 100, before the events dropped
     val state = run(live, Seq(Input.Started("k"), snapshot(100L)))
     state.refetches shouldBe 1
     state.value shouldBe live.value
-    state.position shouldBe 400L
+    state.cursor shouldBe at(400L)
   }
 
   // Loaded and live up to 100, then a reconnect: 101 to 110 were published
@@ -130,7 +136,7 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
   it should "hold each event once after the snapshot" in {
     val state = run(reconnectedAt100, Seq(snapshot(110L)))
     state.value shouldBe Some((1L to 111L).toList)
-    state.position shouldBe 111L
+    state.cursor shouldBe at(111L)
   }
 
   it should "never apply an event over missing ones after a failed load" in {
@@ -170,7 +176,7 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
     val state = run(rejected, Seq(Input.Started("other")))
     state.key shouldBe Some("other")
     state.value shouldBe None
-    state.position shouldBe 0L
+    state.cursor shouldBe Cursors.Start
     state.refetches shouldBe 0
     state.loading shouldBe true
   }
