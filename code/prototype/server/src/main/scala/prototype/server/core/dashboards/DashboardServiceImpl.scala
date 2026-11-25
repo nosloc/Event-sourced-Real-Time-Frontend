@@ -1,9 +1,9 @@
 package prototype.server.core.dashboards
 
 import cats.effect.*
-import cats.implicits.*
 
 import prototype.api.*
+import prototype.shared.Cursors
 import prototype.shared.dashboards.*
 
 import smithy4s.time.LocalDate
@@ -22,8 +22,8 @@ object DashboardServiceImpl:
           companyId: CompanyId
       ): IO[GetBillingDashboardOutput] =
         for
-          (_, therapistsPosition) <- getCompanyTherapists(companyId)
-          (companyAppointments, appointmentsPosition) <-
+          (_, therapistsCursor) <- getCompanyTherapists(companyId)
+          (companyAppointments, appointmentsCursor) <-
             getCompanyAppointments(companyId)
           now <- IO.realTimeInstant
           figures = BillingDashboard(
@@ -32,15 +32,15 @@ object DashboardServiceImpl:
           )
         yield GetBillingDashboardOutput(
           figures,
-          oldest(therapistsPosition, appointmentsPosition)
+          oldest(therapistsCursor, appointmentsCursor)
         )
 
       override def getDirectoryDashboard(
           companyId: CompanyId
       ): IO[GetDirectoryDashboardOutput] =
         for
-          (therapists, therapistsPosition) <- getCompanyTherapists(companyId)
-          (companyAppointments, appointmentsPosition) <-
+          (therapists, therapistsCursor) <- getCompanyTherapists(companyId)
+          (companyAppointments, appointmentsCursor) <-
             getCompanyAppointments(companyId)
           now <- IO.realTimeInstant
           figures = DirectoryDashboard(
@@ -50,7 +50,7 @@ object DashboardServiceImpl:
           )
         yield GetDirectoryDashboardOutput(
           figures,
-          oldest(therapistsPosition, appointmentsPosition)
+          oldest(therapistsCursor, appointmentsCursor)
         )
 
       override def getActivityDashboard(
@@ -59,8 +59,8 @@ object DashboardServiceImpl:
           date: LocalDate
       ): IO[GetActivityDashboardOutput] =
         for
-          (therapists, therapistsPosition) <- getCompanyTherapists(companyId)
-          (companyAppointments, appointmentsPosition) <-
+          (therapists, therapistsCursor) <- getCompanyTherapists(companyId)
+          (companyAppointments, appointmentsCursor) <-
             getCompanyAppointments(companyId)
           figures = ActivityDashboard(
             therapists,
@@ -70,35 +70,35 @@ object DashboardServiceImpl:
           )
         yield GetActivityDashboardOutput(
           figures,
-          oldest(therapistsPosition, appointmentsPosition)
+          oldest(therapistsCursor, appointmentsCursor)
         )
 
-      // Each read has its own position, we only keep the oldest position between the two
+      // Each read has its own cursor, we only keep the oldest of the two
       private def oldest(
-          therapistsPosition: Long,
-          appointmentsPosition: Long
-      ): Long =
-        appointmentsPosition.min(therapistsPosition)
+          therapistsCursor: Cursor,
+          appointmentsCursor: Cursor
+      ): Cursor =
+        Cursors.ordering.min(therapistsCursor, appointmentsCursor)
 
-      // The therapists of the company, with the position of the read
+      // The therapists of the company, with the cursor of the read
       private def getCompanyTherapists(
           companyId: CompanyId
-      ): IO[(List[Therapist], Long)] =
+      ): IO[(List[Therapist], Cursor)] =
         companyService.getCompany(companyId) *>
           therapistService.listTherapists().map { output =>
             (
               output.therapists.filter(_.companyId == companyId),
-              output.globalPosition
+              output.cursor
             )
           }
       end getCompanyTherapists
 
-      // The appointments of the company, with the position of the read
+      // The appointments of the company, with the cursor of the read
       private def getCompanyAppointments(
           companyId: CompanyId
-      ): IO[(List[Appointment], Long)] =
+      ): IO[(List[Appointment], Cursor)] =
         appointmentService
           .listCompanyAppointments(companyId)
-          .map(output => (output.appointments, output.globalPosition))
+          .map(output => (output.appointments, output.cursor))
 
     })

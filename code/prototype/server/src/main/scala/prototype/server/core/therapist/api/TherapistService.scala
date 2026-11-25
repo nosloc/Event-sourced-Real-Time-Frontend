@@ -6,6 +6,7 @@ import prototype.api.*
 import prototype.server.core.therapist.commands.CreateTherapist
 import prototype.server.core.therapist.domain.TherapistError.*
 import prototype.server.core.therapist.persistence.TherapistRepository
+import prototype.server.eventfeed.ApiCursor.toApi
 import prototype.shared.events.PrototypeEvent
 import prototype.shared.therapist.TherapistState
 
@@ -24,10 +25,10 @@ class TherapistServiceImpl(
   // stored data is corrupted, not that the caller did something wrong
   // Sorted by id: the list is shown to users and a projection has no stable order
   override def listTherapists(): IO[ListTherapistsOutput] =
-    therapists.allTherapists.map((therapists, position) =>
+    therapists.allTherapists.map((therapists, cursor) =>
       ListTherapistsOutput(
         therapists.sortBy(_.therapistId).map(TherapistState.toTherapist),
-        position
+        cursor.toApi
       )
     )
 

@@ -7,16 +7,18 @@ import prototype.api.*
 /** A therapist service that keeps its therapists in memory, for the tests of
   * the services that only need therapists to exist (dashboards). The real one
   * stores events in Postgres and reads from a projection. Like the real one, it
-  * refuses an unknown company and an id that is already taken.
+  * refuses an unknown company and an id that is already taken. No event store
+  * behind it: its list reports `cursor`, the same on every read.
   */
 final class InMemoryTherapistService private (
     companies: CompanyService[IO],
-    therapists: Ref[IO, Map[TherapistId, Therapist]]
+    therapists: Ref[IO, Map[TherapistId, Therapist]],
+    cursor: Cursor
 ) extends TherapistService[IO]:
 
   override def listTherapists(): IO[ListTherapistsOutput] =
     therapists.get.map(all =>
-      ListTherapistsOutput(all.values.toList.sortBy(_.therapistId.value), 0L)
+      ListTherapistsOutput(all.values.toList.sortBy(_.therapistId.value), cursor)
     )
 
   override def getTherapist(therapistId: TherapistId): IO[GetTherapistOutput] =
@@ -45,7 +47,10 @@ final class InMemoryTherapistService private (
         )
 
 object InMemoryTherapistService:
-  def apply(companies: CompanyService[IO]): IO[InMemoryTherapistService] =
+  def apply(
+      companies: CompanyService[IO],
+      cursor: Cursor = Cursor(0L, 0L)
+  ): IO[InMemoryTherapistService] =
     Ref
       .of[IO, Map[TherapistId, Therapist]](Map.empty)
-      .map(new InMemoryTherapistService(companies, _))
+      .map(new InMemoryTherapistService(companies, _, cursor))

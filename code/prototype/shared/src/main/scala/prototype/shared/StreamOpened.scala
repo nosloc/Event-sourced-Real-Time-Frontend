@@ -6,4 +6,4 @@ package prototype.shared
   */
 object StreamOpened:
   val EventType = "StreamOpened"
-  def data(after: Long): String = s"Opened stream filtering events after $after"
+  val Data = "Stream opened"

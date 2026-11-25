@@ -5,6 +5,7 @@ import cats.effect.IO
 import prototype.api.Role
 import prototype.shared.therapist.TherapistState
 
+import persistent4s.ReadCursor
 import persistent4s.postgres.{
   DerivedPostgresRepository,
   PostgresField,
@@ -20,12 +21,9 @@ final class TherapistRepository private (sessions: PostgresSessions[IO])
       TherapistRepository.table
     ):
 
-  /** Returns all therapists, with the projection position. */
-  def allTherapists: IO[(List[TherapistState], Long)] =
+  /** Returns all therapists, with the projection's cursor. */
+  def allTherapists: IO[(List[TherapistState], ReadCursor)] =
     readWithCursor(TherapistProjectionName)(session => query.run(session))
-      .map { case (therapists, cursor) =>
-        (therapists, cursor.globalPosition)
-      }
 
 object TherapistRepository:
 

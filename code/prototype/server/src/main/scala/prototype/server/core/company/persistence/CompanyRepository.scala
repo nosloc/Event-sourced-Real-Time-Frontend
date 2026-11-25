@@ -6,6 +6,7 @@ import cats.effect.IO
 
 import prototype.shared.company.CompanyState
 
+import persistent4s.ReadCursor
 import persistent4s.postgres.{
   DerivedPostgresRepository,
   PostgresSessions,
@@ -18,12 +19,9 @@ final class CompanyRepository private (sessions: PostgresSessions[IO])
       CompanyRepository.table
     ):
 
-  /** Returns all companies, with the projection position. */
-  def allCompanies: IO[(List[CompanyState], Long)] =
+  /** Returns all companies, with the projection's cursor. */
+  def allCompanies: IO[(List[CompanyState], ReadCursor)] =
     readWithCursor(CompanyProjectionName)(session => query.run(session))
-      .map { case (companies, cursor) =>
-        (companies, cursor.globalPosition)
-      }
 
 object CompanyRepository:
 

@@ -9,6 +9,7 @@ import prototype.api.{AppointmentType, PrestationStatus}
 import prototype.shared.appointment.{AppointmentState, PrestationRow}
 import prototype.shared.appointment.given
 
+import persistent4s.ReadCursor
 import persistent4s.postgres.{
   PostgresAtomicRepository,
   PostgresRepositoryTable,
@@ -49,27 +50,25 @@ final class AppointmentRepository private (sessions: PostgresSessions[IO])
   def all: IO[List[AppointmentState]] =
     useSession(_.execute(everyAppointment))
 
-  /** The appointments a therapist is in, earliest first. With the projection
-    * position
+  /** The appointments a therapist is in, earliest first. With the projection's
+    * cursor
     */
-  def forTherapist(therapistId: String): IO[(List[AppointmentState], Long)] =
+  def forTherapist(
+      therapistId: String
+  ): IO[(List[AppointmentState], ReadCursor)] =
     readWithCursor(AppointmentProjectionName)(session =>
       session.execute(ofTherapist)(therapistId)
-    ).map { case (appointments, cursor) =>
-      (appointments, cursor.globalPosition)
-    }
+    )
 
   /** The appointments of any of these therapists, earliest first, each once
-    * even when shared by several of them. One read, so one projection position
+    * even when shared by several of them. One read, so one projection cursor
     */
   def forTherapists(
       therapistIds: List[String]
-  ): IO[(List[AppointmentState], Long)] =
+  ): IO[(List[AppointmentState], ReadCursor)] =
     readWithCursor(AppointmentProjectionName)(session =>
       session.execute(ofAnyTherapist)(Arr(therapistIds*))
-    ).map { case (appointments, cursor) =>
-      (appointments, cursor.globalPosition)
-    }
+    )
 
 object AppointmentRepository:
 

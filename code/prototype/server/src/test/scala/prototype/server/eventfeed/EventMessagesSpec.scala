@@ -3,7 +3,7 @@ package prototype.server.eventfeed
 import java.time.Instant
 import java.util.UUID
 
-import prototype.api.AppointmentType
+import prototype.api.{AppointmentType, Cursor}
 import prototype.server.core.PrototypeEventCodec
 import prototype.server.support.EventEnvelopes
 import prototype.shared.appointment.AppointmentCreated
@@ -49,12 +49,17 @@ class EventMessagesSpec extends AnyFlatSpec with Matchers with EitherValues:
       EventTypeName.of[AppointmentCreated]
     )
     built.copy(metadata =
-      built.metadata.copy(globalPosition = 42L, id = eventId, timestamp = recordedAt)
+      built.metadata.copy(
+        commitGroup = 7L,
+        globalPosition = 42L,
+        id = eventId,
+        timestamp = recordedAt
+      )
     )
 
   "EventMessages.from" should "copy the metadata of the stored event" in {
     val message = EventMessages.from(envelope, codec).value
-    message.position shouldBe 42L
+    message.cursor shouldBe Cursor(7L, 42L)
     message.eventId shouldBe eventId.toString
     message.eventType shouldBe "AppointmentCreated"
     message.recordedAt shouldBe Timestamp.fromInstant(recordedAt)

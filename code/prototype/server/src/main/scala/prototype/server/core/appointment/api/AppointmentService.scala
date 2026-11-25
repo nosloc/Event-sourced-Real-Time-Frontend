@@ -23,6 +23,7 @@ import prototype.server.core.appointment.persistence.{
   AppointmentProjection,
   AppointmentRepository
 }
+import prototype.server.eventfeed.ApiCursor.toApi
 import prototype.shared.appointment.AppointmentState
 import prototype.shared.events.PrototypeEvent
 
@@ -147,13 +148,13 @@ class AppointmentServiceImpl(
     therapists.getTherapist(therapistId) *>
       appointments
         .forTherapist(therapistId.value)
-        .flatMap { case (states, globalPosition) =>
-          states.traverse(fromState).map((_, globalPosition))
+        .flatMap { case (states, cursor) =>
+          states.traverse(fromState).map((_, cursor.toApi))
         }
         .map(ListTherapistAppointmentsOutput.apply)
 
   // Fails with CompanyNotFound if the company does not exist. The appointments
-  // of all the company's therapists are read at once, so the position is the
+  // of all the company's therapists are read at once, so the cursor is the
   // one of that read
   override def listCompanyAppointments(
       companyId: CompanyId
@@ -164,12 +165,12 @@ class AppointmentServiceImpl(
       companyTherapists = therapistList.therapists
         .filter(_.companyId == companyId)
         .map(_.therapistId.value)
-      (companyAppointments, position) <- appointments.forTherapists(
+      (companyAppointments, cursor) <- appointments.forTherapists(
         companyTherapists
       )
     yield ListCompanyAppointmentsOutput(
       companyAppointments.map(AppointmentState.toAppointment),
-      position
+      cursor.toApi
     )
 
   override def getAppointment(

@@ -8,11 +8,13 @@ import prototype.api.*
   * of the services that read appointments (dashboards). It checks none of the
   * appointment rules (busy people, time range, status changes): those are
   * tested on the real handlers. Like the real one, it lists only the
-  * appointments of a known therapist, in time order.
+  * appointments of a known therapist, in time order. No event store behind it:
+  * its lists report `cursor`, the same on every read.
   */
 final class InMemoryAppointmentService private (
     therapists: TherapistService[IO],
-    appointments: Ref[IO, Map[AppointmentId, Appointment]]
+    appointments: Ref[IO, Map[AppointmentId, Appointment]],
+    cursor: Cursor
 ) extends AppointmentService[IO]:
 
   private def change(
@@ -65,8 +67,7 @@ final class InMemoryAppointmentService private (
           all.values.toList
             .filter(_.therapistIds.contains(therapistId))
             .sortBy(_.timeRange.start.epochSecond),
-          // No event store behind this fake: no position to report
-          globalPosition = 0L
+          cursor = cursor
         )
       )
 
@@ -85,8 +86,7 @@ final class InMemoryAppointmentService private (
           all.values.toList
             .filter(_.therapistIds.exists(companyTherapists.contains))
             .sortBy(_.timeRange.start.epochSecond),
-          // No event store behind this fake: no position to report
-          globalPosition = 0L
+          cursor = cursor
         )
       )
     }
@@ -155,7 +155,10 @@ final class InMemoryAppointmentService private (
     ).void
 
 object InMemoryAppointmentService:
-  def apply(therapists: TherapistService[IO]): IO[InMemoryAppointmentService] =
+  def apply(
+      therapists: TherapistService[IO],
+      cursor: Cursor = Cursor(0L, 0L)
+  ): IO[InMemoryAppointmentService] =
     Ref
       .of[IO, Map[AppointmentId, Appointment]](Map.empty)
-      .map(new InMemoryAppointmentService(therapists, _))
+      .map(new InMemoryAppointmentService(therapists, _, cursor))

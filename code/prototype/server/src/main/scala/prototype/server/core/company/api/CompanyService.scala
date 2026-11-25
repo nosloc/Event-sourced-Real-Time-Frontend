@@ -6,6 +6,7 @@ import prototype.api.*
 import prototype.server.core.company.commands.CreateCompany
 import prototype.server.core.company.domain.CompanyError.*
 import prototype.server.core.company.persistence.CompanyRepository
+import prototype.server.eventfeed.ApiCursor.toApi
 import prototype.shared.company.CompanyState
 import prototype.shared.events.PrototypeEvent
 
@@ -38,8 +39,8 @@ class CompanyServiceImpl(
     yield CreateCompanyOutput(CompanyId(id))
 
   override def listCompanies(): IO[ListCompaniesOutput] =
-    companies.allCompanies.map((companies, position) =>
-      ListCompaniesOutput(companies.map(CompanyState.toCompany), position)
+    companies.allCompanies.map((companies, cursor) =>
+      ListCompaniesOutput(companies.map(CompanyState.toCompany), cursor.toApi)
     )
   override def getCompany(companyId: CompanyId): IO[GetCompanyOutput] =
     companies.find(companyId.value).flatMap {

@@ -29,7 +29,7 @@ class EventStoreServiceSpec extends AsyncFlatSpec
     )
 
   private def positions(page: EventsPage): List[Long] =
-    page.events.map(_.position)
+    page.events.map(_.cursor.position)
 
   "The event store service" should "return an empty page and a zero total on an empty store" in {
     freshDatabase.use { postgres =>

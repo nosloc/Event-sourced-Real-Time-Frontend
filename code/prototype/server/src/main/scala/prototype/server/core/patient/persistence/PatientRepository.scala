@@ -6,6 +6,7 @@ import cats.effect.IO
 
 import prototype.shared.patient.PatientState
 
+import persistent4s.ReadCursor
 import persistent4s.postgres.{
   DerivedPostgresRepository,
   PostgresSessions,
@@ -18,12 +19,9 @@ final class PatientRepository private (sessions: PostgresSessions[IO])
       PatientRepository.table
     ):
 
-  /** Returns all patients, with the projection position. */
-  def allPatients: IO[(List[PatientState], Long)] =
+  /** Returns all patients, with the projection's cursor. */
+  def allPatients: IO[(List[PatientState], ReadCursor)] =
     readWithCursor(PatientProjectionName)(session => query.run(session))
-      .map { case (patients, cursor) =>
-        (patients, cursor.globalPosition)
-      }
 
 object PatientRepository:
 

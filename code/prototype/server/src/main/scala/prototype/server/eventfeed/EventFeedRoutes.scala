@@ -10,15 +10,14 @@ import prototype.shared.StreamOpened
 
 import org.http4s.{HttpRoutes, ServerSentEvent}
 import org.http4s.dsl.io.*
-import org.http4s.headers.`Last-Event-Id`
 import smithy4s.json.Json
 
-/** `GET /api/events/stream`: the new events as server-sent events, each with
-  * its position as id. A browser that reconnects sends back the last one in
-  * `Last-Event-ID`, and only the events above it are sent. The first message, a
-  * `StreamOpened` event, says the stream has subscribed: the client can load
-  * the current state from then on. Not authenticated for now: `EventSource`
-  * cannot send the bearer token.
+/** `GET /api/events/stream`: the new events as server-sent events. The first
+  * message, a `StreamOpened` event, says the stream has subscribed: the client
+  * can load the current state from then on. The events carry no id, so a browser
+  * that reconnects sends no `Last-Event-ID`: a new stream starts with the events
+  * published after it, and the client reloads after `StreamOpened`. Not
+  * authenticated for now: `EventSource` cannot send the bearer token.
   */
 object EventFeedRoutes:
 
@@ -27,37 +26,20 @@ object EventFeedRoutes:
 
   def apply(feed: EventFeed): HttpRoutes[IO] =
     HttpRoutes.of[IO] {
-      case request @ GET -> Root / "api" / "events" / "stream" =>
-        val start = request.headers
-          .get[`Last-Event-Id`]
-          .map(_.id.value)
-        start match
-          // Positions start at 1
-          case None       => Ok(messages(feed, 0L))
-          case Some(text) =>
-            text.toLongOption match
-              case None           => BadRequest(s"Not an event position: $text")
-              case Some(position) => Ok(messages(feed, position))
+      case GET -> Root / "api" / "events" / "stream" =>
+        Ok(messages(feed))
     }
 
-  private def messages(
-      feed: EventFeed,
-      after: Long
-  ): Stream[IO, ServerSentEvent] =
-    val events = feed
-      .stream(after)
+  private def messages(feed: EventFeed): Stream[IO, ServerSentEvent] =
+    val events = feed.stream
       .map {
-        // No id, so a reconnect still resumes from the last event
         case None =>
           ServerSentEvent(
             eventType = Some(StreamOpened.EventType),
-            data = Some(StreamOpened.data(after))
+            data = Some(StreamOpened.Data)
           )
         case Some(message) =>
-          ServerSentEvent(
-            data = Some(Json.writeBlob(message).toUTF8String),
-            id = Some(ServerSentEvent.EventId(message.position.toString))
-          )
+          ServerSentEvent(data = Some(Json.writeBlob(message).toUTF8String))
       }
     val keepAlive = Stream
       .awakeEvery[IO](KeepAliveEvery)

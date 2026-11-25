@@ -6,6 +6,7 @@ import prototype.api.*
 import prototype.server.core.patient.commands.CreatePatient
 import prototype.server.core.patient.domain.PatientError.*
 import prototype.server.core.patient.persistence.PatientRepository
+import prototype.server.eventfeed.ApiCursor.toApi
 import prototype.shared.events.PrototypeEvent
 import prototype.shared.patient.PatientState
 
@@ -46,10 +47,10 @@ class PatientServiceImpl(
 
   // Sorted by last then first name: a projection has no stable order
   override def listPatients(): IO[ListPatientsOutput] =
-    patients.allPatients.map((patients, position) =>
+    patients.allPatients.map((patients, cursor) =>
       ListPatientsOutput(
         patients.sortBy(p => (p.lastName, p.firstName)).map(PatientState.toPatient),
-        position
+        cursor.toApi
       )
     )
 

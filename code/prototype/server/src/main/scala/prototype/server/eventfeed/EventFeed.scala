@@ -20,15 +20,14 @@ final class EventFeed(
 
   /** Never ends on its own. Starts with a `None`, sent once the subscription is
     * in place, so no event published after it can be missed. Then one `Some` per
-    * new event, leaving out those whose position is not above `after`.
+    * new event, in the order the projection delivers them.
     */
-  def stream(after: Long): Stream[IO, Option[EventMessage]] =
+  def stream: Stream[IO, Option[EventMessage]] =
     Stream
       .resource(published.subscribeAwait(EventFeed.QueueSize))
       .flatMap(events =>
         Stream.emit(None)
           ++ events
-            .filter(_.metadata.globalPosition > after)
             .evalMap(envelope =>
               IO.fromEither(EventMessages.from(envelope, codec))
             )
