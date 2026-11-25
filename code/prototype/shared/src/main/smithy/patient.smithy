@@ -104,7 +104,7 @@ structure ListPatientsOutput {
     patients: Patients
 
     @required
-    globalPosition: Long
+    cursor: Cursor
 }
 
 @uuidFormat

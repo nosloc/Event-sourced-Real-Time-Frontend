@@ -83,10 +83,10 @@ structure GetDirectoryDashboardOutput {
     @required
     dashboard: DirectoryFigures
 
-    // Up to date with the events up to this position: the oldest of the reads
+    // Up to date with the events up to this cursor: the oldest of the reads
     // the dashboard was computed from
     @required
-    globalPosition: Long
+    cursor: Cursor
 }
 
 // The figures alone, as the server and the browser compute them
@@ -144,10 +144,10 @@ structure GetActivityDashboardOutput {
     @required
     dashboard: ActivityFigures
 
-    // Up to date with the events up to this position: the oldest of the reads
+    // Up to date with the events up to this cursor: the oldest of the reads
     // the dashboard was computed from
     @required
-    globalPosition: Long
+    cursor: Cursor
 }
 
 // The figures alone, as the server and the browser compute them
@@ -200,10 +200,10 @@ structure GetBillingDashboardOutput {
     @required
     dashboard: BillingFigures
 
-    // Up to date with the events up to this position: the oldest of the reads
+    // Up to date with the events up to this cursor: the oldest of the reads
     // the dashboard was computed from
     @required
-    globalPosition: Long
+    cursor: Cursor
 }
 
 // The figures alone, as the server and the browser compute them

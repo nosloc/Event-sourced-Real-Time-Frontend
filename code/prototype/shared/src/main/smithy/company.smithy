@@ -60,7 +60,7 @@ structure ListCompaniesOutput {
     companies: Companies
 
     @required
-    globalPosition: Long
+    cursor: Cursor
 }
 
 structure GetCompanyInput {

@@ -167,7 +167,7 @@ structure ListTherapistAppointmentsOutput {
     appointments: Appointments
 
     @required
-    globalPosition: Long
+    cursor: Cursor
 }
 
 structure ListCompanyAppointmentsInput {
@@ -181,7 +181,7 @@ structure ListCompanyAppointmentsOutput {
     appointments: Appointments
 
     @required
-    globalPosition: Long
+    cursor: Cursor
 }
 
 list TherapistIds {

@@ -57,7 +57,7 @@ structure ListTherapistsOutput {
     therapists: Therapists
 
     @required
-    globalPosition: Long
+    cursor: Cursor
 }
 
 structure GetTherapistInput {
