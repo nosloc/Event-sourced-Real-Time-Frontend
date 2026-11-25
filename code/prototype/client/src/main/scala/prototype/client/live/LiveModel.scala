@@ -1,10 +1,10 @@
 package prototype.client.live
 
+import scala.math.Ordering.Implicits.infixOrderingOps
+
 import prototype.api.Cursor
 import prototype.shared.Cursors
 import prototype.shared.Cursors.given
-
-import scala.math.Ordering.Implicits.infixOrderingOps
 
 object LiveModel:
 
