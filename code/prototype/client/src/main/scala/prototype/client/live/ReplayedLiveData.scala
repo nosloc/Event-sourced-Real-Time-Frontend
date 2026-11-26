@@ -2,7 +2,7 @@ package prototype.client.live
 
 import cats.effect.IO
 
-import prototype.api.{Cursor, EventMessage}
+import prototype.api.{CatchUp, EventMessage}
 import prototype.client.Api
 import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.live.LiveModel.Input
@@ -13,7 +13,8 @@ import org.scalajs.dom
 /** A `LiveData` kept up to date by replaying the server's events in the
   * browser, for one key at a time. Its snapshot is loaded once the stream has
   * subscribed, and again after a reconnect or a key change while the stream is
-  * open. The events received are applied with `evolve`, in the order received:
+  * open; it comes with the events its read model had not saved yet, folded on
+  * it. The events received are applied with `evolve`, in the order received:
   * those received during the load are kept aside (the last 256), those already
   * in the snapshot are not applied twice, and a snapshot whose later events
   * were dropped is loaded again until one is complete (see `LiveModel.step`).
@@ -28,7 +29,7 @@ final class ReplayedLiveData[K, A, E](
     feed: LiveFeed,
     name: String,
     key: Signal[K],
-    load: K => IO[(A, Cursor)],
+    load: K => IO[(A, CatchUp)],
     decode: EventMessage => Option[E],
     evolve: (K, A, E) => A,
     same: Same[A] = Same.equal[A]
@@ -74,8 +75,10 @@ final class ReplayedLiveData[K, A, E](
       .map {
         case Pending(k) =>
           Input.Started(k)
-        case Resolved(k, Right((value, cursor)), _) =>
-          Input.Loaded(k, value, cursor)
+        // An event of the catch-up that does not decode is skipped, as on the
+        // stream
+        case Resolved(k, Right((value, catchUp)), _) =>
+          Input.Loaded(k, value, catchUp.events.flatMap(decode), catchUp.head)
         case Resolved(k, Left(error), _) =>
           Input.Failed(k, error)
       }
@@ -94,19 +97,20 @@ final class ReplayedLiveData[K, A, E](
             feed.tracer.record(
               TraceStep.Kind.SnapshotRequested(name, s"$name for $k")
             )
-          case Input.Loaded(k, received, cursor) =>
+          case Input.Loaded(k, received, caughtUp, head) =>
             feed.tracer.record(
               TraceStep.Kind.SnapshotLoaded(
                 name,
-                cursor.position,
-                sizeOf(received)
+                head.position,
+                sizeOf(received),
+                caughtUp.size
               )
             )
             // Rejected and retried: the counter goes up only then. The write
             // runs in a new transaction, after this one
             if next.refetches > state.refetches then
               dom.console.warn(
-                s"[$name] snapshot for $k at #${cursor.position} rejected: " +
+                s"[$name] snapshot for $k up to #${head.position} rejected: " +
                   s"events up to #${state.highestDiscarded.map(_.position).getOrElse(-1L)} " +
                   s"were dropped from the tail (${state.tail.size} kept, from " +
                   s"#${state.tail.headOption.map(_._1.position).getOrElse(-1L)}). " +
@@ -115,7 +119,7 @@ final class ReplayedLiveData[K, A, E](
               refetchBus.writer.onNext(k)
             else if state.refetches > 0 && next.refetches == 0 then
               dom.console.info(
-                s"[$name] snapshot for $k at #${cursor.position} accepted after " +
+                s"[$name] snapshot for $k up to #${head.position} accepted after " +
                   s"${state.refetches} refetch(es), now at #${next.cursor.position}"
               )
           case Input.Failed(_, _) =>
@@ -167,7 +171,7 @@ object ReplayedLiveData:
   def keyless[A, E](
       feed: LiveFeed,
       name: String,
-      load: IO[(A, Cursor)],
+      load: IO[(A, CatchUp)],
       decode: EventMessage => Option[E],
       evolve: (A, E) => A,
       same: Same[A] = Same.equal[A]

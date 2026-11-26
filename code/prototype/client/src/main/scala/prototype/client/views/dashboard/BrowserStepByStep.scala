@@ -74,8 +74,11 @@ object BrowserStepByStep:
                 "; the browser dropped the one still loading"
               else ""
             ("", s"Snapshot of $source requested from the server$dropped")
-          case (TraceStep.Kind.SnapshotLoaded(source, position, _), _) =>
-            ("", s"Snapshot of $source received, up to event $position")
+          case (TraceStep.Kind.SnapshotLoaded(source, position, _, caughtUp), _) =>
+            (
+              "",
+              s"Snapshot of $source received${TraceStep.caughtUpText(caughtUp)}, up to event $position"
+            )
           case (TraceStep.Kind.SnapshotFailed(source), _) =>
             ("", s"Snapshot of $source failed")
           case (TraceStep.Kind.Ended, _) => ("none", "The event is done")
@@ -362,7 +365,7 @@ object BrowserStepByStep:
             else (Set(Node.Computed), Set(Move.ToComputed))
           case TraceStep.Kind.SnapshotRequested(_, _) =>
             (Set(Node.ServerLoading), Set(Move.FromBrowser))
-          case TraceStep.Kind.SnapshotLoaded(_, _, _) =>
+          case TraceStep.Kind.SnapshotLoaded(_, _, _, _) =>
             (Set(Node.Folded), Set(Move.ToSnapshot))
           case TraceStep.Kind.SnapshotFailed(_) =>
             (Set(Node.Failed), Set(Move.ToFailed))

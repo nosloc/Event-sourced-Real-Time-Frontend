@@ -255,7 +255,7 @@ final case class RefreshStepper[+A](
       case Kind.Reload(stepSource, _)     => stepSource == source
       // The Browser level's steps
       case Kind.Decoded(_) | Kind.Folded(_, _) => false
-      case Kind.SnapshotRequested(_, _) | Kind.SnapshotLoaded(_, _, _) |
+      case Kind.SnapshotRequested(_, _) | Kind.SnapshotLoaded(_, _, _, _) |
           Kind.SnapshotFailed(_) =>
         false
       case Kind.FiguresComputed(_, _) => false

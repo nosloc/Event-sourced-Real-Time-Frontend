@@ -17,7 +17,7 @@ object LiveCompanies:
       name = name,
       load = Api.companies
         .listCompanies()
-        .map(response => (response.companies, response.cursor)),
+        .map(response => (response.companies, response.catchUp)),
       decode = CompanyEventDecoder.decode,
       evolve = CompanyListEvolve.evolve,
       same = Same.byId(_.companyId)

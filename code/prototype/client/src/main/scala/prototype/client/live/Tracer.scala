@@ -113,6 +113,12 @@ final case class TraceStep(
 
 object TraceStep:
 
+  /** How a snapshot's catch-up reads in a step: nothing when it was empty. */
+  def caughtUpText(caughtUp: Int): String =
+    if caughtUp == 0 then ""
+    else if caughtUp == 1 then " with 1 event caught up"
+    else s" with $caughtUp events caught up"
+
   enum Kind:
     // The feed received the event, before anything reads it: its type and
     // its payload as sent (JSON)
@@ -128,10 +134,16 @@ object TraceStep:
     // Browser level: `source` asked the server for its snapshot (first load,
     // key change, reconnect); `request` is what was asked
     case SnapshotRequested(source: String, request: String)
-    // Browser level: the snapshot of `source` arrived; it includes the events
-    // up to `position`, and the ones kept aside after it are folded on top.
-    // `size` is how many items it holds, when it is a list
-    case SnapshotLoaded(source: String, position: Long, size: Option[Int])
+    // Browser level: the snapshot of `source` arrived, with `caughtUp` events
+    // its read model had not saved yet; together they include the events up
+    // to `position`, and the ones kept aside after it are folded on top.
+    // `size` is how many items the snapshot holds, when it is a list
+    case SnapshotLoaded(
+        source: String,
+        position: Long,
+        size: Option[Int],
+        caughtUp: Int
+    )
     // Browser level: the snapshot of `source` could not be loaded
     case SnapshotFailed(source: String)
     // Browser level: the figures of `dashboard` were computed
@@ -162,8 +174,8 @@ object TraceStep:
         if applied then s"Folded into $source" else s"Not folded into $source"
       case Kind.SnapshotRequested(source, _) =>
         s"Snapshot of $source requested"
-      case Kind.SnapshotLoaded(source, position, _) =>
-        s"Snapshot of $source received, up to event $position"
+      case Kind.SnapshotLoaded(source, position, _, caughtUp) =>
+        s"Snapshot of $source received${TraceStep.caughtUpText(caughtUp)}, up to event $position"
       case Kind.SnapshotFailed(source)        => s"Snapshot of $source failed"
       case Kind.FiguresComputed(dashboard, _) =>
         s"Figures of $dashboard computed"

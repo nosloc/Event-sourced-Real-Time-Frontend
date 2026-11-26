@@ -31,7 +31,7 @@ object LiveAppointmentsForCompany:
       load = company =>
         Api.appointments
           .listCompanyAppointments(CompanyId(company.companyId))
-          .map(response => (response.appointments, response.cursor)),
+          .map(response => (response.appointments, response.catchUp)),
       decode = AppointmentEventDecoder.decode,
       evolve = AppointmentListEvolve.evolve,
       same = Same.byId(_.appointmentId)

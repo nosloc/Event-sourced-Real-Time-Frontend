@@ -17,7 +17,7 @@ object LiveTherapists:
       name = name,
       load = Api.therapists
         .listTherapists()
-        .map(response => (response.therapists, response.cursor)),
+        .map(response => (response.therapists, response.catchUp)),
       decode = TherapistEventDecoder.decode,
       evolve = TherapistListEvolve.evolve,
       same = Same.byId(_.therapistId)

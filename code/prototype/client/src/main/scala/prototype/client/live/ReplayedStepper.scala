@@ -149,7 +149,7 @@ final case class ReplayedStepper[+A](
           )
         // The events kept aside during the load are folded on top of the
         // snapshot on a step of their own, right after it arrived
-        case (Kind.SnapshotLoaded(_, position, _), _) =>
+        case (Kind.SnapshotLoaded(_, position, _, _), _) =>
           copy(
             history = history :+ Entry.Step(step) :+ Entry.FoldOnTop(position)
           )
@@ -184,7 +184,7 @@ final case class ReplayedStepper[+A](
     step.kind match
       case Kind.SnapshotRequested(source, request) =>
         Some(SnapshotCard(source, request, Some(step.at), None, None))
-      case Kind.SnapshotLoaded(source, _, size) =>
+      case Kind.SnapshotLoaded(source, _, size, _) =>
         val card = snapshotCard
           .filter(_.source == source)
           .getOrElse(SnapshotCard(source, "", None, None, None))
@@ -217,7 +217,7 @@ final case class ReplayedStepper[+A](
       case Kind.Decoded(s)              => sources.contains(s)
       case Kind.Folded(s, _)            => sources.contains(s)
       case Kind.SnapshotRequested(s, _) => sources.contains(s)
-      case Kind.SnapshotLoaded(s, _, _) => sources.contains(s)
+      case Kind.SnapshotLoaded(s, _, _, _) => sources.contains(s)
       case Kind.SnapshotFailed(s)       => sources.contains(s)
       case Kind.FiguresComputed(s, _)   => s == source
       case Kind.Considered(_)           => false
@@ -252,7 +252,7 @@ final case class ReplayedStepper[+A](
           if applied then EventPlace.Folded else EventPlace.KeptAside
         )
       case Kind.SnapshotRequested(_, _)        => pipeline.cleaned.requested
-      case Kind.SnapshotLoaded(_, position, _) =>
+      case Kind.SnapshotLoaded(_, position, _, _) =>
         pipeline.cleaned.loaded(position)
       case Kind.SnapshotFailed(_) => pipeline.cleaned.failed
       // Not let in by `concerns`, or handled by `step`

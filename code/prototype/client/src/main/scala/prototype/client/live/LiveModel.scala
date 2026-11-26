@@ -22,8 +22,9 @@ object LiveModel:
     // A load of the snapshot for this key has started. Assumed only while the
     // stream is open: `ReplayedLiveData` starts none while it is closed
     case Started(key: K)
-    // The snapshot for this key arrived, with the cursor it includes
-    case Loaded(key: K, value: A, cursor: Cursor)
+    // The snapshot for this key arrived, with the events its read model had not
+    // saved yet (`catchUp`): together, complete up to `head`
+    case Loaded(key: K, value: A, catchUp: List[E], head: Cursor)
     // The load of the snapshot failed
     case Failed(key: K, error: Throwable)
 
@@ -121,12 +122,13 @@ object LiveModel:
             error = None
           )
 
-      case Loaded(key, value, cursor) =>
-        if state.highestDiscarded.exists(_ > cursor) then
-          // Events after the snapshot were dropped, so it cannot be completed:
+      case Loaded(key, snapshot, catchUp, head) =>
+        val value = catchUp.foldLeft(snapshot)((v, e) => evolve(key, v, e))
+        if state.highestDiscarded.exists(_ > head) then
+          // Events after the head were dropped, so it cannot be completed:
           // show it only if newer, freeze the value and ask for a new load
           val (newValue, newCursor) =
-            if state.cursor < cursor then (Some(value), cursor)
+            if state.cursor < head then (Some(value), head)
             else (state.value, state.cursor)
           state.copy(
             refetches = state.refetches + 1,
@@ -135,12 +137,13 @@ object LiveModel:
             cursor = newCursor
           )
         else
-          val eventsAfterCursor =
-            state.tail.filter(_._1 > cursor)
+          // The events kept aside at or below the head are already in it
+          val eventsAfterHead =
+            state.tail.filter(_._1 > head)
           val newCursor =
-            eventsAfterCursor.map(_._1).maxOption.getOrElse(cursor)
+            eventsAfterHead.map(_._1).maxOption.getOrElse(head)
           val newValue =
-            eventsAfterCursor.map(_._2).foldLeft(value) { case (v, e) =>
+            eventsAfterHead.map(_._2).foldLeft(value) { case (v, e) =>
               evolve(key, v, e)
             }
           // Still behind if the stream closed during this load
