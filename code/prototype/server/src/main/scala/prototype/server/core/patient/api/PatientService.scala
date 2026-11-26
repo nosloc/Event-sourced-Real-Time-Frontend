@@ -5,9 +5,13 @@ import cats.effect.IO
 import prototype.api.*
 import prototype.server.core.patient.commands.CreatePatient
 import prototype.server.core.patient.domain.PatientError.*
-import prototype.server.core.patient.persistence.PatientRepository
+import prototype.server.core.patient.persistence.{
+  PatientProjection,
+  PatientProjectionName,
+  PatientRepository
+}
 import prototype.server.eventfeed.ApiCursor
-import prototype.server.eventfeed.ApiCursor.toApi
+import prototype.server.sync.{NewestLoad, ReadModel}
 import prototype.shared.events.PrototypeEvent
 import prototype.shared.patient.PatientState
 
@@ -17,11 +21,15 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import smithy4s.time.LocalDate
 
 class PatientServiceImpl(
-    patients: PatientRepository
+    patients: PatientRepository,
+    load: NewestLoad
 )(using CommandRuntime[IO, PrototypeEvent])
     extends PatientService[IO]:
 
   private val logger = Slf4jLogger.getLogger[IO]
+
+  private val readModel =
+    ReadModel(PatientProjectionName, PatientProjection(patients).filter)
 
   // The id is generated here, like the company's. Names are not logged: they
   // identify a person.
@@ -49,10 +57,13 @@ class PatientServiceImpl(
 
   // Sorted by last then first name: a projection has no stable order
   override def listPatients(): IO[ListPatientsOutput] =
-    patients.allPatients.map((patients, cursor) =>
+    load(readModel)(patients.allPatients).map(loaded =>
       ListPatientsOutput(
-        patients.sortBy(p => (p.lastName, p.firstName)).map(PatientState.toPatient),
-        cursor.toApi
+        loaded.snapshot
+          .sortBy(p => (p.lastName, p.firstName))
+          .map(PatientState.toPatient),
+        loaded.cursor,
+        loaded.catchUp
       )
     )
 

@@ -44,6 +44,7 @@ import prototype.server.faults.{
   FaultInjectionServiceImpl,
   SlowSnapshots
 }
+import prototype.server.sync.NewestLoad
 import prototype.shared.Greeting
 import prototype.shared.events.PrototypeEvent
 
@@ -129,16 +130,18 @@ object App extends IOApp.Simple:
           MonitoringServer
             .make(database.checkpoint, database.sendNotification, port"9595")
         else Resource.unit[IO]
+      // Loads the lists with the events their read model has not saved yet
+      newestLoad = NewestLoad(events.eventStore, PrototypeEventCodec.eventCodec)
       companies = CompanyRepository.make(database.sessions)
-      companyService = CompanyServiceImpl(companies)(using
+      companyService = CompanyServiceImpl(companies, newestLoad)(using
         events.commandRuntime
       )
       patients = PatientRepository.make(database.sessions)
-      patientServiceImpl = PatientServiceImpl(patients)(using
+      patientServiceImpl = PatientServiceImpl(patients, newestLoad)(using
         events.commandRuntime
       )
       therapists = TherapistRepository.make(database.sessions)
-      therapistServiceImpl = TherapistServiceImpl(therapists)(using
+      therapistServiceImpl = TherapistServiceImpl(therapists, newestLoad)(using
         events.commandRuntime
       )
       appointments = AppointmentRepository.make(database.sessions)
@@ -149,7 +152,8 @@ object App extends IOApp.Simple:
         appointments,
         appointmentUpdates,
         therapistServiceImpl,
-        companyService
+        companyService,
+        newestLoad
       )(using events.commandRuntime)
       // Every stored event, published once for the open event streams
       publishedEvents <- Topic[IO, EventEnvelope[PrototypeEvent]].toResource

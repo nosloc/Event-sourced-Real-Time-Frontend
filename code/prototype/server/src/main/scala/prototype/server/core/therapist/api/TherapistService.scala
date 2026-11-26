@@ -5,9 +5,13 @@ import cats.effect.IO
 import prototype.api.*
 import prototype.server.core.therapist.commands.CreateTherapist
 import prototype.server.core.therapist.domain.TherapistError.*
-import prototype.server.core.therapist.persistence.TherapistRepository
+import prototype.server.core.therapist.persistence.{
+  TherapistProjection,
+  TherapistProjectionName,
+  TherapistRepository
+}
 import prototype.server.eventfeed.ApiCursor
-import prototype.server.eventfeed.ApiCursor.toApi
+import prototype.server.sync.{NewestLoad, ReadModel}
 import prototype.shared.events.PrototypeEvent
 import prototype.shared.therapist.TherapistState
 
@@ -16,20 +20,25 @@ import persistent4s.CommandRuntime
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 class TherapistServiceImpl(
-    therapists: TherapistRepository
+    therapists: TherapistRepository,
+    load: NewestLoad
 )(using CommandRuntime[IO, PrototypeEvent])
     extends TherapistService[IO]:
 
   private val logger = Slf4jLogger.getLogger[IO]
 
+  private val readModel =
+    ReadModel(TherapistProjectionName, TherapistProjection(therapists).filter)
+
   // The role is stored as its name: a name nobody can read back means the
   // stored data is corrupted, not that the caller did something wrong
   // Sorted by id: the list is shown to users and a projection has no stable order
   override def listTherapists(): IO[ListTherapistsOutput] =
-    therapists.allTherapists.map((therapists, cursor) =>
+    load(readModel)(therapists.allTherapists).map(loaded =>
       ListTherapistsOutput(
-        therapists.sortBy(_.therapistId).map(TherapistState.toTherapist),
-        cursor.toApi
+        loaded.snapshot.sortBy(_.therapistId).map(TherapistState.toTherapist),
+        loaded.cursor,
+        loaded.catchUp
       )
     )
 

@@ -21,10 +21,11 @@ import prototype.server.core.appointment.domain.AppointmentError
 import prototype.server.core.appointment.domain.AppointmentError.*
 import prototype.server.core.appointment.persistence.{
   AppointmentProjection,
+  AppointmentProjectionName,
   AppointmentRepository
 }
 import prototype.server.eventfeed.ApiCursor
-import prototype.server.eventfeed.ApiCursor.toApi
+import prototype.server.sync.{NewestLoad, ReadModel}
 import prototype.shared.appointment.AppointmentState
 import prototype.shared.events.PrototypeEvent
 
@@ -56,12 +57,15 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
   *   find the therapists of a company
   * @param companies
   *   used to tell an unknown company from one without appointments
+  * @param load
+  *   loads the lists with the events the read model has not saved yet
   */
 class AppointmentServiceImpl(
     appointments: AppointmentRepository,
     updates: AppointmentProjection.Updates,
     therapists: TherapistService[IO],
-    companies: CompanyService[IO]
+    companies: CompanyService[IO],
+    load: NewestLoad
 )(using runtime: CommandRuntime[IO, PrototypeEvent])
     extends AppointmentService[IO]:
 
@@ -92,6 +96,8 @@ class AppointmentServiceImpl(
 
   // The events the appointment projection reads: a command waits only for those
   private val projected = AppointmentProjection(appointments).filter
+
+  private val readModel = ReadModel(AppointmentProjectionName, projected)
 
   private def waitingFor[C, S](
       handler: EventSourcedCommandHandler[
@@ -163,16 +169,19 @@ class AppointmentServiceImpl(
       therapistId: TherapistId
   ): IO[ListTherapistAppointmentsOutput] =
     therapists.getTherapist(therapistId) *>
-      appointments
-        .forTherapist(therapistId.value)
-        .flatMap { case (states, cursor) =>
-          states.traverse(fromState).map((_, cursor.toApi))
-        }
-        .map(ListTherapistAppointmentsOutput.apply)
+      load(readModel)(appointments.forTherapist(therapistId.value))
+        .flatMap(loaded =>
+          loaded.snapshot
+            .traverse(fromState)
+            .map(
+              ListTherapistAppointmentsOutput(_, loaded.cursor, loaded.catchUp)
+            )
+        )
 
   // Fails with CompanyNotFound if the company does not exist. The appointments
   // of all the company's therapists are read at once, so the cursor is the
-  // one of that read
+  // one of that read. The catch-up holds every appointment event, of any
+  // company: the browser keeps those of the company's therapists
   override def listCompanyAppointments(
       companyId: CompanyId
   ): IO[ListCompanyAppointmentsOutput] =
@@ -182,12 +191,11 @@ class AppointmentServiceImpl(
       companyTherapists = therapistList.therapists
         .filter(_.companyId == companyId)
         .map(_.therapistId.value)
-      (companyAppointments, cursor) <- appointments.forTherapists(
-        companyTherapists
-      )
+      loaded <- load(readModel)(appointments.forTherapists(companyTherapists))
     yield ListCompanyAppointmentsOutput(
-      companyAppointments.map(AppointmentState.toAppointment),
-      cursor.toApi
+      loaded.snapshot.map(AppointmentState.toAppointment),
+      loaded.cursor,
+      loaded.catchUp
     )
 
   override def getAppointment(
