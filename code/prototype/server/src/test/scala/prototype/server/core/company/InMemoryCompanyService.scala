@@ -24,7 +24,13 @@ final class InMemoryCompanyService private (
     }
 
   override def listCompanies(): IO[ListCompaniesOutput] =
-    companies.get.map(all => ListCompaniesOutput(all.values.toList, Cursor(0L, 0L)))
+    companies.get.map(all =>
+      ListCompaniesOutput(
+        all.values.toList,
+        cursor = Cursor(0L, 0L),
+        catchUp = CatchUp(events = Nil, head = Cursor(0L, 0L))
+      )
+    )
 
   override def getCompany(companyId: CompanyId): IO[GetCompanyOutput] =
     companies.get.map(_.get(companyId)).flatMap {

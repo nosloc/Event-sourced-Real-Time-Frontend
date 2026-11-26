@@ -170,6 +170,9 @@ structure ListTherapistAppointmentsOutput {
 
     @required
     cursor: Cursor
+
+    @required
+    catchUp: CatchUp
 }
 
 structure ListCompanyAppointmentsInput {
@@ -184,6 +187,9 @@ structure ListCompanyAppointmentsOutput {
 
     @required
     cursor: Cursor
+
+    @required
+    catchUp: CatchUp
 }
 
 list TherapistIds {

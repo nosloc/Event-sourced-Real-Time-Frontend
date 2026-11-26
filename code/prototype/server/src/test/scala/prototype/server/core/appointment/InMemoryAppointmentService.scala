@@ -67,7 +67,8 @@ final class InMemoryAppointmentService private (
           all.values.toList
             .filter(_.therapistIds.contains(therapistId))
             .sortBy(_.timeRange.start.epochSecond),
-          cursor = cursor
+          cursor = cursor,
+          catchUp = CatchUp(events = Nil, head = cursor)
         )
       )
 
@@ -86,7 +87,8 @@ final class InMemoryAppointmentService private (
           all.values.toList
             .filter(_.therapistIds.exists(companyTherapists.contains))
             .sortBy(_.timeRange.start.epochSecond),
-          cursor = cursor
+          cursor = cursor,
+          catchUp = CatchUp(events = Nil, head = cursor)
         )
       )
     }

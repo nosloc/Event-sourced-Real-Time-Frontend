@@ -61,6 +61,9 @@ structure ListCompaniesOutput {
 
     @required
     cursor: Cursor
+
+    @required
+    catchUp: CatchUp
 }
 
 structure GetCompanyInput {

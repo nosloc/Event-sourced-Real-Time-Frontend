@@ -39,6 +39,19 @@ list EventMessages {
     member: EventMessage
 }
 
+// What a list adds to its snapshot: the events of the read model's types after
+// the snapshot's cursor that were deliverable when the list was read, and the
+// cursor the answer is complete up to
+structure CatchUp {
+    // In delivery order
+    @required
+    events: EventMessages
+
+    // The last of `events`, or the snapshot's cursor when there are none
+    @required
+    head: Cursor
+}
+
 list EventTags {
     member: String
 }

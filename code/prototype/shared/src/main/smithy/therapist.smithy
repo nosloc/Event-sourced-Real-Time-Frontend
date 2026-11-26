@@ -58,6 +58,9 @@ structure ListTherapistsOutput {
 
     @required
     cursor: Cursor
+
+    @required
+    catchUp: CatchUp
 }
 
 structure GetTherapistInput {

@@ -109,6 +109,9 @@ structure ListPatientsOutput {
 
     @required
     cursor: Cursor
+
+    @required
+    catchUp: CatchUp
 }
 
 @uuidFormat
