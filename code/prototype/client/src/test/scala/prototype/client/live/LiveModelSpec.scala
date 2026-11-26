@@ -33,7 +33,7 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
     positions.map(p => Input.Received(cursorAt(p), p))
 
   private def snapshot(upTo: Long): In =
-    Input.Loaded("k", (1L to upTo).toList, cursorAt(upTo))
+    Input.Loaded("k", (1L to upTo).toList, Nil, cursorAt(upTo))
 
   // A load of "k" during which `burst` events arrive (positions 1 to `burst`),
   // answered by a snapshot at position `at`
@@ -59,10 +59,42 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
   it should "be accepted from an empty projection (position -1)" in {
     // Nothing was dropped: "nothing dropped" must not compare above -1
     val state =
-      run(initial, Seq(Input.Started("k"), Input.Loaded("k", Nil, cursorAt(-1L))))
+      run(initial, Seq(Input.Started("k"), Input.Loaded("k", Nil, Nil, cursorAt(-1L))))
     state.value shouldBe Some(Nil)
     state.refetches shouldBe 0
     state.loading shouldBe false
+  }
+
+  // A snapshot up to `upTo`, with the events its read model had not saved
+  // yet: its head is the last of them
+  private def snapshotWithCatchUp(upTo: Long, catchUp: Seq[Long]): In =
+    Input.Loaded(
+      "k",
+      (1L to upTo).toList,
+      catchUp.toList,
+      cursorAt(catchUp.lastOption.getOrElse(upTo))
+    )
+
+  "A snapshot with a catch-up" should
+    "hold the events its read model had not saved, even those the stream never sent" in {
+      // The read model is at 10; 11 was sent before the stream opened
+      val state = run(
+        initial,
+        Seq(Input.Started("k"), snapshotWithCatchUp(10L, Seq(11L)))
+      )
+      state.value shouldBe Some((1L to 11L).toList)
+      state.cursor shouldBe cursorAt(11L)
+    }
+
+  it should "apply an event held during the load once, when the catch-up has it too" in {
+    // 11 and 12 arrive during the load; the catch-up holds 11 (head 11)
+    val state = run(
+      initial,
+      Seq(Input.Started("k")) ++ received(Seq(11L, 12L)) :+
+        snapshotWithCatchUp(10L, Seq(11L))
+    )
+    state.value shouldBe Some((1L to 12L).toList)
+    state.cursor shouldBe cursorAt(12L)
   }
 
   "A load whose later events were dropped from the tail" should
