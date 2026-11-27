@@ -113,18 +113,18 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
     val state = run(rejected, received(Seq(MaxTailSize + 51L)))
     state.value shouldBe rejected.value
     state.cursor shouldBe rejected.cursor
-    // The event is kept in the tail for the next snapshot
+    // The event is held back, not applied
     state.tail.last shouldBe (cursorAt(MaxTailSize + 51L) -> (MaxTailSize + 51L))
   }
 
   it should "be completed by a newer snapshot, and the counter reset" in {
     val last = MaxTailSize + 51L
     val rejected = loadDuring(burst = MaxTailSize + 50L, at = 10L)
+    // The new load's head covers the burst; `last` arrives during it
     val state = run(
       rejected,
-      received(Seq(last)) ++ Seq(Input.Started("k"), snapshot(200L))
+      Input.Started("k") +: received(Seq(last)) :+ snapshot(MaxTailSize + 50L)
     )
-    // 51 to `last` are still in the tail: 201 to `last` are applied
     state.value shouldBe Some((1L to last).toList)
     state.cursor shouldBe cursorAt(last)
     state.refetches shouldBe 0
@@ -132,10 +132,11 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "keep a newer value on screen rather than an older snapshot" in {
-    // Loaded and live up to 400; the tail rolled, dropping events up to 144
+    // Loaded and live up to 400
     val live = run(loadDuring(burst = 300L, at = 300L), received(301L to 400L))
     live.cursor shouldBe cursorAt(400L)
-    // A reload (a reconnect) answered at 100, before the events dropped
+    // A reload answered at 100: the catch-up rules it out, the model refuses
+    // it anyway
     val state = run(live, Seq(Input.Started("k"), snapshot(100L)))
     state.refetches shouldBe 1
     state.value shouldBe live.value
@@ -197,11 +198,20 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
       )
       straddled.behind shouldBe true
       holes(straddled) shouldBe Nil
-      // The reload after the reopening completes it
-      val state = run(straddled, Seq(Input.Started("k"), snapshot(110L)))
+      // The reload after the reopening completes it: its head covers 111,
+      // received before it
+      val state = run(straddled, Seq(Input.Started("k"), snapshot(111L)))
       state.value shouldBe Some((1L to 111L).toList)
       state.behind shouldBe false
     }
+
+  "A live value" should "keep no events once its load is accepted" in {
+    // 1 to 3 held during the load, 4 applied after it
+    val state = run(loadDuring(burst = 3L, at = 2L), received(Seq(4L)))
+    state.value shouldBe Some(List(1L, 2L, 3L, 4L))
+    state.tail shouldBe empty
+    state.highestDiscarded shouldBe None
+  }
 
   "A new key" should "start from nothing" in {
     val rejected = loadDuring(burst = MaxTailSize + 50L, at = 10L)

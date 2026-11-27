@@ -1,11 +1,14 @@
 package prototype.client.live
 
+import scala.math.Ordering.Implicits.infixOrderingOps
+
 import cats.effect.IO
 
 import prototype.api.{CatchUp, EventMessage}
 import prototype.client.Api
 import prototype.client.live.LiveFeed.FeedMessage
 import prototype.client.live.LiveModel.Input
+import prototype.shared.Cursors.given
 
 import com.raquo.laminar.api.L.*
 import org.scalajs.dom
@@ -109,12 +112,16 @@ final class ReplayedLiveData[K, A, E](
             // Rejected and retried: the counter goes up only then. The write
             // runs in a new transaction, after this one
             if next.refetches > state.refetches then
+              val reason = state.highestDiscarded match
+                case Some(dropped) if dropped > head =>
+                  s"events up to #${dropped.position} were dropped from the " +
+                    s"tail (${state.tail.size} kept, from " +
+                    s"#${state.tail.headOption.map(_._1.position).getOrElse(-1L)})"
+                case _ =>
+                  s"older than the value, at #${state.cursor.position}"
               dom.console.warn(
                 s"[$name] snapshot for $k up to #${head.position} rejected: " +
-                  s"events up to #${state.highestDiscarded.map(_.position).getOrElse(-1L)} " +
-                  s"were dropped from the tail (${state.tail.size} kept, from " +
-                  s"#${state.tail.headOption.map(_._1.position).getOrElse(-1L)}). " +
-                  s"Refetch ${next.refetches}"
+                  s"$reason. Refetch ${next.refetches}"
               )
               refetchBus.writer.onNext(k)
             else if state.refetches > 0 && next.refetches == 0 then

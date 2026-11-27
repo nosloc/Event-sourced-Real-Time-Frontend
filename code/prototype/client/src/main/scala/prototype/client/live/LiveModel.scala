@@ -28,9 +28,11 @@ object LiveModel:
     // The load of the snapshot failed
     case Failed(key: K, error: Throwable)
 
-  /** `highestDiscarded` is the highest cursor ever dropped from the
-    * tail, `refetches` counts the snapshots of the current key rejected in a
-    * row for that reason.
+  /** `tail`: the events held back since the current load started (the last
+    * `MaxTailSize`); earlier ones are in its snapshot or catch-up.
+    * `highestDiscarded`: the highest cursor dropped from it since then.
+    * `refetches`: the snapshots of the current key rejected in a row for that
+    * reason.
     *
     * `behind`: the value may miss events (stream closed or load started, no
     * snapshot accepted since), so events only go to the tail.
@@ -49,7 +51,8 @@ object LiveModel:
       loading: Boolean,
       error: Option[Throwable]
   ):
-    def applyIncomingEvent = refetches == 0 && !behind
+    // A rejected snapshot leaves the value behind, so `!behind` covers it
+    def applyIncomingEvent = !behind
 
   def initial[K, A, E]: State[K, A, E] =
     State(
@@ -73,37 +76,35 @@ object LiveModel:
     import Input.*
     input match
       case Received(cursor, event) =>
-        // The most recent events, in the order received
-        val (discarded, newTail) =
-          (state.tail :+ (cursor -> event)).splitAt(
-            state.tail.size + 1 - MaxTailSize
-          )
-        val newHighestDiscarded =
-          (state.highestDiscarded ++ discarded.map(_._1)).maxOption
-
         (state.key, state.value) match
           case (Some(key), Some(value))
               if cursor > state.cursor && state.applyIncomingEvent =>
             val newValue = evolve(key, value, event)
-            state.copy(
-              value = Some(newValue),
-              cursor = cursor,
-              highestDiscarded = newHighestDiscarded,
-              tail = newTail
-            )
+            state.copy(value = Some(newValue), cursor = cursor)
           case _ =>
+            // Not applied: behind (a load, a closed stream or a failed load),
+            // nothing shown yet, or already in the value. Held back: the most
+            // recent events, in the order received
+            val (discarded, newTail) =
+              (state.tail :+ (cursor -> event)).splitAt(
+                state.tail.size + 1 - MaxTailSize
+              )
             state.copy(
               tail = newTail,
-              highestDiscarded = newHighestDiscarded
+              highestDiscarded =
+                (state.highestDiscarded ++ discarded.map(_._1)).maxOption
             )
 
       case Closed =>
         state.copy(behind = true, closedSinceStarted = true)
 
       case Started(key) =>
-        // A reload may follow missed events (a reconnect): behind until accepted
+        // A reload may follow missed events (a reconnect): behind until
+        // accepted. The tail starts empty: its head covers what came before
         if state.key.contains(key) then
           state.copy(
+            tail = Vector.empty,
+            highestDiscarded = None,
             behind = true,
             closedSinceStarted = false,
             loading = true,
@@ -115,6 +116,8 @@ object LiveModel:
             value = None,
             key = Some(key),
             cursor = Cursors.Start,
+            tail = Vector.empty,
+            highestDiscarded = None,
             refetches = 0,
             behind = true,
             closedSinceStarted = false,
@@ -124,9 +127,11 @@ object LiveModel:
 
       case Loaded(key, snapshot, catchUp, head) =>
         val value = catchUp.foldLeft(snapshot)((v, e) => evolve(key, v, e))
-        if state.highestDiscarded.exists(_ > head) then
-          // Events after the head were dropped, so it cannot be completed:
-          // show it only if newer, freeze the value and ask for a new load
+        if state.highestDiscarded.exists(_ > head) || head < state.cursor then
+          // Events after the head were dropped, so it cannot be completed, or
+          // it is older than the value (never shown: the value never goes
+          // back). Show it only if newer, freeze the value and ask for a new
+          // load
           val (newValue, newCursor) =
             if state.cursor < head then (Some(value), head)
             else (state.value, state.cursor)
@@ -146,11 +151,14 @@ object LiveModel:
             eventsAfterHead.map(_._2).foldLeft(value) { case (v, e) =>
               evolve(key, v, e)
             }
-          // Still behind if the stream closed during this load
+          // Still behind if the stream closed during this load. The tail is
+          // in the value now
           state.copy(
             value = Some(newValue),
             key = Some(key),
             cursor = newCursor,
+            tail = Vector.empty,
+            highestDiscarded = None,
             refetches = 0,
             behind = state.closedSinceStarted,
             loading = false,
