@@ -142,8 +142,9 @@ final class ReplayedLiveData[K, A, E](
   override val errorS: Signal[Option[Throwable]] = stateS.map(_.error)
 
   /** Compared with a new read of the snapshot, by `same`: see `SyncCheck`. The
-    * source's version is the position of the last event applied (compared for
-    * equality only, and positions are unique).
+    * read folds its catch-up the same way as a load, so both sides are compared
+    * at the same moment. The source's version is the position of the last
+    * event applied (compared for equality only, and positions are unique).
     */
   override val syncS: Signal[SyncStatus] =
     SyncCheck(
@@ -157,7 +158,10 @@ final class ReplayedLiveData[K, A, E](
           state.value
         )
       ),
-      k => load(k).map((value, _) => value),
+      k =>
+        load(k).map((value, catchUp) =>
+          catchUp.events.flatMap(decode).foldLeft(value)(evolve(k, _, _))
+        ),
       same
     )
 
