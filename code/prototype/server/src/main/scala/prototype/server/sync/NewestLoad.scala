@@ -17,7 +17,9 @@ import persistent4s.{
   ReadCursor
 }
 
-/** A read model's name and the event types it handles. */
+/** A read model's name and the event types a load sends after its checkpoint:
+  * every type the browser decodes for it, at least those it handles.
+  */
 final case class ReadModel(name: String, eventTypes: Set[EventTypeName])
 
 /** The result of a load: a snapshot, the read model's checkpoint, and the

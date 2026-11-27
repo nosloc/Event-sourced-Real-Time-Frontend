@@ -26,13 +26,18 @@ import prototype.server.core.appointment.persistence.{
 }
 import prototype.server.eventfeed.ApiCursor
 import prototype.server.sync.{NewestLoad, ReadModel}
-import prototype.shared.appointment.AppointmentState
-import prototype.shared.events.PrototypeEvent
+import prototype.shared.appointment.{
+  AppointmentState,
+  PatientAddedToAppointment,
+  TherapistAddedToAppointment
+}
+import prototype.shared.events.{EventType, PrototypeEvent}
 
 import persistent4s.{
   CommandRuntime,
   EventEnvelope,
   EventSourcedCommandHandler,
+  EventTypeName,
   SyncCommandHandler
 }
 
@@ -97,7 +102,16 @@ class AppointmentServiceImpl(
   // The events the appointment projection reads: a command waits only for those
   private val projected = AppointmentProjection(appointments).filter
 
-  private val readModel = ReadModel(AppointmentProjectionName, projected)
+  // A load sends every type the browser decodes: the projection's, and the two
+  // "added to" events it skips. A list gains an appointment someone joins only
+  // through them, since it cannot apply an update to an appointment it lacks
+  private val readModel = ReadModel(
+    AppointmentProjectionName,
+    projected ++ Set(
+      EventTypeName.fromString(EventType.nameOf[TherapistAddedToAppointment]),
+      EventTypeName.fromString(EventType.nameOf[PatientAddedToAppointment])
+    )
+  )
 
   private def waitingFor[C, S](
       handler: EventSourcedCommandHandler[

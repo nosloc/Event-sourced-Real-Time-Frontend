@@ -13,6 +13,7 @@ import prototype.api.*
 import prototype.server.App
 import prototype.server.config.FaultsConfig
 import prototype.server.core.PrototypeEventCodec
+import prototype.server.core.appointment.AppointmentFixtures.range
 import prototype.server.eventfeed.EventStoreServiceImpl
 import prototype.server.support.{PostgresSuite, TestApp}
 import prototype.shared.Cursors.given
@@ -104,6 +105,39 @@ class NewestLoadComponentSpec extends AsyncFlatSpec
             // Otherwise the case proves nothing about the catch-up
             answers.exists(_.catchUp.events.nonEmpty) shouldBe true
         }
+    }
+  }
+
+  // An update that adds a therapist writes `AppointmentUpdated`, which the
+  // appointments read model saves, then `TherapistAddedToAppointment`, which it
+  // skips but the browser's lists decode. The update waits for the read model,
+  // so its checkpoint stops on the update, below the added-to event
+  "A therapist's list of appointments" should "send the added-to event of a therapist who joins, and end its head on it" in {
+    freshDatabase.use { postgres =>
+      TestApp.make(postgres).use { app =>
+        for
+          company <- app.companies.createCompany("Example Clinic", address).map(_.companyId)
+          _ <- app.therapists.createTherapist("Ann", "Lee", TherapistId("abc"), company, Role.PHYSICIAN)
+          _ <- app.therapists.createTherapist("Bob", "Ray", TherapistId("xyz"), company, Role.PSYCHOLOGIST)
+          created <- app.appointments
+            .createAppointment(List(TherapistId("abc")), Nil, AppointmentType.INDIVIDUAL, range(10, 11))
+            .map(_.appointment)
+          _ <- app.appointments.updateAppointment(
+            created.appointmentId,
+            AppointmentType.INDIVIDUAL,
+            List(TherapistId("abc"), TherapistId("xyz")),
+            Nil,
+            range(10, 11)
+          )
+          listed <- app.appointments.listTherapistAppointments(TherapistId("xyz"))
+          stored <- app.eventStore.listEvents(0L, EventStoreServiceImpl.MaxTake)
+          joined = stored.events.filter(_.eventType == "TherapistAddedToAppointment").last
+        yield
+          listed.appointments.map(_.appointmentId) shouldBe List(created.appointmentId)
+          listed.catchUp.events.map(_.eventType) should contain("TherapistAddedToAppointment")
+          // Every event the browser may have applied is at or below the head
+          listed.catchUp.head should be >= joined.cursor
+      }
     }
   }
 end NewestLoadComponentSpec

@@ -143,6 +143,26 @@ class LiveModelSpec extends AnyFlatSpec with Matchers:
     state.cursor shouldBe cursorAt(400L)
   }
 
+  "A reload whose head is below the value's cursor" should
+    "be refused, keep the value, and be accepted once its head reaches it" in {
+      // Live at 12: 12 came by the stream, after a snapshot at 11. A reconnect's
+      // reload answers with a head of 11, as when 12 was of a type the load
+      // did not send
+      val live = run(initial, Seq(Input.Started("k"), snapshot(11L)) ++ received(Seq(12L)))
+      live.cursor shouldBe cursorAt(12L)
+      val refused = run(live, Seq(Input.Closed, Input.Started("k"), snapshot(11L)))
+      refused.refetches shouldBe 1
+      refused.loading shouldBe true
+      refused.value shouldBe live.value
+      refused.cursor shouldBe cursorAt(12L)
+      // The reload it asks for sends 12 in its catch-up: applied once
+      val state = run(refused, Seq(Input.Started("k"), snapshotWithCatchUp(11L, Seq(12L))))
+      state.value shouldBe Some((1L to 12L).toList)
+      state.cursor shouldBe cursorAt(12L)
+      state.refetches shouldBe 0
+      state.behind shouldBe false
+    }
+
   // Loaded and live up to 100, then a reconnect: 101 to 110 were published
   // while disconnected and never sent, 111 arrives during the reload
   private def reconnectedAt100: Model =
